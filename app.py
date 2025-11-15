@@ -232,26 +232,6 @@ if page == "Home":
         **No chemistry knowledge needed!** Each tool explains what it does and what the results mean.
         """)
     
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        st.markdown("#### Multi-Target Prediction")
-        st.write("Predict activity against kinases, GPCRs, ion channels, and enzymes using ML classifiers")
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        st.markdown("#### ADME/PK Profiling")
-        st.write("Comprehensive absorption, distribution, metabolism, and excretion analysis")
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    with col3:
-        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        st.markdown("#### Toxicity Assessment")
-        st.write("Hepatotoxicity, hERG, mutagenicity, and carcinogenicity risk prediction")
-        st.markdown('</div>', unsafe_allow_html=True)
-    
     st.markdown('<div class="sub-header">Platform Capabilities</div>', unsafe_allow_html=True)
     
     capabilities = pd.DataFrame({
