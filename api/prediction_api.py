@@ -13,8 +13,8 @@ from models.toxicity_predictors import ToxicityPredictor
 from models.target_predictors import TargetClassPredictor
 
 app = FastAPI(
-    title="AbbVie-Aligned Drug Discovery API",
-    description="REST API for molecular property prediction and drug-likeness assessment",
+    title="AI-Powered Drug Discovery API",
+    description="REST API for molecular property prediction, ADME/PK analysis, toxicity screening, and drug-likeness assessment",
     version="1.0.0"
 )
 
@@ -37,7 +37,8 @@ class BatchMoleculeInput(BaseModel):
 @app.get("/")
 def read_root():
     return {
-        "message": "AbbVie-Aligned Drug Discovery API",
+        "message": "AI-Powered Drug Discovery API",
+        "description": "Computational chemistry and machine learning platform for pharmaceutical research",
         "version": "1.0.0",
         "endpoints": [
             "/predict/druglikeness",

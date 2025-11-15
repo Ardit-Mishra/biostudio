@@ -17,11 +17,11 @@ from models.adme_predictors import ADMEPredictor
 from models.toxicity_predictors import ToxicityPredictor
 from models.target_predictors import TargetClassPredictor
 from models.ml_models import MultiModelPredictor
-from data.kinase_inhibitors import get_case_study_data, get_abbvie_benchmark_drugs
+from data.kinase_inhibitors import get_case_study_data, get_approved_kinase_drugs
 
 st.set_page_config(
-    page_title="AbbVie-Aligned AI Drug Discovery Platform",
-    page_icon="💊",
+    page_title="AI-Powered Drug Discovery Platform",
+    page_icon="🧬",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -94,11 +94,11 @@ def load_models():
  target_predictor, ml_predictor, kg, visualizer) = load_models()
 
 
-st.markdown('<div class="main-header">🧬 AbbVie-Aligned AI Drug Discovery Platform</div>', 
+st.markdown('<div class="main-header">AI-Powered Drug Discovery Platform</div>', 
             unsafe_allow_html=True)
 st.markdown("""
 <div style='text-align: center; color: #555; margin-bottom: 1rem;'>
-    <p>Demonstration Platform for Pharmaceutical Data Science & ML Capabilities</p>
+    <p>Open-Source Research Platform for Computational Drug Discovery</p>
     <p><strong>Featuring:</strong> ADME/PK Prediction • Toxicity Profiling • Target Class Prediction • ML Explainability • Knowledge Graph</p>
 </div>
 """, unsafe_allow_html=True)
@@ -110,8 +110,6 @@ For production use, these should be replaced with validated, data-driven models 
 """, icon="ℹ️")
 
 with st.sidebar:
-    st.image("https://via.placeholder.com/250x80/071D49/FFFFFF?text=AbbVie+AI+Platform", use_container_width=True)
-    
     st.markdown("### Navigation")
     page = st.radio(
         "Select Module",
@@ -182,13 +180,13 @@ if page == "🏠 Home":
     
     st.dataframe(capabilities, use_container_width=True, hide_index=True)
     
-    st.markdown('<div class="sub-header">AbbVie Alignment</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Industry Alignment</div>', unsafe_allow_html=True)
     st.info("""
-    This platform mirrors pharmaceutical industry best practices used at AbbVie and other leading biopharma companies:
+    This platform mirrors pharmaceutical industry best practices used in modern drug discovery:
     
     - **ML Techniques**: Random Forest, XGBoost, and Neural Networks for property prediction
-    - **ADME/PK Focus**: Critical for small molecule development (Humira, Imbruvica pipeline)
-    - **Target Class Prediction**: Kinase inhibitors central to AbbVie's oncology portfolio
+    - **ADME/PK Focus**: Critical for small molecule development pipelines
+    - **Target Class Prediction**: Kinase inhibitors central to oncology drug discovery
     - **Model Explainability**: SHAP values and feature importance for regulatory compliance
     - **Knowledge Graphs**: Drug-target-disease relationships for precision medicine
     """)
@@ -456,7 +454,7 @@ elif page == "🧠 Knowledge Graph":
     
     st.info("""
     This knowledge graph connects drugs, protein targets, biological pathways, and diseases,
-    demonstrating how AbbVie links molecular data across multiple data sources for drug discovery.
+    demonstrating how pharmaceutical researchers link molecular data across multiple data sources for drug discovery.
     """)
     
     stats = kg.get_graph_statistics()
@@ -560,7 +558,7 @@ elif page == "📈 Batch Screening":
 
 
 elif page == "📚 Case Study":
-    st.markdown('<div class="sub-header">AbbVie Case Study: Ranking Kinase Inhibitor Leads</div>', 
+    st.markdown('<div class="sub-header">Case Study: Ranking Kinase Inhibitor Leads</div>', 
                 unsafe_allow_html=True)
     
     case_study = get_case_study_data()
@@ -623,7 +621,7 @@ elif page == "📚 Case Study":
         2. **Data-driven decision making**: Using ML predictions to rank candidates before expensive experimental validation
         3. **Risk mitigation**: Identifying potential liabilities early in the discovery process
         
-        This mirrors AbbVie's approach to lead optimization in their kinase inhibitor programs.
+        This mirrors industry-standard approaches to lead optimization in kinase inhibitor drug discovery programs.
         """)
 
 
@@ -631,10 +629,10 @@ elif page == "ℹ️ About":
     st.markdown('<div class="sub-header">About This Platform</div>', unsafe_allow_html=True)
     
     st.markdown("""
-    ### AbbVie-Aligned AI Drug Discovery Platform
+    ### AI-Powered Drug Discovery Platform
     
-    This application demonstrates practical data science and machine learning skills aligned with 
-    pharmaceutical R&D workflows at AbbVie and other leading biopharma companies.
+    An open-source educational platform demonstrating computational drug discovery workflows using 
+    cheminformatics, QSAR modeling, and machine learning techniques used in pharmaceutical research.
     
     #### Key Features
     
@@ -643,7 +641,7 @@ elif page == "ℹ️ About":
     - **ML Models**: Random Forest, XGBoost, Neural Networks with explainability
     - **Knowledge Graph**: Drug-target-disease relationships
     - **Batch Screening**: High-throughput lead prioritization
-    - **FastAPI Backend**: Production-ready REST API
+    - **FastAPI Backend**: REST API for pharmaceutical predictions
     
     #### Technologies Used
     
@@ -654,12 +652,12 @@ elif page == "ℹ️ About":
     - **Frontend**: Streamlit
     - **Data**: NetworkX (knowledge graphs), UMAP (clustering)
     
-    #### AbbVie Alignment
+    #### Industry Standard Workflows
     
-    This platform mirrors workflows and techniques used in pharmaceutical discovery:
+    This platform demonstrates workflows and techniques used in pharmaceutical discovery:
     
-    1. **ADME/PK Focus**: Critical for AbbVie's small molecule pipeline
-    2. **Kinase Inhibitors**: Central to AbbVie's oncology portfolio
+    1. **ADME/PK Focus**: Critical for small molecule drug development pipelines
+    2. **Kinase Inhibitors**: Important target class in oncology research
     3. **Multi-model Approach**: Standard practice for robust predictions
     4. **Explainability**: Required for regulatory submissions
     5. **Knowledge Graphs**: Used for target identification and validation
@@ -672,11 +670,13 @@ elif page == "ℹ️ About":
     - hERG prediction: Critical safety assessment
     - CYP450 profiling: Standard ADME analysis
     
+    See `references.md` for complete scientific citations and methodology documentation.
+    
     ---
     
-    **Developed for**: AbbVie Associate Data Scientist Application  
+    **Developer**: Ardit Mishra  
     **Tech Stack**: Python, RDKit, scikit-learn, Streamlit, FastAPI  
-    **GitHub**: [Link to repository]
+    **GitHub**: github.com/ardit-mishra
     """)
     
     st.markdown('<div class="sub-header">Contact</div>', unsafe_allow_html=True)
@@ -685,7 +685,8 @@ elif page == "ℹ️ About":
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center; color: #888; font-size: 0.8rem;'>
-    <p>AbbVie-Aligned AI Drug Discovery Platform | Enterprise-Grade Molecular Intelligence</p>
+    <p>AI-Powered Drug Discovery Platform | Open-Source Pharmaceutical Research Tool</p>
     <p>Built with RDKit • scikit-learn • XGBoost • Streamlit • FastAPI</p>
+    <p>Developed by Ardit Mishra | github.com/ardit-mishra</p>
 </div>
 """, unsafe_allow_html=True)

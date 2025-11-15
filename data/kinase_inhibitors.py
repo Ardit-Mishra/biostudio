@@ -1,9 +1,10 @@
-abbvie_kinase_case_study = {
+kinase_inhibitor_case_study = {
     'title': 'Ranking Potential Kinase Inhibitor Leads',
     'description': '''
-    This case study demonstrates a typical early-stage drug discovery workflow at pharmaceutical companies like AbbVie.
+    This case study demonstrates a typical early-stage drug discovery workflow in pharmaceutical research.
     We evaluate 5 potential kinase inhibitor candidates using ML-based predictions of ADME/PK properties, toxicity profiles,
-    and drug-likeness scores to prioritize leads for further development.
+    and drug-likeness scores to prioritize leads for further development. This workflow mirrors industry-standard 
+    lead optimization processes used in oncology drug discovery.
     ''',
     'molecules': [
         {
@@ -42,34 +43,50 @@ abbvie_kinase_case_study = {
 }
 
 
-abbvie_drugs_benchmark = [
+approved_kinase_drugs_benchmark = [
     {
         'name': 'Venetoclax',
         'smiles': 'CC1(CCC(=C(C1)CN2CCN(CC2)C3=CC=C(C=C3)C(=O)NS(=O)(=O)C4=CC(=C(C=C4)NCC5CCOCC5)[N+](=O)[O-])C6=CC=C(C=C6)Cl)C',
         'target': 'BCL-2',
         'indication': 'Chronic Lymphocytic Leukemia',
-        'category': 'Oncology'
+        'category': 'Oncology',
+        'notes': 'First-in-class BCL-2 inhibitor for CLL'
     },
     {
         'name': 'Upadacitinib',
         'smiles': 'CN1CCN(CC1)C(=O)C2=C(C=CC(=C2F)N3C=C(C=N3)C4CC4)F',
         'target': 'JAK1',
         'indication': 'Rheumatoid Arthritis',
-        'category': 'Immunology'
+        'category': 'Immunology',
+        'notes': 'Selective JAK1 inhibitor for autoimmune diseases'
     },
     {
         'name': 'Ibrutinib',
         'smiles': 'C1CN(CCN1C2=CC=CC=C2)C(=O)C=CC3=CC=C(C=C3)C#N.C1CN(CCN1C2=CC=CC=C2)C(=O)C=CC3=CC=C(C=C3)C#N',
         'target': 'BTK',
         'indication': 'Mantle Cell Lymphoma',
-        'category': 'Oncology'
+        'category': 'Oncology',
+        'notes': 'Irreversible BTK inhibitor for B-cell malignancies'
     }
 ]
 
 
 def get_case_study_data():
-    return abbvie_kinase_case_study
+    """
+    Returns case study data for kinase inhibitor lead ranking demonstration.
+    
+    Returns:
+        dict: Dictionary containing candidate molecules and evaluation criteria
+    """
+    return kinase_inhibitor_case_study
 
 
-def get_abbvie_benchmark_drugs():
-    return abbvie_drugs_benchmark
+def get_approved_kinase_drugs():
+    """
+    Returns benchmark data of FDA-approved kinase inhibitor drugs.
+    These serve as reference compounds for comparison with novel candidates.
+    
+    Returns:
+        list: List of dictionaries containing approved drug information
+    """
+    return approved_kinase_drugs_benchmark

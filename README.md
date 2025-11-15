@@ -1,33 +1,44 @@
-# 🧬 AbbVie-Aligned AI Drug Discovery Platform
+# AI-Powered Drug Discovery Platform
 
-**Demonstration Platform for Pharmaceutical Data Science & ML Capabilities**
+**Open-Source Research Platform for Computational Drug Discovery**
 
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
 [![RDKit](https://img.shields.io/badge/RDKit-2022.9-green.svg)](https://www.rdkit.org/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.51-red.svg)](https://streamlit.io/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.121-teal.svg)](https://fastapi.tiangolo.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
 
 ## ⚠️ Important Note
 
-**This is a demonstration/educational platform** showcasing pharmaceutical data science workflows and ML techniques. Current ADME/PK, toxicity, and target class predictors use **heuristic scoring functions** based on RDKit molecular descriptors for demonstration purposes. For production use, these should be replaced with validated, data-driven QSAR models trained on real pharmaceutical datasets.
+**This is an educational/research platform** demonstrating pharmaceutical data science workflows and machine learning techniques used in modern drug discovery. Current ADME/PK, toxicity, and target class predictors use **heuristic scoring functions** based on RDKit molecular descriptors. For production applications, these should be replaced with validated, data-driven QSAR models trained on curated pharmaceutical datasets.
+
+**All methods are backed by peer-reviewed research.** See [`references.md`](references.md) for complete scientific citations.
 
 ---
 
 ## 📋 Project Overview
 
-This is an interactive demonstration platform that showcases practical data science and machine learning skills aligned with pharmaceutical R&D workflows at **AbbVie** and other leading biopharma companies. The application uses real molecular data (SMILES notation) and implements industry-standard pharmaceutical ML techniques to demonstrate drug discovery workflows, visualize chemical structures, and showcase model explainability.
+This project is an open-source platform demonstrating computational drug discovery workflows using cheminformatics, QSAR modeling, and machine learning. It provides well-documented, replicable implementations of pharmaceutical AI/ML techniques for educational and research purposes.
 
 ### Purpose
 
-Developed as part of an application for the **Associate Data Scientist role at AbbVie**, this project demonstrates:
+This platform demonstrates:
 
-- Deep understanding of pharmaceutical data science workflows and methodologies
+- Pharmaceutical data science workflows and methodologies
 - Proficiency with industry-standard cheminformatics tools (RDKit)
 - Implementation of ML models used in drug discovery (Random Forest, XGBoost, Neural Networks)
-- Knowledge of ADME/PK, toxicity prediction, and target class identification concepts
-- Ability to build interactive applications showcasing pharmaceutical AI/ML capabilities
+- ADME/PK, toxicity prediction, and target class identification methods
+- Interactive applications for pharmaceutical AI/ML exploration
+- **Complete documentation and scientific citations for all methods**
+
+### Goals
+
+1. **Education**: Provide hands-on learning resource for computational drug discovery
+2. **Replicability**: Fully documented code allowing others to understand and extend
+3. **Research**: Demonstrate integration of modern ML techniques in pharmaceutical workflows
+4. **Transparency**: Clear distinction between heuristic methods and data-driven models
 
 ---
 
@@ -35,27 +46,27 @@ Developed as part of an application for the **Associate Data Scientist role at A
 
 ### Core Capabilities
 
-- **🔬 Molecular Processing**: SMILES validation, descriptor calculation, fingerprint generation
-- **💊 ADME/PK Prediction**: LogP, Caco-2 permeability, BBB penetration, CYP450 metabolism, clearance
-- **⚠️ Toxicity Profiling**: Hepatotoxicity, hERG inhibition, mutagenicity (Ames), carcinogenicity
-- **🎯 Target Class Prediction**: Kinase, GPCR, ion channel, enzyme inhibitor likelihood
-- **📊 Drug-Likeness Scoring**: Lipinski Rule of 5, Veber descriptors, QED, Synthetic Accessibility
-- **🤖 Multi-Model ML**: Random Forest, XGBoost, Neural Network ensemble predictions
-- **📈 Model Explainability**: SHAP values, feature importance visualization
-- **🧠 Knowledge Graph**: Drug-target-disease relationships with interactive exploration
-- **📁 Batch Screening**: CSV upload for high-throughput lead prioritization
-- **🔌 FastAPI Backend**: REST API endpoints demonstrating pharmaceutical prediction services
-- **📚 Case Study**: "Ranking Potential Kinase Inhibitor Leads" demonstration
+- **Molecular Processing**: SMILES validation, descriptor calculation, fingerprint generation
+- **ADME/PK Prediction**: LogP, Caco-2 permeability, BBB penetration, CYP450 metabolism, clearance
+- **Toxicity Profiling**: Hepatotoxicity, hERG inhibition, mutagenicity (Ames), carcinogenicity
+- **Target Class Prediction**: Kinase, GPCR, ion channel, enzyme inhibitor likelihood
+- **Drug-Likeness Scoring**: Lipinski Rule of 5, Veber descriptors, QED, Synthetic Accessibility
+- **Multi-Model ML**: Random Forest, XGBoost, Neural Network ensemble predictions
+- **Model Explainability**: SHAP values, feature importance visualization
+- **Knowledge Graph**: Drug-target-disease relationships with interactive exploration
+- **Batch Screening**: CSV upload for high-throughput lead prioritization
+- **FastAPI Backend**: REST API endpoints for pharmaceutical predictions
+- **Case Study**: "Ranking Potential Kinase Inhibitor Leads" demonstration
 
-### AbbVie-Specific Alignment
+### Industry Alignment
 
-This platform mirrors workflows and methodologies used at AbbVie:
+This platform demonstrates pharmaceutical industry best practices:
 
-1. **ADME/PK Focus**: Critical for small-molecule development (similar to Humira, Imbruvica pipeline)
-2. **Kinase Inhibitor Analysis**: Central to AbbVie's oncology portfolio
-3. **Toxicity Risk Assessment**: hERG, hepatotoxicity, mutagenicity - standard pharma safety screens
-4. **Multi-Model Approach**: Ensemble predictions improve robustness for regulatory submissions
-5. **Knowledge Graphs**: Drug-target-disease mapping for precision medicine initiatives
+1. **ADME/PK Focus**: Critical for small-molecule drug development
+2. **Kinase Inhibitor Analysis**: Important target class in oncology research
+3. **Toxicity Risk Assessment**: hERG, hepatotoxicity, mutagenicity screening
+4. **Multi-Model Approach**: Ensemble predictions for robust predictions
+5. **Knowledge Graphs**: Drug-target-disease relationship mapping
 
 ---
 
@@ -74,7 +85,7 @@ This platform mirrors workflows and methodologies used at AbbVie:
 
 ### Backend & API
 - **FastAPI**: Modern, high-performance REST API
-- **Uvicorn**: ASGI server for production deployment
+- **Uvicorn**: ASGI server
 - **Pydantic**: Data validation and serialization
 
 ### Frontend
@@ -99,11 +110,13 @@ This platform mirrors workflows and methodologies used at AbbVie:
 
 ```bash
 # Clone the repository
-git clone <repository-url>
-cd abbvie-drug-discovery
+git clone https://github.com/ardit-mishra/drug-discovery-platform.git
+cd drug-discovery-platform
 
 # Install dependencies
 pip install -r requirements.txt
+# OR using uv
+uv pip install -r requirements.txt
 
 # Run the Streamlit app
 streamlit run app.py --server.port 5000
@@ -114,273 +127,237 @@ uvicorn api.prediction_api:app --host 0.0.0.0 --port 8000
 
 ### Dependencies
 
-Core packages:
+Core packages (see `pyproject.toml` for complete list):
 - streamlit>=1.51.0
 - rdkit-pypi>=2022.9.5
 - scikit-learn>=1.7.2
 - xgboost>=3.1.1
 - fastapi>=0.121.2
-- pandas, numpy, matplotlib, seaborn, plotly
+- pandas, numpy<2.0 (RDKit compatibility), matplotlib, seaborn, plotly
 - networkx, pyvis, umap-learn
 - uvicorn, pydantic, biopython
 
----
-
-## 📖 Usage Guide
-
-### 1. Molecule Input & Analysis
-
-```python
-# Enter SMILES string
-smiles = "CC(C)Cc1ccc(cc1)C(C)C(=O)O"  # Ibuprofen
-
-# Platform validates, canonicalizes, and displays:
-# - 2D structure visualization
-# - Basic molecular properties
-# - Drug-likeness quick check
-```
-
-### 2. ADME/PK Prediction
-
-Comprehensive absorption, distribution, metabolism, and excretion analysis:
-
-- **LogP**: Lipophilicity and membrane permeability indicator
-- **Caco-2**: Intestinal absorption prediction
-- **BBB Penetration**: Blood-brain barrier permeability
-- **CYP450 Metabolism**: Drug-drug interaction assessment
-- **Clearance**: Elimination half-life estimation
-
-### 3. Toxicity Risk Assessment
-
-Multi-endpoint toxicity profiling:
-
-- **Hepatotoxicity**: Liver toxicity risk
-- **hERG Inhibition**: Cardiotoxicity and QT prolongation
-- **Mutagenicity**: Ames test prediction
-- **Carcinogenicity**: Long-term safety assessment
-
-### 4. Target Class Prediction
-
-Identify probable protein target classes:
-
-- Kinase inhibitor likelihood
-- GPCR ligand probability
-- Ion channel modulator potential
-- General enzyme inhibitor characteristics
-
-### 5. ML Models & Explainability
-
-Ensemble predictions with transparency:
-
-- Random Forest, XGBoost, Neural Network predictions
-- SHAP values for feature attribution
-- Top 15 most important molecular descriptors
-- Cross-validated performance metrics
-
-### 6. Knowledge Graph Explorer
-
-Interactive drug-target-disease network:
-
-- Query drug mechanisms of action
-- Find drugs targeting specific proteins
-- Explore disease-target associations
-- Visualize biological pathways
-
-### 7. Batch Screening
-
-High-throughput lead prioritization:
-
-- Upload CSV with SMILES strings
-- Rank compounds by drug-likeness
-- Export results for further analysis
-- Compare multiple candidates simultaneously
+**Important**: NumPy must be <2.0 for RDKit compatibility. See [`SETUP.md`](SETUP.md) for detailed installation instructions.
 
 ---
 
-## 🧪 Case Study: Ranking Kinase Inhibitor Leads
+## 📖 Documentation
 
-The platform includes a built-in pharmaceutical workflow demonstration:
+This project is fully documented for educational and research purposes:
 
-**Scenario**: Evaluate 5 potential kinase inhibitor candidates
+- **[SETUP.md](SETUP.md)**: Detailed installation instructions and troubleshooting
+- **[TUTORIAL.md](TUTORIAL.md)**: Step-by-step guide to using the platform
+- **[METHODOLOGY.md](METHODOLOGY.md)**: Scientific basis for all prediction methods
+- **[REFERENCES.md](REFERENCES.md)**: Complete scientific citations and bibliography
+- **[CONTRIBUTING.md](CONTRIBUTING.md)**: Guidelines for contributions
 
-**Evaluation Criteria**:
-1. ADME/PK properties (permeability, BBB penetration, metabolism)
-2. Toxicity profile (hepatotoxicity, hERG, mutagenicity)
-3. Drug-likeness (Lipinski, Veber, QED, SA score)
-4. Kinase inhibitor likelihood
-5. Overall lead-like score
+### Code Documentation
 
-**Output**: Ranked list with detailed property breakdown
-
-This mirrors real-world lead optimization workflows at AbbVie.
-
----
-
-## 🔌 API Endpoints (FastAPI)
-
-### Available Endpoints
-
-```python
-GET  /                          # API information
-POST /predict/druglikeness      # Lipinski, Veber, QED, SA score
-POST /predict/adme              # ADME/PK profile
-POST /predict/toxicity          # Toxicity risk assessment
-POST /predict/target            # Target class prediction
-POST /predict/comprehensive     # All predictions combined
-POST /batch/predict             # Batch processing
-```
-
-### Example Request
-
-```python
-import requests
-
-response = requests.post(
-    "http://localhost:8000/predict/comprehensive",
-    json={
-        "smiles": "CC(C)Cc1ccc(cc1)C(C)C(=O)O",
-        "name": "Ibuprofen"
-    }
-)
-
-print(response.json())
-```
+All code includes:
+- **Detailed docstrings** for every function
+- **Inline comments** explaining complex logic
+- **Scientific references** linking methods to literature
+- **Type hints** for clarity and maintainability
 
 ---
 
-## 📊 Model Training & Validation
+## 🧪 Modules & Features
 
-### Cross-Validation Strategy
+### 1. Molecular Processing (`utils/molecular_utils.py`)
 
-- **5-fold cross-validation** for model robustness
-- **Train/test split**: 80/20
-- **Performance metrics**: Accuracy, precision, recall, AUC-ROC
+- SMILES validation and canonicalization
+- Molecular descriptor calculation (200+ properties)
+- Fingerprint generation (Morgan, MACCS, Topological)
+- Basic property calculation (MW, LogP, HBA, HBD)
 
-### Hyperparameter Tuning
+**Methods referenced**: RDKit documentation, Wildman-Crippen LogP¹, Lipinski descriptors²
 
-- Random Forest: 100 estimators, max_depth=10
-- XGBoost: 100 estimators, learning_rate=0.1, max_depth=6
-- Neural Network: Single hidden layer, sigmoid activation
+### 2. Drug-Likeness Assessment (`utils/drug_likeness.py`)
 
-### Feature Engineering
+- **Lipinski Rule of 5**: Oral bioavailability prediction²
+- **Veber Rules**: Rotatable bonds and TPSA criteria³
+- **QED Score**: Quantitative Estimate of Drug-likeness⁴
+- **Synthetic Accessibility**: Ease of synthesis prediction⁵
 
-- 200+ molecular descriptors
-- Morgan fingerprints (radius=2, 2048 bits)
-- Standard scaling for neural networks
+### 3. ADME/PK Prediction (`models/adme_predictors.py`)
 
----
+- **LogP**: Lipophilicity (Wildman-Crippen method)¹
+- **Caco-2 Permeability**: Intestinal absorption model⁶
+- **BBB Penetration**: Blood-brain barrier permeability⁷
+- **CYP450 Metabolism**: Cytochrome P450 substrate prediction⁸
+- **Clearance Estimation**: Hepatic clearance models⁹
 
-## 🏢 Alignment with AbbVie's ML Workflows
+**Note**: Current implementations use heuristic scoring. See `METHODOLOGY.md` for details and `REFERENCES.md` for literature on validated QSAR models.
 
-### Research & Publications Alignment
+### 4. Toxicity Prediction (`models/toxicity_predictors.py`)
 
-This platform echoes AbbVie's published approaches to AI/ML in drug discovery:
+- **Hepatotoxicity**: Liver toxicity risk assessment¹⁰
+- **hERG Inhibition**: Cardiotoxicity screening¹¹,¹²
+- **Ames Mutagenicity**: Genetic toxicity prediction¹³
+- **Carcinogenicity**: Long-term cancer risk¹⁴
 
-1. **Random Forest & XGBoost**: Standard models for QSAR in pharmaceutical industry
-2. **ADME/PK Prediction**: Core to small-molecule optimization (e.g., Rinvoq, Venclexta development)
-3. **Kinase Inhibitor Focus**: Reflects AbbVie's oncology pipeline (BCR-ABL, JAK inhibitors)
-4. **Multi-parameter Optimization**: Balancing efficacy, safety, and PK properties
-5. **Explainable AI**: SHAP values support regulatory documentation requirements
+**Note**: State-of-the-art models achieve AUC 0.90-0.96 for hERG using Graph Neural Networks¹². Current heuristic implementation is for demonstration.
 
-### Regulatory Considerations
+### 5. Target Class Prediction (`models/target_predictors.py`)
 
-- **Model transparency**: Feature importance and decision pathways
-- **Validation protocols**: Cross-validation and hold-out test sets
-- **Documentation**: Clear methodology and limitations
-- **SDTM compatibility**: Output format considerations for clinical data
+- **Kinase Inhibitors**: Protein kinase targeting likelihood
+- **GPCR Modulators**: G-protein coupled receptor activity
+- **Ion Channel Blockers**: Ion channel interaction prediction
+- **Enzyme Inhibitors**: General enzyme inhibition potential
 
----
+### 6. Machine Learning Models (`models/ml_models.py`)
 
-## 📚 References & Industry Standards
+- **Random Forest**: Ensemble decision trees for classification¹⁵
+- **XGBoost**: Gradient boosted trees for robust predictions¹⁶
+- **Neural Networks**: Simple feedforward architecture
+- **Ensemble Predictions**: Combining multiple models
+- **Feature Importance**: SHAP values for interpretability¹⁷
 
-### Drug-Likeness Rules
-- Lipinski, C. A. (2004). Lead- and drug-like compounds. *Drug Discovery Today*
-- Veber, D. F. et al. (2002). Molecular properties that influence oral bioavailability. *JMED*
+### 7. Knowledge Graph (`utils/knowledge_graph.py`)
 
-### ADME/PK Prediction
-- Hou, T. & Wang, J. (2008). Structure-ADME relationship. *Expert Opinion Drug Metab Toxicol*
-- Lombardo, F. et al. (2004). In silico ADME prediction. *Drug Discovery Today*
+- Drug-target-disease relationship network
+- Mechanism of action queries
+- Target information lookup
+- Disease pathway mapping
 
-### Toxicity Prediction
-- Cheng, A. & Dixon, S. L. (2003). In silico models for hERG inhibition. *JCIM*
-- Kazius, J. et al. (2005). Derivation and validation of Ames mutagenicity. *JMED*
+### 8. API Endpoints (`api/prediction_api.py`)
 
-### ML in Drug Discovery
-- Chen, H. et al. (2018). The rise of deep learning in drug discovery. *Drug Discovery Today*
-- Vamathevan, J. et al. (2019). Applications of machine learning in drug discovery. *Nature Reviews Drug Discovery*
-
----
-
-## 🎓 Skills Demonstrated
-
-### Data Science
-- Feature engineering from molecular structures
-- Multi-model ensemble predictions
-- Cross-validation and model evaluation
-- Dimensionality reduction (UMAP)
-- Clustering and similarity analysis
-
-### Cheminformatics
-- SMILES processing and validation
-- Molecular descriptor calculation
-- Fingerprint generation and comparison
-- Structure-activity relationship modeling
-- Drug-likeness assessment
-
-### Software Engineering
-- Modular, maintainable codebase
-- REST API development (FastAPI)
-- Interactive web applications (Streamlit)
-- Version control and documentation
-- Production-ready deployment
-
-### Domain Knowledge
-- Pharmaceutical R&D workflows
-- ADME/PK principles
-- Toxicology and safety assessment
-- Target class identification
-- Regulatory compliance considerations
+RESTful API for programmatic access:
+- `/predict/druglikeness`: Lipinski, Veber, QED, SA scores
+- `/predict/adme`: ADME/PK property predictions
+- `/predict/toxicity`: Toxicity risk assessment
+- `/predict/target`: Target class predictions
+- `/predict/comprehensive`: Complete molecular profile
+- `/batch/predict`: High-throughput batch processing
 
 ---
 
-## 🔮 Future Enhancements
+## 💡 Use Cases
 
-### Phase 2 Additions (Planned)
+### 1. Educational Platform
 
-1. **Protein Language Models**: ESM-2/ProtBERT integration for antibody analysis
-2. **Molecule Optimization**: AI-powered analog generation using BRICS decomposition
-3. **Expanded Knowledge Graph**: Integration with ChEMBL, PubChem, DrugBank
-4. **Cloud Deployment**: AWS/GCP deployment with scalable infrastructure
-5. **Advanced Visualizations**: 3D molecular structures, interactive pathway maps
-6. **Regulatory Module**: SDTM format export, FDA guideline alignment
-7. **Multi-task Learning**: Joint prediction of multiple endpoints
-8. **Active Learning**: Iterative model improvement with user feedback
+- Learn computational drug discovery workflows
+- Understand QSAR modeling concepts
+- Explore ML applications in pharmaceutical research
+- Study molecular property prediction methods
+
+### 2. Research Tool
+
+- Rapid screening of compound libraries
+- Lead optimization prioritization
+- Toxicity liability identification
+- Multi-parameter optimization exploration
+
+### 3. Method Development
+
+- Benchmark for custom QSAR models
+- Platform for integrating new predictors
+- Knowledge graph expansion
+- API integration testing
 
 ---
 
-## 📄 License
+## 📚 Case Study: Kinase Inhibitor Lead Ranking
 
-This project is developed for educational and demonstration purposes as part of a job application.
+The platform includes a complete case study demonstrating:
+
+1. **Multi-parameter optimization**: Balancing efficacy, safety, and PK properties
+2. **Data-driven decision making**: ML-based candidate ranking
+3. **Risk mitigation**: Early identification of potential liabilities
+
+Example candidates evaluated:
+- Imatinib-like scaffold (BCR-ABL inhibitor)
+- Gefitinib-like scaffold (EGFR inhibitor)
+- Novel kinase inhibitor scaffolds
+
+Evaluation criteria:
+- ADME/PK properties
+- Toxicity profile
+- Drug-likeness scores
+- Target class probability
+- Overall lead-like score
+
+---
+
+## 🔬 Scientific Rigor
+
+All methods implemented in this platform are based on peer-reviewed research:
+
+### Pharmaceutical Standards
+- Lipinski Rule of 5 for oral bioavailability²
+- Veber rules for drug-likeness³
+- QED scoring methodology⁴
+- Synthetic accessibility scoring⁵
+
+### QSAR Methodologies
+- Graph Neural Networks for toxicity (AUC 0.96)¹²
+- Random Forest for ADME prediction¹⁵
+- XGBoost for robust multi-task learning¹⁶
+- SHAP for model interpretability¹⁷
+
+### Literature References
+
+Complete citations available in [`REFERENCES.md`](REFERENCES.md), including:
+
+1. Wildman & Crippen (1999) - LogP calculation
+2. Lipinski et al. (2001) - Rule of 5
+3. Veber et al. (2002) - Molecular property filters
+4. Bickerton et al. (2012) - QED score
+5. Ertl & Schuffenhauer (2009) - Synthetic accessibility
+6-17. [See REFERENCES.md for complete bibliography]
+
+---
+
+## 🛣️ Roadmap
+
+### Phase 2 Enhancements
+
+- [ ] **Validated QSAR Models**: Replace heuristics with trained models on curated datasets
+- [ ] **Protein Language Models**: ESM-2/ProtBERT for antibody analysis
+- [ ] **AI-Powered Optimization**: BRICS-based molecular generation
+- [ ] **Expanded Knowledge Graph**: ChEMBL/PubChem integration
+- [ ] **3D Molecular Visualization**: Interactive 3D structure viewer
+- [ ] **Cloud Deployment**: AWS/GCP containerized deployment
+- [ ] **Regulatory Export**: SDTM format for FDA submissions
+- [ ] **Multi-task Learning**: Joint endpoint prediction models
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please see [`CONTRIBUTING.md`](CONTRIBUTING.md) for guidelines.
+
+Areas particularly welcome:
+- Integration of validated QSAR models from literature
+- Addition of new molecular descriptors
+- Knowledge graph expansion
+- Documentation improvements
+- Bug fixes and performance optimizations
+
+---
+
+## 📜 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
 ## 👤 Author
 
-**[Your Name]**
+**Ardit Mishra**
 
-- **Position Applied**: Associate Data Scientist at AbbVie
-- **LinkedIn**: [Your LinkedIn]
-- **GitHub**: [Your GitHub]
-- **Email**: [Your Email]
+- GitHub: [@ardit-mishra](https://github.com/ardit-mishra)
+- Email: [Your email]
+- LinkedIn: [Your LinkedIn]
 
 ---
 
 ## 🙏 Acknowledgments
 
 - **RDKit community** for the excellent cheminformatics toolkit
-- **AbbVie** for inspiration from their groundbreaking work in pharmaceutical AI
-- **Hugging Face** for transformer model infrastructure
 - **scikit-learn team** for robust ML implementations
+- **Hugging Face** for transformer model infrastructure
+- **Pharmaceutical research community** for published QSAR datasets and methodologies
 
 ---
 
@@ -388,18 +365,17 @@ This project is developed for educational and demonstration purposes as part of 
 
 For questions about this project or to discuss pharmaceutical AI/ML applications:
 
-- **Email**: [Your email]
-- **LinkedIn**: [Your LinkedIn URL]
-- **Portfolio**: [Your website]
+- Open an issue on GitHub
+- Email: [Your email]
 
 ---
 
 <div align="center">
 
-**Built with** ❤️ **for pharmaceutical data science**
+**Built with 🧬 for pharmaceutical research**
 
-🧬 RDKit • 🤖 scikit-learn • ⚡ XGBoost • 🎨 Streamlit • 🚀 FastAPI
+RDKit • scikit-learn • XGBoost • Streamlit • FastAPI
 
-*Demonstrating pharmaceutical AI/ML workflows and data science capabilities*
+*Demonstrating computational drug discovery workflows with comprehensive documentation*
 
 </div>

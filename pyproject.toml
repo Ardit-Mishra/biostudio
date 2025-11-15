@@ -1,7 +1,7 @@
 [project]
 name = "repl-nix-workspace"
 version = "0.1.0"
-description = "AbbVie-Aligned AI Drug Discovery Platform"
+description = "AI-Powered Drug Discovery Platform - Educational Research Tool"
 requires-python = ">=3.11,<3.12"
 dependencies = [
     "biopython>=1.86",

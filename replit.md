@@ -1,12 +1,12 @@
-# AbbVie-Aligned AI Drug Discovery Platform
+# AI-Powered Drug Discovery Platform
 
 ## ⚠️ Important Note
 
-**This is a demonstration/educational platform** showcasing pharmaceutical data science workflows and ML techniques. Current ADME/PK, toxicity, and target class predictors use **heuristic scoring functions** based on RDKit molecular descriptors for demonstration purposes. For production use, these should be replaced with validated, data-driven QSAR models trained on real pharmaceutical datasets.
+**This is an educational/research platform** demonstrating pharmaceutical data science workflows and machine learning techniques used in modern drug discovery. Current ADME/PK, toxicity, and target class predictors use **heuristic scoring functions** based on RDKit molecular descriptors. For production applications, these should be replaced with validated, data-driven QSAR models trained on curated pharmaceutical datasets.
 
 ## Project Overview
 
-This is a demonstration platform showcasing pharmaceutical data science and ML capabilities aligned with AbbVie's R&D workflows. Built for an Associate Data Scientist role application at AbbVie to demonstrate understanding of pharmaceutical AI/ML workflows.
+An open-source platform demonstrating computational drug discovery workflows using cheminformatics, QSAR modeling, and machine learning. This project provides well-documented, replicable implementations of pharmaceutical AI/ML techniques for educational and research purposes.
 
 ## Key Features
 
@@ -75,13 +75,13 @@ uvicorn api.prediction_api:app --host 0.0.0.0 --port 8000
 - **Training**: Models trained on synthetic pharmaceutical dataset  
 - **Future Enhancement**: Replace heuristics with data-driven trained models
 
-### AbbVie Alignment
-This platform mirrors pharmaceutical industry workflows:
-1. **ADME/PK Focus**: Critical for small-molecule development
-2. **Kinase Inhibitors**: Central to AbbVie's oncology portfolio
+### Industry-Standard Workflows
+This platform demonstrates pharmaceutical industry best practices:
+1. **ADME/PK Focus**: Critical for small-molecule drug development
+2. **Kinase Inhibitor Analysis**: Important target class in oncology
 3. **Multi-model Ensemble**: Standard practice for robust predictions
 4. **Model Explainability**: Feature importance for regulatory compliance
-5. **Knowledge Graphs**: Target identification and validation
+5. **Knowledge Graphs**: Drug-target-disease relationship mapping
 
 ## Recent Changes
 
@@ -121,7 +121,8 @@ This platform mirrors pharmaceutical industry workflows:
 ✅ Comprehensive README documentation  
 ⏳ Protein language model integration (pending dependency resolution)  
 
-## Contact
+## About
 
-Developed for AbbVie Associate Data Scientist application  
-Demonstrating pharmaceutical AI/ML capabilities and domain knowledge
+Open-source pharmaceutical AI/ML research platform  
+Developed by Ardit Mishra (github.com/ardit-mishra)  
+Demonstrating computational drug discovery workflows with comprehensive documentation
