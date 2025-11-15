@@ -97,11 +97,17 @@ def load_models():
 st.markdown('<div class="main-header">🧬 AbbVie-Aligned AI Drug Discovery Platform</div>', 
             unsafe_allow_html=True)
 st.markdown("""
-<div style='text-align: center; color: #555; margin-bottom: 2rem;'>
-    <p>Enterprise-Grade Molecular Intelligence for Pharmaceutical R&D</p>
+<div style='text-align: center; color: #555; margin-bottom: 1rem;'>
+    <p>Demonstration Platform for Pharmaceutical Data Science & ML Capabilities</p>
     <p><strong>Featuring:</strong> ADME/PK Prediction • Toxicity Profiling • Target Class Prediction • ML Explainability • Knowledge Graph</p>
 </div>
 """, unsafe_allow_html=True)
+
+st.warning("""
+**⚠️ DEMONSTRATION PLATFORM**: This application showcases pharmaceutical data science workflows and techniques. 
+Current predictors use **heuristic scoring functions** based on RDKit molecular descriptors for educational purposes.  
+For production use, these should be replaced with validated, data-driven models trained on real pharmaceutical datasets.
+""", icon="ℹ️")
 
 with st.sidebar:
     st.image("https://via.placeholder.com/250x80/071D49/FFFFFF?text=AbbVie+AI+Platform", use_container_width=True)
@@ -239,6 +245,11 @@ elif page == "🔬 Molecule Input":
 elif page == "📊 ADME/PK Analysis":
     st.markdown('<div class="sub-header">ADME/PK Property Prediction</div>', unsafe_allow_html=True)
     
+    st.info("""
+    **Note:** ADME/PK predictions use heuristic scoring functions based on molecular descriptors (LogP, TPSA, molecular weight, etc.).  
+    For production use, replace with validated QSAR models trained on experimental ADME data.
+    """)
+    
     smiles_input = st.text_input("Enter SMILES String", "CC(C)Cc1ccc(cc1)C(C)C(=O)O")
     
     if st.button("Run ADME/PK Analysis", type="primary"):
@@ -288,6 +299,11 @@ elif page == "📊 ADME/PK Analysis":
 
 elif page == "⚠️ Toxicity Profile":
     st.markdown('<div class="sub-header">Toxicity Risk Assessment</div>', unsafe_allow_html=True)
+    
+    st.info("""
+    **Note:** Toxicity predictions use heuristic scoring based on structural alerts and molecular properties.  
+    For production use, replace with validated toxicophore models and QSAR trained on experimental toxicity data (Tox21, ToxCast).
+    """)
     
     smiles_input = st.text_input("Enter SMILES String", "CC(C)Cc1ccc(cc1)C(C)C(=O)O")
     
@@ -344,6 +360,11 @@ elif page == "⚠️ Toxicity Profile":
 
 elif page == "🎯 Target Prediction":
     st.markdown('<div class="sub-header">Target Class Prediction</div>', unsafe_allow_html=True)
+    
+    st.info("""
+    **Note:** Target class predictions use heuristic scoring based on physicochemical properties typical of each target class.  
+    For production use, replace with validated bioactivity models trained on ChEMBL or similar databases.
+    """)
     
     smiles_input = st.text_input("Enter SMILES String", "Cc1ccc(cc1Nc2nccc(n2)c3cccnc3)NC(=O)c4ccc(cc4)CN5CCN(CC5)C")
     

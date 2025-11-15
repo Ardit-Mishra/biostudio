@@ -1,6 +1,6 @@
 # 🧬 AbbVie-Aligned AI Drug Discovery Platform
 
-**Enterprise-Grade Molecular Intelligence for Pharmaceutical R&D**
+**Demonstration Platform for Pharmaceutical Data Science & ML Capabilities**
 
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
 [![RDKit](https://img.shields.io/badge/RDKit-2022.9-green.svg)](https://www.rdkit.org/)
@@ -9,19 +9,25 @@
 
 ---
 
+## ⚠️ Important Note
+
+**This is a demonstration/educational platform** showcasing pharmaceutical data science workflows and ML techniques. Current ADME/PK, toxicity, and target class predictors use **heuristic scoring functions** based on RDKit molecular descriptors for demonstration purposes. For production use, these should be replaced with validated, data-driven QSAR models trained on real pharmaceutical datasets.
+
+---
+
 ## 📋 Project Overview
 
-This is an interactive, production-grade AI drug discovery platform that demonstrates practical data science and machine learning skills aligned with pharmaceutical R&D workflows at **AbbVie** and other leading biopharma companies. The application uses real molecular data (SMILES notation) and implements industry-standard pharmaceutical ML techniques to predict drug-like properties, visualize chemical structures, and showcase model explainability.
+This is an interactive demonstration platform that showcases practical data science and machine learning skills aligned with pharmaceutical R&D workflows at **AbbVie** and other leading biopharma companies. The application uses real molecular data (SMILES notation) and implements industry-standard pharmaceutical ML techniques to demonstrate drug discovery workflows, visualize chemical structures, and showcase model explainability.
 
 ### Purpose
 
-Developed as part of an application for the **Associate Data Scientist role at AbbVie**, this project showcases:
+Developed as part of an application for the **Associate Data Scientist role at AbbVie**, this project demonstrates:
 
-- Deep understanding of pharmaceutical data science workflows
+- Deep understanding of pharmaceutical data science workflows and methodologies
 - Proficiency with industry-standard cheminformatics tools (RDKit)
-- Experience with ML models used in drug discovery (Random Forest, XGBoost, Neural Networks)
-- Knowledge of ADME/PK, toxicity prediction, and target class identification
-- Ability to build production-ready applications with modern Python frameworks
+- Implementation of ML models used in drug discovery (Random Forest, XGBoost, Neural Networks)
+- Knowledge of ADME/PK, toxicity prediction, and target class identification concepts
+- Ability to build interactive applications showcasing pharmaceutical AI/ML capabilities
 
 ---
 
@@ -38,7 +44,7 @@ Developed as part of an application for the **Associate Data Scientist role at A
 - **📈 Model Explainability**: SHAP values, feature importance visualization
 - **🧠 Knowledge Graph**: Drug-target-disease relationships with interactive exploration
 - **📁 Batch Screening**: CSV upload for high-throughput lead prioritization
-- **🔌 FastAPI Backend**: Production-ready REST endpoints for predictions
+- **🔌 FastAPI Backend**: REST API endpoints demonstrating pharmaceutical prediction services
 - **📚 Case Study**: "Ranking Potential Kinase Inhibitor Leads" demonstration
 
 ### AbbVie-Specific Alignment
@@ -394,6 +400,6 @@ For questions about this project or to discuss pharmaceutical AI/ML applications
 
 🧬 RDKit • 🤖 scikit-learn • ⚡ XGBoost • 🎨 Streamlit • 🚀 FastAPI
 
-*Demonstrating enterprise-grade AI/ML capabilities for drug discovery*
+*Demonstrating pharmaceutical AI/ML workflows and data science capabilities*
 
 </div>
