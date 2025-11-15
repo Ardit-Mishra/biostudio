@@ -28,191 +28,89 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Roboto:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap');
-    
-    * {
-        font-family: 'Roboto', sans-serif;
-    }
-    
-    .main-header {
-        font-family: 'Inter', sans-serif;
-        font-size: 2.8rem;
-        font-weight: 700;
-        color: #1B2432;
-        text-align: center;
-        padding: 2rem 0 0.5rem 0;
-        letter-spacing: -0.8px;
-        background: linear-gradient(135deg, #1B2432 0%, #2E3A45 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-    }
-    
-    .gold-underline {
-        width: 120px;
-        height: 4px;
-        background: linear-gradient(90deg, #F4C95D 0%, #E6B84D 100%);
-        margin: 0.5rem auto 1rem auto;
-        border-radius: 2px;
-        box-shadow: 0 2px 8px rgba(244, 201, 93, 0.3);
-    }
-    
-    .subtitle {
-        font-family: 'Inter', sans-serif;
-        font-size: 1.1rem;
-        font-weight: 400;
-        color: #4A90E2;
-        text-align: center;
-        font-style: italic;
-        margin-bottom: 2rem;
-        letter-spacing: 0.5px;
-    }
-    
-    .sub-header {
-        font-family: 'Inter', sans-serif;
-        font-size: 1.5rem;
-        color: #1B2432;
-        font-weight: 600;
-        margin-top: 2rem;
-        padding: 1rem 1.5rem;
-        background: linear-gradient(135deg, #1B2432 0%, #2E3A45 100%);
-        color: white;
-        border-radius: 10px;
-        margin-bottom: 1.5rem;
-        box-shadow: 0 4px 12px rgba(27, 36, 50, 0.15);
-    }
-    
-    .metric-card {
-        background-color: #F5F7FA;
-        border: 1px solid #D9E0E7;
-        padding: 1.5rem;
-        border-radius: 12px;
-        margin: 0.8rem 0;
-        box-shadow: 0 2px 8px rgba(46, 58, 69, 0.08);
-        transition: all 0.3s ease;
-    }
-    
-    .metric-card:hover {
-        box-shadow: 0 4px 16px rgba(79, 209, 197, 0.15);
-        border-color: #4FD1C5;
-        transform: translateY(-2px);
-    }
-    
-    .metric-card h4 {
-        color: #1B2432;
-        font-family: 'Inter', sans-serif;
-        font-size: 1.2rem;
-        font-weight: 600;
-        margin-bottom: 0.6rem;
-    }
-    
-    .risk-pill {
-        display: inline-block;
-        padding: 0.4rem 1rem;
-        border-radius: 20px;
-        font-size: 0.9rem;
-        font-weight: 500;
-        margin: 0.3rem;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-    }
-    
-    .safe-zone {
-        background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
-        color: white;
-    }
-    
-    .caution-zone {
-        background: linear-gradient(135deg, #FFC107 0%, #FFD54F 100%);
-        color: #1B2432;
-    }
-    
-    .critical-zone {
-        background: linear-gradient(135deg, #F44336 0%, #EF5350 100%);
-        color: white;
-    }
-    
-    .success-box {
-        background: linear-gradient(135deg, #E8F5E9 0%, #F1F8E9 100%);
-        border-left: 4px solid #4CAF50;
-        padding: 1.2rem;
-        border-radius: 10px;
-        margin: 0.8rem 0;
-        box-shadow: 0 2px 8px rgba(76, 175, 80, 0.1);
-    }
-    
-    .warning-box {
-        background: linear-gradient(135deg, #FFF8E1 0%, #FFFDE7 100%);
-        border-left: 4px solid #F4C95D;
-        padding: 1.2rem;
-        border-radius: 10px;
-        margin: 0.8rem 0;
-        box-shadow: 0 2px 8px rgba(244, 201, 93, 0.1);
-    }
-    
-    .danger-box {
-        background: linear-gradient(135deg, #FFEBEE 0%, #FCE4EC 100%);
-        border-left: 4px solid #F44336;
-        padding: 1.2rem;
-        border-radius: 10px;
-        margin: 0.8rem 0;
-        box-shadow: 0 2px 8px rgba(244, 67, 54, 0.1);
-    }
-    
-    .insight-panel {
-        background: linear-gradient(135deg, #2E3A45 0%, #1B2432 100%);
-        color: white;
-        padding: 1.5rem;
-        border-radius: 12px;
-        box-shadow: 0 4px 16px rgba(27, 36, 50, 0.2);
-        margin: 1rem 0;
-    }
-    
-    .insight-panel h3 {
-        color: #4FD1C5;
-        font-family: 'Inter', sans-serif;
-        font-weight: 600;
-        margin-bottom: 1rem;
-    }
-    
-    .technical-text {
-        font-family: 'JetBrains Mono', monospace;
-        background-color: #2E3A45;
-        color: #4FD1C5;
-        padding: 0.3rem 0.6rem;
-        border-radius: 6px;
-        font-size: 0.9rem;
-    }
-    
-    .biostudio-footer {
-        text-align: center;
-        color: #7F8C8D;
-        font-size: 0.9rem;
-        padding: 2rem 0 1rem 0;
-        margin-top: 3rem;
-        border-top: 2px solid #D9E0E7;
-    }
-    
-    .biostudio-footer .gold-accent {
-        color: #F4C95D;
-        font-weight: 600;
-    }
-    
-    .stRadio > label {
-        font-family: 'Inter', sans-serif;
-        font-weight: 500;
-        color: #1B2432;
-    }
-    
-    .sidebar-nav-item {
-        background: linear-gradient(135deg, #F5F7FA 0%, #E8EDF2 100%);
-        padding: 0.6rem 1rem;
-        margin: 0.3rem 0;
-        border-radius: 8px;
-        border-left: 3px solid #4FD1C5;
-        font-weight: 500;
-        color: #1B2432;
-    }
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+  :root {
+    --bg-main: #00010a;
+    --bg-grid: rgba(0, 255, 200, 0.05);
+    --text-main: #dffdfc;
+    --text-dim: #8bc4c2;
+    --accent-cyan: #00f8c5;
+    --accent-pink: #ff7ddf;
+    --accent-yellow: #ffe36e;
+  }
+
+  .stApp {
+    background: var(--bg-main);
+    color: var(--text-main);
+    background-image:
+      linear-gradient(var(--bg-main), var(--bg-main)),
+      linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px),
+      linear-gradient(var(--bg-grid) 1px, transparent 1px);
+    background-size: 100%, 40px 40px, 40px 40px;
+  }
+
+  /* Sidebar */
+  [data-testid="stSidebar"] {
+    background: #00010a;
+    border-right: 1px solid #00c9a4;
+  }
+
+  [data-testid="stSidebar"] * { color: var(--text-main); }
+
+  /* Title */
+  .main-header {
+    font-size: 2.7rem;
+    font-weight: 700;
+    text-align: center;
+    font-family: 'Inter';
+    color: var(--accent-cyan);
+    text-shadow: 0 0 12px rgba(0,248,197,0.7);
+  }
+
+  .subtitle {
+    color: var(--text-dim);
+    text-align: center;
+  }
+
+  .metric-card {
+    background: rgba(0,0,0,0.35);
+    border: 1px solid #00c9a4;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 0 25px rgba(0,255,200,0.15);
+  }
+
+  .success-box { background: rgba(0,255,200,0.1); border-left: 4px solid var(--accent-cyan); }
+  .danger-box { background: rgba(255,125,223,0.13); border-left: 4px solid var(--accent-pink); }
+
+  .risk-pill {
+    padding: 0.2rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .safe-zone { background: rgba(0,255,200,0.2); color: var(--accent-cyan); }
+  .caution-zone { background: rgba(255,227,110,0.2); color: var(--accent-yellow); }
+  .critical-zone { background: rgba(255,125,223,0.2); color: var(--accent-pink); }
+
+  .stButton > button {
+    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-pink));
+    border-radius: 999px;
+    color: #00010a;
+    padding: 0.65rem 1.3rem;
+    font-weight: 700;
+    border: none;
+    box-shadow: 0 0 18px rgba(0,248,197,0.6);
+  }
+
+  .stButton > button:hover {
+    transform: scale(1.06);
+    box-shadow: 0 0 35px rgba(255,125,223,0.7);
+  }
 </style>
+
 """, unsafe_allow_html=True)
 
 
