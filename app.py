@@ -279,6 +279,61 @@ if page == "Home":
     st.markdown('<div class="sub-header">Welcome to Ardit BioStudio</div>', 
                 unsafe_allow_html=True)
     
+    with st.expander("🎓 **New to Drug Discovery? Start Here!**", expanded=False):
+        st.markdown("""
+        ### What is Ardit BioStudio?
+        
+        **Ardit BioStudio** is an educational platform that helps you analyze potential drug molecules using artificial intelligence and chemistry.
+        
+        **Think of it as:** A smart assistant that can tell you if a molecule would make a good medicine before you spend time and money making it in a lab.
+        
+        ### What Can You Do Here?
+        
+        1. **Check if a molecule is drug-like** - Will it work as a medicine?
+        2. **Predict absorption** - Can your body absorb it?
+        3. **Assess safety** - Is it toxic?
+        4. **Identify targets** - What does it interact with in the body?
+        5. **Understand predictions** - Why did the AI make this decision?
+        
+        ### Key Terms Explained (Beginner's Glossary)
+        
+        **🧪 SMILES**: A simple text code that represents a molecule's structure
+        - Example: `CC(=O)Oc1ccccc1C(=O)O` = Aspirin
+        - Think of it like: A ZIP code for molecules
+        
+        **💊 ADME**: How a drug behaves in your body
+        - **A**bsorption - Does it get into your bloodstream?
+        - **D**istribution - Where does it go in your body?
+        - **M**etabolism - How does your body break it down?
+        - **E**xcretion - How does it leave your body?
+        
+        **🎯 LogP**: How "fatty" vs "water-loving" a molecule is
+        - **Positive LogP** (like 3): Fatty, can cross cell membranes easily
+        - **Negative LogP** (like -1): Water-loving, stays in blood
+        - **Sweet spot**: 0-3 for most drugs
+        
+        **⚠️ Toxicity**: Potential for harm
+        - **hERG**: Heart rhythm issues
+        - **Hepatotoxicity**: Liver damage
+        - **Mutagenicity**: DNA damage
+        - **Carcinogenicity**: Cancer risk
+        
+        **📊 QED Score** (0-1): Overall "drug-likeness"
+        - **0.7-1.0**: Excellent drug candidate
+        - **0.5-0.7**: Good, needs optimization
+        - **< 0.5**: Needs significant improvement
+        
+        ### How to Get Started
+        
+        1. **Try an example first**: Use the pre-filled molecules (like Aspirin or Ibuprofen)
+        2. **Start with Molecule Studio**: See basic properties
+        3. **Move to ADME Navigator**: Check absorption
+        4. **Check Drug-Likeness Deck**: Overall assessment
+        5. **Review Toxicity Radar**: Safety check
+        
+        **No chemistry knowledge needed!** Each tool explains what it does and what the results mean.
+        """)
+    
     col1, col2, col3 = st.columns(3)
     
     with col1:
@@ -331,6 +386,50 @@ if page == "Home":
 elif page == "Molecule Studio":
     st.markdown('<div class="sub-header">Molecule Studio</div>', unsafe_allow_html=True)
     
+    with st.expander("ℹ️ **What does Molecule Studio do?**"):
+        st.markdown("""
+        ### Purpose
+        **Molecule Studio** lets you analyze the basic properties of any molecule. It's like getting a molecule's ID card with all its important characteristics.
+        
+        ### What You'll Learn
+        - **Molecular Weight (MW)**: How heavy the molecule is (measured in Daltons)
+          - *Good range for drugs*: 150-500 Da (lighter molecules are easier for the body to process)
+        
+        - **LogP**: Measures if the molecule is fatty or water-loving
+          - *Good range*: 0-3 (balanced between water and fat)
+          - *Too high* (>5): Won't dissolve in blood
+          - *Too low* (<-2): Can't enter cells
+        
+        - **TPSA** (Polar Surface Area): How "sticky" the molecule is to water
+          - *Good range*: 20-140 Ų for oral drugs
+          - *Lower*: Can cross cell membranes easily
+          - *Higher*: Stays in bloodstream
+        
+        - **H-Bond Donors/Acceptors**: How many connections it can make with water
+          - *Donors*: Groups like -OH, -NH that give hydrogen
+          - *Acceptors*: Groups like =O, -N that receive hydrogen
+          - *Why it matters*: Too many makes absorption difficult
+        
+        - **Rotatable Bonds**: How flexible the molecule is
+          - *Good range*: < 10 bonds
+          - *More flexible*: Harder to bind to targets
+        
+        - **Aromatic Rings**: Flat ring structures (like in benzene)
+          - *Common in drugs*: Most drugs have 1-4 aromatic rings
+        
+        ### How to Use
+        1. **Enter a SMILES code** (or use the example Ibuprofen)
+        2. **Click "Validate & Analyze"**
+        3. **Review the 2D structure** (visual representation)
+        4. **Check the properties table** (all the numbers explained above)
+        5. **See the quick drug-likeness check** (Pass/Fail indicators)
+        
+        ### Try These Examples
+        - **Aspirin**: `CC(=O)Oc1ccccc1C(=O)O`
+        - **Caffeine**: `CN1C=NC2=C1C(=O)N(C(=O)N2C)C`
+        - **Ibuprofen**: `CC(C)Cc1ccc(cc1)C(C)C(=O)O` (pre-filled)
+        """)
+    
     input_method = st.radio("Input Method", ["SMILES String", "Draw Structure (Coming Soon)", "Upload File"], horizontal=True)
     
     if input_method == "SMILES String":
@@ -378,6 +477,62 @@ elif page == "Molecule Studio":
 
 elif page == "ADME Navigator":
     st.markdown('<div class="sub-header">ADME Navigator</div>', unsafe_allow_html=True)
+    
+    with st.expander("ℹ️ **Understanding ADME - What Happens to a Drug in Your Body**"):
+        st.markdown("""
+        ### What is ADME?
+        **ADME** predicts what happens to a drug after you take it. Think of it as tracking the drug's journey through your body.
+        
+        ### The Four Stages
+        
+        **A - Absorption** 🍴
+        - *What it means*: Can the drug get from your stomach into your blood?
+        - *Tool used*: **Caco-2 Permeability**
+          - Measures how well a drug crosses intestinal walls
+          - **High (>8)**: Absorbs easily
+          - **Moderate (2-8)**: Average absorption
+          - **Low (<2)**: Poor absorption
+        
+        **D - Distribution** 🧠
+        - *What it means*: Where does the drug go in your body?
+        - *Tool used*: **BBB Penetration** (Blood-Brain Barrier)
+          - Can it reach your brain?
+          - **Yes**: Good for brain diseases (but may cause side effects)
+          - **No**: Won't affect the brain (good for most drugs)
+        
+        **M - Metabolism** 🔥
+        - *What it means*: How does your liver break down the drug?
+        - *Tool used*: **CYP450 Enzymes**
+          - Liver enzymes that modify drugs
+          - **CYP3A4**: Processes ~50% of all drugs
+          - **CYP2D6**: Important for many medications
+          - **CYP2C9**: Common pathway
+          - *Why it matters*: Drug interactions happen here
+        
+        **E - Excretion** 🚽
+        - *What it means*: How fast does the drug leave your body?
+        - *Tool used*: **Clearance Rate**
+          - **High clearance**: Short-acting (need frequent doses)
+          - **Low clearance**: Long-acting (fewer doses needed)
+          - **Moderate**: Ideal for most drugs
+        
+        ### How to Use
+        1. **Enter your molecule's SMILES code**
+        2. **Click "Run ADME/PK Analysis"**
+        3. **Review each tab** (LogP, Caco-2, BBB, CYP450, Clearance)
+        4. **Check the color indicators**: 
+           - 🟢 Green = Good
+           - 🟡 Yellow = Moderate/Caution
+           - 🔴 Red = Poor/Risk
+        
+        ### What Makes a Good Drug?
+        - **High absorption** (Caco-2 > 8)
+        - **BBB penetration** depends on target (brain drugs need it, others don't)
+        - **Moderate metabolism** (not too fast, not too slow)
+        - **Balanced clearance** (stays active long enough)
+        
+        **Note**: These are predictive models for educational purposes. Real drugs need lab testing!
+        """)
     
     st.info("""
     **Note:** ADME/PK predictions use heuristic scoring functions based on molecular descriptors (LogP, TPSA, molecular weight, etc.).  
@@ -433,6 +588,60 @@ elif page == "ADME Navigator":
 
 elif page == "Toxicity Radar":
     st.markdown('<div class="sub-header">Toxicity Radar</div>', unsafe_allow_html=True)
+    
+    with st.expander("ℹ️ **Understanding Toxicity - Safety Screening Explained**"):
+        st.markdown("""
+        ### Why Check Toxicity?
+        Before a drug can be used, we need to make sure it's safe. **Toxicity Radar** predicts potential side effects and safety concerns.
+        
+        ### Four Main Safety Checks
+        
+        **1. Hepatotoxicity (Liver Damage)** 🫀
+        - *What it is*: Can the drug harm your liver?
+        - *Why it matters*: Your liver processes all drugs - damage here is serious
+        - *Risk Levels*:
+          - **0-30%**: Low risk (Safe)
+          - **30-70%**: Moderate risk (Needs monitoring)
+          - **70-100%**: High risk (Concerning)
+        
+        **2. Cardiotoxicity - hERG Inhibition (Heart Problems)** ❤️
+        - *What it is*: Can the drug cause irregular heartbeat?
+        - *hERG channel*: Electrical pathway in your heart
+        - *Measured as IC50* (lower = more dangerous):
+          - **>10 μM**: Low risk
+          - **1-10 μM**: Moderate risk (caution)
+          - **<1 μM**: High risk (dangerous)
+        
+        **3. Mutagenicity - Ames Test (DNA Damage)** 🧬
+        - *What it is*: Can the drug damage your DNA?
+        - *Why it matters*: DNA damage can lead to mutations
+        - *Result*:
+          - **Negative**: Safe (no DNA damage expected)
+          - **Positive**: Risky (may cause mutations)
+        
+        **4. Carcinogenicity (Cancer Risk)** ☢️
+        - *What it is*: Long-term cancer risk
+        - *Risk Score*:
+          - **0-30%**: Low risk
+          - **30-70%**: Moderate risk (needs study)
+          - **70-100%**: High risk (concerning)
+        
+        ### How to Use
+        1. **Enter your molecule's SMILES**
+        2. **Click "Run Toxicity Analysis"**
+        3. **Review all four toxicity types**
+        4. **Check the color-coded risk levels**:
+           - 🟢 Green = Safe/Low Risk
+           - 🟡 Yellow = Moderate/Caution
+           - 🔴 Red = High Risk/Dangerous
+        
+        ### What's Acceptable?
+        - **All Low Risk**: Great candidate!
+        - **One Moderate**: May still be okay with monitoring
+        - **Any High Risk**: Needs redesign or very careful evaluation
+        
+        **Remember**: These are predictions. Real drugs need extensive lab and clinical testing!
+        """)
     
     st.info("""
     **Note:** Toxicity predictions use heuristic scoring based on structural alerts and molecular properties.  
@@ -495,6 +704,50 @@ elif page == "Toxicity Radar":
 elif page == "Target Prediction":
     st.markdown('<div class="sub-header">Target Class Prediction</div>', unsafe_allow_html=True)
     
+    with st.expander("ℹ️ **What Targets Does Your Molecule Hit?**"):
+        st.markdown("""
+        ### Understanding Biological Targets
+        **Targets** are proteins in your body that drugs interact with. Think of them as locks, and drugs as keys.
+        
+        ### Four Major Target Types
+        
+        **1. Kinase Inhibitors** 🎯
+        - *What they are*: Proteins that control cell growth and division
+        - *Disease focus*: Cancer (most cancer drugs are kinase inhibitors)
+        - *Examples*: Imatinib (leukemia), Gefitinib (lung cancer)
+        
+        **2. GPCR Ligands** 📡
+        - *Full name*: G-Protein Coupled Receptors
+        - *What they are*: Cell surface proteins that receive signals
+        - *Disease focus*: Heart disease, asthma, allergies, pain
+        - *Examples*: Beta-blockers (heart), antihistamines (allergies)
+        - *Fun fact*: ~30% of all drugs target GPCRs!
+        
+        **3. Ion Channel Modulators** ⚡
+        - *What they are*: Proteins that control electrical signals in cells
+        - *Disease focus*: Epilepsy, pain, heart arrhythmias
+        - *Examples*: Local anesthetics, anti-epilepsy drugs
+        
+        **4. Enzyme Inhibitors** 🔬
+        - *What they are*: Proteins that speed up chemical reactions
+        - *Disease focus*: Infections, inflammation, metabolic diseases
+        - *Examples*: Aspirin (pain enzyme), statins (cholesterol enzyme)
+        
+        ### How to Use
+        1. **Enter your molecule's SMILES**
+        2. **Click "Predict Target Class"**
+        3. **See probability for each target type** (0-100%)
+        4. **Review the primary prediction** (highest probability)
+        
+        ### Understanding Results
+        - **80-100%**: Highly Likely to hit this target
+        - **50-80%**: Likely, worth investigating
+        - **20-50%**: Possible, but uncertain
+        - **<20%**: Unlikely
+        
+        **Note**: These are AI predictions for education. Real drugs need lab testing to confirm targets!
+        """)
+    
     st.info("""
     **Note:** Target class predictions use heuristic scoring based on physicochemical properties typical of each target class.  
     For production use, replace with validated bioactivity models trained on ChEMBL or similar databases.
@@ -544,6 +797,69 @@ elif page == "Target Prediction":
 
 elif page == "Drug-Likeness Deck":
     st.markdown('<div class="sub-header">Drug-Likeness Deck</div>', unsafe_allow_html=True)
+    
+    with st.expander("ℹ️ **Drug-Likeness Rules - Will This Molecule Make a Good Drug?**"):
+        st.markdown("""
+        ### What is Drug-Likeness?
+        **Drug-Likeness** measures how similar a molecule is to successful drugs. Think of it as a checklist developed from analyzing thousands of approved medicines.
+        
+        ### Four Industry-Standard Assessments
+        
+        **1. Lipinski's Rule of 5** 📏
+        - *Created by*: Christopher Lipinski (Pfizer scientist, 1997)
+        - *Purpose*: Predicts oral bioavailability (can you swallow it as a pill?)
+        - *The 5 Rules*:
+          - **Molecular Weight ≤ 500**: Not too heavy
+          - **LogP ≤ 5**: Not too fatty
+          - **H-Bond Donors ≤ 5**: Not too sticky to water
+          - **H-Bond Acceptors ≤ 10**: Not too many water connections
+        - *Passing*: ≤ 1 violation = Drug-like ✓
+        - *Failing*: ≥ 2 violations = Needs improvement
+        
+        **2. Veber Rules** 📐
+        - *Created by*: Daniel Veber (SmithKline Beecham, 2002)
+        - *Purpose*: Predicts good absorption
+        - *The 2 Rules*:
+          - **Rotatable Bonds ≤ 10**: Not too flexible
+          - **TPSA ≤ 140 Ų**: Right amount of polarity
+        - *Why it matters*: Flexible molecules don't absorb well
+        
+        **3. QED Score (0-1)** ⭐
+        - *Stands for*: Quantitative Estimate of Drug-likeness
+        - *Think of it as*: A grade from 0-100%
+        - *Scoring*:
+          - **0.7-1.0**: Excellent (A grade)
+          - **0.5-0.7**: Good (B grade)
+          - **0.3-0.5**: Fair (C grade)
+          - **<0.3**: Poor (needs work)
+        - *What it measures*: Overall "drug quality" combining all properties
+        
+        **4. SA Score (1-10)** 🔬
+        - *Stands for*: Synthetic Accessibility
+        - *Purpose*: How hard is it to make this molecule in a lab?
+        - *Scoring*:
+          - **1-3**: Easy to synthesize ✓
+          - **4-6**: Moderate complexity
+          - **7-10**: Very difficult/expensive
+        - *Why it matters*: No point designing a drug you can't make!
+        
+        ### How to Use
+        1. **Enter your molecule's SMILES**
+        2. **Click "Assess Drug-Likeness"**
+        3. **Review all four assessments**
+        4. **Check the Risk Pills**:
+           - 🟢 **Safe Zone**: Passes criteria
+           - 🟡 **Caution Zone**: Some violations
+           - 🔴 **Critical Zone**: Major issues
+        
+        ### What Makes a Great Drug Candidate?
+        - ✅ **Lipinski**: 0-1 violations
+        - ✅ **Veber**: Passes both rules
+        - ✅ **QED**: > 0.5 (preferably > 0.7)
+        - ✅ **SA Score**: < 6 (preferably < 4)
+        
+        **Real Example**: Aspirin scores QED = 0.55, SA = 1.0 - Good drug!
+        """)
     
     st.info("""
     **Comprehensive drug-likeness assessment** using validated pharmaceutical criteria: Lipinski Rule of 5, Veber rules, QED score, and Synthetic Accessibility.
@@ -615,6 +931,57 @@ elif page == "Drug-Likeness Deck":
 elif page == "Explainability Canvas":
     st.markdown('<div class="sub-header">Explainability Canvas</div>', unsafe_allow_html=True)
     
+    with st.expander("ℹ️ **Understanding AI Predictions - Why Did the AI Say That?**"):
+        st.markdown("""
+        ### What is Explainability?
+        **Explainability** shows you WHY the AI made its prediction. It's like asking the AI to show its work, like in math class!
+        
+        ### Three AI Models Working Together
+        
+        **1. Random Forest** 🌲
+        - *Think of it as*: A committee of decision trees voting
+        - *How it works*: Makes many "if-then" rules and votes on the answer
+        - *Strength*: Good at finding patterns
+        
+        **2. XGBoost** 🚀
+        - *Think of it as*: A smarter, faster Random Forest
+        - *How it works*: Learns from mistakes and improves iteratively
+        - *Strength*: Very accurate predictions
+        
+        **3. Ensemble** 🎯
+        - *What it is*: Combines Random Forest + XGBoost predictions
+        - *Why it's better*: Two opinions are better than one!
+        - *Final answer*: Average of both models
+        
+        ### Feature Importance - What Matters Most?
+        
+        The charts show which molecular properties the AI uses to make decisions:
+        
+        - **High importance** (top of chart): AI relies heavily on this property
+        - **Low importance** (bottom): AI barely uses this property
+        
+        **Common important features**:
+        - Molecular Weight
+        - LogP (fat-loving vs water-loving)
+        - Number of rings
+        - Hydrogen bond donors/acceptors
+        
+        ### How to Use
+        1. **Enter your molecule's SMILES**
+        2. **Click "Run ML Prediction"**
+        3. **See predictions from 3 models**
+        4. **Review feature importance chart** (what the AI looked at)
+        5. **Understand the confidence level**
+        
+        ### Understanding Confidence
+        - **90-100%**: AI is very sure
+        - **70-90%**: AI is confident
+        - **50-70%**: AI is somewhat sure
+        - **<50%**: AI is guessing
+        
+        **Why this matters**: You can trust high-confidence predictions more than low-confidence ones!
+        """)
+    
     smiles_input = st.text_input("Enter SMILES String", "CC(C)Cc1ccc(cc1)C(C)C(=O)O")
     
     if st.button("Run ML Prediction", type="primary"):
@@ -658,6 +1025,52 @@ elif page == "Explainability Canvas":
 
 elif page == "Knowledge Graph":
     st.markdown('<div class="sub-header">Biomedical Knowledge Graph Explorer</div>', unsafe_allow_html=True)
+    
+    with st.expander("ℹ️ **How Drugs, Targets, and Diseases Connect**"):
+        st.markdown("""
+        ### What is a Knowledge Graph?
+        A **Knowledge Graph** is like a map showing how drugs, proteins, and diseases are connected. Think of it as a relationship diagram!
+        
+        ### The Connections
+        
+        **Drugs → Targets → Diseases**
+        
+        Example: **Imatinib** → inhibits → **BCR-ABL protein** → treats → **Leukemia**
+        
+        ### What You Can Explore
+        
+        **1. Drug Mechanism** 🔍
+        - Pick a drug (like Imatinib or Gefitinib)
+        - See what proteins it targets
+        - See what diseases it treats
+        - Learn about biological pathways involved
+        
+        **2. Target Information** 🎯
+        - Pick a protein target (like EGFR or BCR-ABL)
+        - See all drugs that hit this target
+        - See diseases linked to this target
+        
+        ### Example Drugs in Our Graph
+        - **Imatinib**: Cancer drug (leukemia, GIST)
+        - **Gefitinib**: Lung cancer drug
+        - **Sorafenib**: Kidney/liver cancer drug
+        - **Venetoclax**: Leukemia drug
+        - **Adalimumab**: Arthritis/Crohn's disease drug
+        
+        ### Key Terms
+        - **Target**: The protein the drug interacts with
+        - **Pathway**: Chain of biological events (like a domino effect)
+        - **Indication**: The disease the drug treats
+        - **Mechanism of Action (MOA)**: How the drug works in your body
+        
+        ### How to Use
+        1. **Choose query type** (Drug Mechanism or Target Information)
+        2. **Select a drug or target** from the dropdown
+        3. **Click the button** to see connections
+        4. **Explore the relationships**
+        
+        **This shows how drugs work!** Real pharmaceutical researchers use similar graphs with millions of connections.
+        """)
     
     st.info("""
     This knowledge graph connects drugs, protein targets, biological pathways, and diseases,
@@ -705,6 +1118,59 @@ elif page == "Knowledge Graph":
 
 elif page == "Lead Lab":
     st.markdown('<div class="sub-header">Lead Lab — Batch Screening & Prioritization</div>', unsafe_allow_html=True)
+    
+    with st.expander("ℹ️ **Screening Many Molecules at Once**"):
+        st.markdown("""
+        ### What is Batch Screening?
+        Instead of testing one molecule at a time, **Lead Lab** lets you analyze many molecules together and rank them from best to worst!
+        
+        ### Think of it like:
+        - **Report Card**: Grades multiple students at once
+        - **Job Applicants**: Ranks candidates from most to least qualified
+        - **Lead Lab**: Ranks molecules from most to least drug-like
+        
+        ### What It Does
+        
+        For each molecule in your list, it calculates:
+        1. **Molecular Weight** - Is it the right size?
+        2. **LogP** - Is it balanced (water vs fat)?
+        3. **Lipinski Violations** - Does it pass the drug-likeness rules?
+        4. **QED Score** - Overall drug quality (0-1 scale)
+        
+        Then it **ranks them** from highest to lowest QED Score!
+        
+        ### How to Use
+        
+        **Option 1: Example Dataset** (Easiest!)
+        1. Click "Run Batch Analysis on Example Set"
+        2. See results for 5 common drugs
+        3. Download results as CSV
+        
+        **Option 2: Upload Your Own**
+        1. Prepare a CSV file with columns: `name`, `smiles`
+        2. Upload the file
+        3. Get ranked results instantly!
+        
+        ### Understanding Results Table
+        
+        - **Name**: Molecule name
+        - **SMILES**: Molecular structure code
+        - **MW**: Molecular weight (lighter is often better)
+        - **LogP**: Fat-loving measure (0-3 is ideal)
+        - **Lipinski Violations**: Fewer is better (0-1 = good)
+        - **QED Score**: Overall grade (higher = better drug)
+        - **Passes Lipinski**: Yes/No (Yes = drug-like!)
+        
+        **Top ranked = Best drug candidate!**
+        
+        ### Example: If you had 100 molecules, this tool:
+        1. Tests all 100 automatically
+        2. Calculates drug-likeness for each
+        3. Ranks them from #1 (best) to #100 (worst)
+        4. Saves you weeks of manual work!
+        
+        **Real pharmaceutical companies screen millions of molecules this way!**
+        """)
     
     st.info("""
     Upload a CSV file with SMILES strings or use the example dataset to screen multiple compounds.
@@ -767,6 +1233,68 @@ elif page == "Lead Lab":
 elif page == "Case Study":
     st.markdown('<div class="sub-header">Case Study: Ranking Kinase Inhibitor Leads</div>', 
                 unsafe_allow_html=True)
+    
+    with st.expander("ℹ️ **Real-World Example: Finding the Best Cancer Drug Candidate**"):
+        st.markdown("""
+        ### What is a Case Study?
+        A **Case Study** is a real-world example that shows you how all the tools work together in an actual drug discovery project!
+        
+        ### The Scenario
+        
+        **Goal**: Find the best kinase inhibitor for cancer treatment
+        
+        **Challenge**: You have 5 candidate molecules. Which one should you develop into a drug?
+        
+        ### The Evaluation Process
+        
+        We test each candidate on **5 criteria**:
+        
+        1. **Drug-Likeness (Lipinski's Rule)** - Can it be taken as a pill?
+           - Score: 20 points for passing
+        
+        2. **Overall Quality (QED Score)** - Is it a good drug overall?
+           - Score: 20 points if QED ≥ 0.5
+        
+        3. **Kinase Activity** - Does it actually hit kinases?
+           - Score: 30 points if predicted as kinase inhibitor
+        
+        4. **Absorption (ADME)** - Can your body absorb it?
+           - Score: 15 points for good absorption
+        
+        5. **Safety (Toxicity)** - Is it safe for the liver?
+           - Score: 15 points for low liver toxicity
+        
+        **Total possible: 100 points**
+        
+        ### How to Use
+        
+        1. **Read the scenario** (already on this page)
+        2. **Click "Run Complete Analysis on All Candidates"**
+        3. **Review the results table** sorted by total score
+        4. **See the recommended lead** (highest scorer)
+        5. **Examine charts** showing how candidates compare
+        
+        ### Understanding Results
+        
+        **Candidate Scores**:
+        - **85-100**: Excellent candidate! Move forward
+        - **70-84**: Good candidate, needs minor optimization
+        - **50-69**: Moderate, needs significant work
+        - **<50**: Poor candidate, consider alternatives
+        
+        ### What You Learn
+        
+        This shows the **real pharmaceutical workflow**:
+        1. Start with multiple candidates
+        2. Test each on multiple criteria
+        3. Score and rank them
+        4. Pick the winner
+        5. Invest resources in the best one
+        
+        **This is how billion-dollar drugs are discovered!**
+        
+        Instead of spending millions testing all 5 in the lab, you predict first and test only the winner!
+        """)
     
     case_study = get_case_study_data()
     

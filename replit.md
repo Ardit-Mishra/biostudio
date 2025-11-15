@@ -85,7 +85,19 @@ This platform demonstrates pharmaceutical industry best practices:
 
 ## Recent Changes
 
-### 2025-11-15
+### 2025-11-15 (Accessibility Update)
+- **Major Enhancement**: Added comprehensive educational content for non-technical users
+- Implemented expandable "Learn More" sections across all 10 major pages
+- Each tool now includes:
+  - Plain-language explanations of technical terms
+  - Step-by-step usage guides
+  - Real-world analogies (locks/keys, report cards, etc.)
+  - Result interpretation guidelines
+  - Concrete examples (Aspirin, Imatinib, etc.)
+- All pharmaceutical concepts explained (SMILES, ADME, LogP, Toxicity, QED, etc.)
+- Platform now accessible to users with no scientific background
+
+### 2025-11-15 (Technical)
 - Fixed NumPy 2.x compatibility issue with RDKit
 - Downgraded NumPy from 2.3.4 to 1.26.4
 - Updated pyproject.toml to constrain `numpy>=1.24,<2.0`
@@ -119,6 +131,8 @@ This platform demonstrates pharmaceutical industry best practices:
 ✅ Streamlit UI with 10 pages  
 ✅ Case study demonstration  
 ✅ Comprehensive README documentation  
+✅ **Educational content for non-technical users** (NEW)
+✅ **All tools have beginner-friendly explanations** (NEW)
 ⏳ Protein language model integration (pending dependency resolution)  
 
 ## About Ardit BioStudio
