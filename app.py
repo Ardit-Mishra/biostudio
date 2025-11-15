@@ -624,7 +624,8 @@ elif page == "Explainability Canvas":
             mol = mol_processor.smiles_to_mol(canonical_smiles)
             descriptors = mol_processor.calculate_molecular_descriptors(mol)
             
-            prediction = ml_predictor.predict_with_ensemble(descriptors)
+            # ML models trained on 30 features, use first 30 descriptors
+            prediction = ml_predictor.predict_with_ensemble(descriptors[:30])
             
             st.markdown("### Ensemble Prediction Results")
             
