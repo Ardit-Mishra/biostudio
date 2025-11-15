@@ -163,7 +163,7 @@ class MolecularProcessor:
                 'Rotatable Bonds': Descriptors.NumRotatableBonds(mol),
                 'Aromatic Rings': Descriptors.NumAromaticRings(mol),
                 'Molecular Formula': rdMolDescriptors.CalcMolFormula(mol),
-                'Fraction Csp3': round(Descriptors.FractionCsp3(mol), 2),
+                'Fraction Csp3': round(Lipinski.FractionCSP3(mol), 2),
                 'Molar Refractivity': round(Crippen.MolMR(mol), 2)
             }
         except Exception as e:
@@ -528,7 +528,7 @@ class MolecularProcessor:
         descriptors.append(Descriptors.NumHAcceptors(mol))          # H-bond acceptors
         descriptors.append(Descriptors.NumRotatableBonds(mol))      # Rotatable bonds
         descriptors.append(Descriptors.NumAromaticRings(mol))       # Aromatic rings
-        descriptors.append(Descriptors.FractionCsp3(mol))           # sp3 carbon fraction
+        descriptors.append(Lipinski.FractionCSP3(mol))              # sp3 carbon fraction
         descriptors.append(Crippen.MolMR(mol))                      # Molar refractivity
         
         # Complexity and topological indices
