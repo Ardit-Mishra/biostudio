@@ -21,7 +21,7 @@ from data.kinase_inhibitors import get_case_study_data, get_approved_kinase_drug
 
 st.set_page_config(
     page_title="AI-Powered Drug Discovery Platform",
-    page_icon="🧬",
+    page_icon="⚕",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -29,47 +29,59 @@ st.set_page_config(
 st.markdown("""
 <style>
     .main-header {
-        font-size: 2.5rem;
-        font-weight: bold;
-        color: #071D49;
+        font-size: 2rem;
+        font-weight: 600;
+        color: #2C3E50;
         text-align: center;
-        padding: 1rem 0;
+        padding: 1.5rem 0;
+        letter-spacing: -0.5px;
     }
     .sub-header {
-        font-size: 1.5rem;
-        color: #071D49;
+        font-size: 1.3rem;
+        color: #34495E;
         font-weight: 600;
-        margin-top: 1.5rem;
-        border-bottom: 2px solid #071D49;
+        margin-top: 2rem;
+        border-bottom: 1px solid #BDC3C7;
         padding-bottom: 0.5rem;
+        margin-bottom: 1rem;
     }
     .metric-card {
-        background-color: #f0f2f6;
-        border-left: 4px solid #071D49;
-        padding: 1rem;
-        border-radius: 0.5rem;
+        background-color: #F8F9FA;
+        border-left: 3px solid #7F8C8D;
+        padding: 1.2rem;
+        border-radius: 4px;
         margin: 0.5rem 0;
     }
+    .metric-card h4 {
+        color: #2C3E50;
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
     .success-box {
-        background-color: #d4edda;
-        border-left: 4px solid #28a745;
+        background-color: #E8F5E9;
+        border-left: 3px solid #4CAF50;
         padding: 1rem;
-        border-radius: 0.5rem;
+        border-radius: 4px;
         margin: 0.5rem 0;
     }
     .warning-box {
-        background-color: #fff3cd;
-        border-left: 4px solid #ffc107;
+        background-color: #FFF8E1;
+        border-left: 3px solid #FFC107;
         padding: 1rem;
-        border-radius: 0.5rem;
+        border-radius: 4px;
         margin: 0.5rem 0;
     }
     .danger-box {
-        background-color: #f8d7da;
-        border-left: 4px solid #dc3545;
+        background-color: #FFEBEE;
+        border-left: 3px solid #F44336;
         padding: 1rem;
-        border-radius: 0.5rem;
+        border-radius: 4px;
         margin: 0.5rem 0;
+    }
+    .stRadio > label {
+        font-weight: 500;
+        color: #2C3E50;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -103,19 +115,19 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-st.warning("""
-**⚠️ DEMONSTRATION PLATFORM**: This application showcases pharmaceutical data science workflows and techniques. 
-Current predictors use **heuristic scoring functions** based on RDKit molecular descriptors for educational purposes.  
-For production use, these should be replaced with validated, data-driven models trained on real pharmaceutical datasets.
-""", icon="ℹ️")
+st.info("""
+**NOTE**: This is an educational/research platform demonstrating pharmaceutical data science workflows. 
+Current predictors use heuristic scoring functions based on RDKit molecular descriptors for demonstration purposes.  
+For production use, these should be replaced with validated, data-driven QSAR models trained on curated datasets.
+""")
 
 with st.sidebar:
     st.markdown("### Navigation")
     page = st.radio(
         "Select Module",
-        ["🏠 Home", "🔬 Molecule Input", "📊 ADME/PK Analysis", "⚠️ Toxicity Profile", 
-         "🎯 Target Prediction", "🤖 ML Models", "🧠 Knowledge Graph", 
-         "📈 Batch Screening", "📚 Case Study", "ℹ️ About"],
+        ["Home", "Molecule Input", "ADME/PK Analysis", "Toxicity Profile", 
+         "Target Prediction", "ML Models", "Knowledge Graph", 
+         "Batch Screening", "Case Study", "About"],
         label_visibility="collapsed"
     )
     
@@ -127,19 +139,19 @@ with st.sidebar:
     
     st.markdown("---")
     st.markdown("""
-    <small>
-    <strong>Platform Features:</strong><br>
-    ✓ Real-time ADME/PK prediction<br>
-    ✓ Toxicity risk assessment<br>
-    ✓ Drug-likeness scoring<br>
-    ✓ Target class prediction<br>
-    ✓ ML model explainability<br>
-    ✓ Knowledge graph explorer<br>
+    <small style="color: #5D6D7E;">
+    <strong>Platform Modules:</strong><br>
+    • Real-time ADME/PK prediction<br>
+    • Toxicity risk assessment<br>
+    • Drug-likeness scoring<br>
+    • Target class prediction<br>
+    • ML model explainability<br>
+    • Knowledge graph explorer<br>
     </small>
     """, unsafe_allow_html=True)
 
 
-if page == "🏠 Home":
+if page == "Home":
     st.markdown('<div class="sub-header">Welcome to the AI Drug Discovery Platform</div>', 
                 unsafe_allow_html=True)
     
@@ -147,19 +159,19 @@ if page == "🏠 Home":
     
     with col1:
         st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        st.markdown("#### 🎯 Multi-Target Prediction")
+        st.markdown("#### Multi-Target Prediction")
         st.write("Predict activity against kinases, GPCRs, ion channels, and enzymes using ML classifiers")
         st.markdown('</div>', unsafe_allow_html=True)
     
     with col2:
         st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        st.markdown("#### 💊 ADME/PK Profiling")
+        st.markdown("#### ADME/PK Profiling")
         st.write("Comprehensive absorption, distribution, metabolism, and excretion analysis")
         st.markdown('</div>', unsafe_allow_html=True)
     
     with col3:
         st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        st.markdown("#### ⚗️ Toxicity Assessment")
+        st.markdown("#### Toxicity Assessment")
         st.write("Hepatotoxicity, hERG, mutagenicity, and carcinogenicity risk prediction")
         st.markdown('</div>', unsafe_allow_html=True)
     
@@ -175,7 +187,7 @@ if page == "🏠 Home":
             'Random Forest, XGBoost, Neural Network',
             'Drug-Target-Disease Relationships'
         ],
-        'Status': ['✅ Active'] * 6
+        'Status': ['Active'] * 6
     })
     
     st.dataframe(capabilities, use_container_width=True, hide_index=True)
@@ -192,7 +204,7 @@ if page == "🏠 Home":
     """)
 
 
-elif page == "🔬 Molecule Input":
+elif page == "Molecule Input":
     st.markdown('<div class="sub-header">Molecule Input & Structure Viewer</div>', unsafe_allow_html=True)
     
     input_method = st.radio("Input Method", ["SMILES String", "Draw Structure (Coming Soon)", "Upload File"], horizontal=True)
@@ -205,7 +217,7 @@ elif page == "🔬 Molecule Input":
             is_valid, canonical_smiles = mol_processor.validate_smiles(smiles_input)
             
             if is_valid:
-                st.success(f"✅ Valid SMILES: `{canonical_smiles}`")
+                st.success(f"Valid SMILES: `{canonical_smiles}`")
                 
                 mol = mol_processor.smiles_to_mol(canonical_smiles)
                 
@@ -232,15 +244,15 @@ elif page == "🔬 Molecule Input":
                 
                 col1, col2, col3, col4 = st.columns(4)
                 col1.metric("Lipinski Violations", lipinski['Violations'])
-                col2.metric("Veber Pass", "✅" if veber['Passes'] else "❌")
+                col2.metric("Veber Pass", "Pass" if veber['Passes'] else "Fail")
                 col3.metric("QED Score", qed)
-                col4.metric("Overall", "✅ Drug-like" if lipinski['Violations'] <= 1 and veber['Passes'] else "⚠️ Review")
+                col4.metric("Overall", "Drug-like" if lipinski['Violations'] <= 1 and veber['Passes'] else "Review")
                 
             else:
-                st.error(f"❌ {canonical_smiles}")
+                st.error(f"Invalid SMILES: {canonical_smiles}")
 
 
-elif page == "📊 ADME/PK Analysis":
+elif page == "ADME/PK Analysis":
     st.markdown('<div class="sub-header">ADME/PK Property Prediction</div>', unsafe_allow_html=True)
     
     st.info("""
@@ -295,7 +307,7 @@ elif page == "📊 ADME/PK Analysis":
             st.error("Invalid SMILES string")
 
 
-elif page == "⚠️ Toxicity Profile":
+elif page == "Toxicity Profile":
     st.markdown('<div class="sub-header">Toxicity Risk Assessment</div>', unsafe_allow_html=True)
     
     st.info("""
@@ -356,7 +368,7 @@ elif page == "⚠️ Toxicity Profile":
             st.error("Invalid SMILES string")
 
 
-elif page == "🎯 Target Prediction":
+elif page == "Target Prediction":
     st.markdown('<div class="sub-header">Target Class Prediction</div>', unsafe_allow_html=True)
     
     st.info("""
@@ -406,7 +418,7 @@ elif page == "🎯 Target Prediction":
             st.error("Invalid SMILES string")
 
 
-elif page == "🤖 ML Models":
+elif page == "ML Models":
     st.markdown('<div class="sub-header">Machine Learning Models & Explainability</div>', unsafe_allow_html=True)
     
     smiles_input = st.text_input("Enter SMILES String", "CC(C)Cc1ccc(cc1)C(C)C(=O)O")
@@ -449,7 +461,7 @@ elif page == "🤖 ML Models":
             st.error("Invalid SMILES string")
 
 
-elif page == "🧠 Knowledge Graph":
+elif page == "Knowledge Graph":
     st.markdown('<div class="sub-header">Biomedical Knowledge Graph Explorer</div>', unsafe_allow_html=True)
     
     st.info("""
@@ -496,7 +508,7 @@ elif page == "🧠 Knowledge Graph":
             st.markdown(f"**Associated diseases:** {', '.join(diseases) if diseases else 'None in database'}")
 
 
-elif page == "📈 Batch Screening":
+elif page == "Batch Screening":
     st.markdown('<div class="sub-header">Batch Screening & Lead Prioritization</div>', unsafe_allow_html=True)
     
     st.info("""
@@ -534,7 +546,7 @@ elif page == "📈 Batch Screening":
                         'LogP': lipinski['LogP'],
                         'Lipinski Violations': lipinski['Violations'],
                         'QED Score': qed['QED Score'],
-                        'Passes Lipinski': '✅' if lipinski['Passes'] else '❌'
+                        'Passes Lipinski': 'Yes' if lipinski['Passes'] else 'No'
                     })
             
             results_df = pd.DataFrame(results)
@@ -557,7 +569,7 @@ elif page == "📈 Batch Screening":
             st.info("CSV upload functionality ready. Add your SMILES data!")
 
 
-elif page == "📚 Case Study":
+elif page == "Case Study":
     st.markdown('<div class="sub-header">Case Study: Ranking Kinase Inhibitor Leads</div>', 
                 unsafe_allow_html=True)
     
@@ -594,7 +606,7 @@ elif page == "📚 Case Study":
                 
                 results.append({
                     'Candidate': candidate['name'],
-                    'Lipinski': '✅' if lipinski['Passes'] else '❌',
+                    'Lipinski': 'Pass' if lipinski['Passes'] else 'Fail',
                     'QED': qed['QED Score'],
                     'Kinase Prob': kinase_pred['Kinase Inhibitor Probability'],
                     'Permeability': adme['Category'],
@@ -625,7 +637,7 @@ elif page == "📚 Case Study":
         """)
 
 
-elif page == "ℹ️ About":
+elif page == "About":
     st.markdown('<div class="sub-header">About This Platform</div>', unsafe_allow_html=True)
     
     st.markdown("""
