@@ -1,0 +1,83 @@
+Visual & Design Specification for Ardit BioStudio
+AI-Powered Molecular Intelligence Platform
+
+Overall Identity:
+• Ardit BioStudio represents my personal brand in AI-driven drug discovery: clean, modern, scientific, and uniquely mine.
+• The interface blends bioinformatics precision with a calm, intelligent visual style.
+
+Color Palette (Professional + Unique):
+• Deep Navy (#1B2432) – primary headers, navigation, and structural elements.
+• Slate Grey (#2E3A45) – panel backgrounds and container blocks.
+• Soft Teal (#4FD1C5) – interactive accents, active states, highlights.
+• Cool Blue (#4A90E2) – molecule outlines, ADME charts, feature visualizations.
+• Off-White (#F5F7FA) – central workspace background for readability and clarity.
+• Warm Gold (#F4C95D) – subtle highlights for important molecular insights.
+
+Typography:
+• Headers: “Inter” or “Montserrat” (bold, modern, scientific).
+• Body Text: “Roboto” (clean, readable).
+• Technical Inputs (SMILES, metrics): “JetBrains Mono”.
+
+Platform Layout (Signature Ardit BioStudio Structure):
+• Left Sidebar: Navigation labels styled under the BioStudio identity:
+    – Molecule Studio
+    – ADME Navigator
+    – Toxicity Radar
+    – Drug-Likeness Deck
+    – Lead Lab
+    – Explainability Canvas
+    – Knowledge Graph
+• Center Workspace: Molecule viewer and core property predictions.
+• Right Insight Panel: Real-time summary card displaying formula, molecular weight,
+  LogP, QED, toxicity tags, confidence score, and risk level.
+• Footer: 
+    “Created by Ardit • Ardit BioStudio • AI Molecular Intelligence • v1.0”
+
+Component Styling:
+• Rounded corners (8–12px) for clean, modern scientific visuals.
+• Soft shadows for depth without clutter.
+• Gradients in section headers: deep navy → slate grey.
+• Teal or ultra-light-grey separators for organization.
+
+Molecule Rendering:
+• White RDKit canvas (#FFFFFF) with light border (#D9E0E7).
+• Soft shadow behind the structure.
+• Centered with optional 3D toggle.
+• Gold atom/bond highlight on hover for premium feel.
+
+Risk Indicators (Ardit BioStudio Signature Labels):
+• 🟢 Safe Zone — Low Risk
+• 🟡 Caution Zone — Medium Risk
+• 🔴 Critical Zone — High Risk
+Displayed as pill-shaped tags with gradient transitions.
+
+Data Visualization Style:
+• Thermometer-style ADME bars: blue → teal → yellow → red.
+• UMAP/t-SNE labeled as “Molecule Constellation Map”.
+• SHAP plots with teal + orange contrast.
+• Smooth animations for hover and highlight states.
+
+Interactive Features:
+• “Interpret My Molecule” button: Generates a clear, natural-language analysis.
+• Hover tooltips with simple explanations for scientific terms.
+• Smooth fade transitions for panels (no distracting animations).
+• Toggle: “Protein Intelligence Mode (ESM2) — Coming Soon”.
+
+Knowledge Graph Panel:
+• Visualizes compound → target → pathway using thoughtful BioStudio color coding.
+• Teal nodes for compounds, blue for targets, gold for pathways.
+• Curved edges for clarity and aesthetic flow.
+
+Backend & Architecture:
+• Optional FastAPI backend for modular enterprise-style deployment.
+• Architecture diagram:
+  SMILES Input → RDKit Features → ML Models (RF/XGBoost/NN) → Explainability → Lead Ranking → BioStudio Insights Panel.
+
+Branding:
+• Platform Name: **Ardit BioStudio**
+• Subtitle: *AI-Powered Molecular Intelligence Platform*
+• Gold underline accent beneath title for visual signature.
+
+Goal:
+Deliver a polished, scientific, modern, and uniquely ‘Ardit-made’ molecular intelligence platform. 
+Ardit BioStudio is designed to showcase clarity, precision, creativity, and my vision for AI-driven drug discovery—distinctive and personal while aligned with real scientific workflows.

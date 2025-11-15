@@ -20,68 +20,197 @@ from models.ml_models import MultiModelPredictor
 from data.kinase_inhibitors import get_case_study_data, get_approved_kinase_drugs
 
 st.set_page_config(
-    page_title="AI-Powered Drug Discovery Platform",
-    page_icon="⚕",
+    page_title="Ardit BioStudio | AI-Powered Molecular Intelligence",
+    page_icon="🧬",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 st.markdown("""
 <style>
-    .main-header {
-        font-size: 2rem;
-        font-weight: 600;
-        color: #2C3E50;
-        text-align: center;
-        padding: 1.5rem 0;
-        letter-spacing: -0.5px;
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Roboto:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap');
+    
+    * {
+        font-family: 'Roboto', sans-serif;
     }
+    
+    .main-header {
+        font-family: 'Inter', sans-serif;
+        font-size: 2.8rem;
+        font-weight: 700;
+        color: #1B2432;
+        text-align: center;
+        padding: 2rem 0 0.5rem 0;
+        letter-spacing: -0.8px;
+        background: linear-gradient(135deg, #1B2432 0%, #2E3A45 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .gold-underline {
+        width: 120px;
+        height: 4px;
+        background: linear-gradient(90deg, #F4C95D 0%, #E6B84D 100%);
+        margin: 0.5rem auto 1rem auto;
+        border-radius: 2px;
+        box-shadow: 0 2px 8px rgba(244, 201, 93, 0.3);
+    }
+    
+    .subtitle {
+        font-family: 'Inter', sans-serif;
+        font-size: 1.1rem;
+        font-weight: 400;
+        color: #4A90E2;
+        text-align: center;
+        font-style: italic;
+        margin-bottom: 2rem;
+        letter-spacing: 0.5px;
+    }
+    
     .sub-header {
-        font-size: 1.3rem;
-        color: #34495E;
+        font-family: 'Inter', sans-serif;
+        font-size: 1.5rem;
+        color: #1B2432;
         font-weight: 600;
         margin-top: 2rem;
-        border-bottom: 1px solid #BDC3C7;
-        padding-bottom: 0.5rem;
+        padding: 1rem 1.5rem;
+        background: linear-gradient(135deg, #1B2432 0%, #2E3A45 100%);
+        color: white;
+        border-radius: 10px;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 12px rgba(27, 36, 50, 0.15);
+    }
+    
+    .metric-card {
+        background-color: #F5F7FA;
+        border: 1px solid #D9E0E7;
+        padding: 1.5rem;
+        border-radius: 12px;
+        margin: 0.8rem 0;
+        box-shadow: 0 2px 8px rgba(46, 58, 69, 0.08);
+        transition: all 0.3s ease;
+    }
+    
+    .metric-card:hover {
+        box-shadow: 0 4px 16px rgba(79, 209, 197, 0.15);
+        border-color: #4FD1C5;
+        transform: translateY(-2px);
+    }
+    
+    .metric-card h4 {
+        color: #1B2432;
+        font-family: 'Inter', sans-serif;
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 0.6rem;
+    }
+    
+    .risk-pill {
+        display: inline-block;
+        padding: 0.4rem 1rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        margin: 0.3rem;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .safe-zone {
+        background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
+        color: white;
+    }
+    
+    .caution-zone {
+        background: linear-gradient(135deg, #FFC107 0%, #FFD54F 100%);
+        color: #1B2432;
+    }
+    
+    .critical-zone {
+        background: linear-gradient(135deg, #F44336 0%, #EF5350 100%);
+        color: white;
+    }
+    
+    .success-box {
+        background: linear-gradient(135deg, #E8F5E9 0%, #F1F8E9 100%);
+        border-left: 4px solid #4CAF50;
+        padding: 1.2rem;
+        border-radius: 10px;
+        margin: 0.8rem 0;
+        box-shadow: 0 2px 8px rgba(76, 175, 80, 0.1);
+    }
+    
+    .warning-box {
+        background: linear-gradient(135deg, #FFF8E1 0%, #FFFDE7 100%);
+        border-left: 4px solid #F4C95D;
+        padding: 1.2rem;
+        border-radius: 10px;
+        margin: 0.8rem 0;
+        box-shadow: 0 2px 8px rgba(244, 201, 93, 0.1);
+    }
+    
+    .danger-box {
+        background: linear-gradient(135deg, #FFEBEE 0%, #FCE4EC 100%);
+        border-left: 4px solid #F44336;
+        padding: 1.2rem;
+        border-radius: 10px;
+        margin: 0.8rem 0;
+        box-shadow: 0 2px 8px rgba(244, 67, 54, 0.1);
+    }
+    
+    .insight-panel {
+        background: linear-gradient(135deg, #2E3A45 0%, #1B2432 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 16px rgba(27, 36, 50, 0.2);
+        margin: 1rem 0;
+    }
+    
+    .insight-panel h3 {
+        color: #4FD1C5;
+        font-family: 'Inter', sans-serif;
+        font-weight: 600;
         margin-bottom: 1rem;
     }
-    .metric-card {
-        background-color: #F8F9FA;
-        border-left: 3px solid #7F8C8D;
-        padding: 1.2rem;
-        border-radius: 4px;
-        margin: 0.5rem 0;
+    
+    .technical-text {
+        font-family: 'JetBrains Mono', monospace;
+        background-color: #2E3A45;
+        color: #4FD1C5;
+        padding: 0.3rem 0.6rem;
+        border-radius: 6px;
+        font-size: 0.9rem;
     }
-    .metric-card h4 {
-        color: #2C3E50;
-        font-size: 1.1rem;
+    
+    .biostudio-footer {
+        text-align: center;
+        color: #7F8C8D;
+        font-size: 0.9rem;
+        padding: 2rem 0 1rem 0;
+        margin-top: 3rem;
+        border-top: 2px solid #D9E0E7;
+    }
+    
+    .biostudio-footer .gold-accent {
+        color: #F4C95D;
         font-weight: 600;
-        margin-bottom: 0.5rem;
     }
-    .success-box {
-        background-color: #E8F5E9;
-        border-left: 3px solid #4CAF50;
-        padding: 1rem;
-        border-radius: 4px;
-        margin: 0.5rem 0;
-    }
-    .warning-box {
-        background-color: #FFF8E1;
-        border-left: 3px solid #FFC107;
-        padding: 1rem;
-        border-radius: 4px;
-        margin: 0.5rem 0;
-    }
-    .danger-box {
-        background-color: #FFEBEE;
-        border-left: 3px solid #F44336;
-        padding: 1rem;
-        border-radius: 4px;
-        margin: 0.5rem 0;
-    }
+    
     .stRadio > label {
+        font-family: 'Inter', sans-serif;
         font-weight: 500;
-        color: #2C3E50;
+        color: #1B2432;
+    }
+    
+    .sidebar-nav-item {
+        background: linear-gradient(135deg, #F5F7FA 0%, #E8EDF2 100%);
+        padding: 0.6rem 1rem;
+        margin: 0.3rem 0;
+        border-radius: 8px;
+        border-left: 3px solid #4FD1C5;
+        font-weight: 500;
+        color: #1B2432;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -106,14 +235,9 @@ def load_models():
  target_predictor, ml_predictor, kg, visualizer) = load_models()
 
 
-st.markdown('<div class="main-header">AI-Powered Drug Discovery Platform</div>', 
-            unsafe_allow_html=True)
-st.markdown("""
-<div style='text-align: center; color: #555; margin-bottom: 1rem;'>
-    <p>Open-Source Research Platform for Computational Drug Discovery</p>
-    <p><strong>Featuring:</strong> ADME/PK Prediction • Toxicity Profiling • Target Class Prediction • ML Explainability • Knowledge Graph</p>
-</div>
-""", unsafe_allow_html=True)
+st.markdown('<div class="main-header">Ardit BioStudio</div>', unsafe_allow_html=True)
+st.markdown('<div class="gold-underline"></div>', unsafe_allow_html=True)
+st.markdown('<div class="subtitle">AI-Powered Molecular Intelligence Platform</div>', unsafe_allow_html=True)
 
 st.info("""
 **NOTE**: This is an educational/research platform demonstrating pharmaceutical data science workflows. 
@@ -122,12 +246,12 @@ For production use, these should be replaced with validated, data-driven QSAR mo
 """)
 
 with st.sidebar:
-    st.markdown("### Navigation")
+    st.markdown("### BioStudio Navigation")
     page = st.radio(
         "Select Module",
-        ["Home", "Molecule Input", "ADME/PK Analysis", "Toxicity Profile", 
-         "Target Prediction", "ML Models", "Knowledge Graph", 
-         "Batch Screening", "Case Study", "About"],
+        ["Home", "Molecule Studio", "ADME Navigator", "Toxicity Radar", 
+         "Drug-Likeness Deck", "Target Prediction", "Explainability Canvas", "Knowledge Graph", 
+         "Lead Lab", "Case Study", "About"],
         label_visibility="collapsed"
     )
     
@@ -152,7 +276,7 @@ with st.sidebar:
 
 
 if page == "Home":
-    st.markdown('<div class="sub-header">Welcome to the AI Drug Discovery Platform</div>', 
+    st.markdown('<div class="sub-header">Welcome to Ardit BioStudio</div>', 
                 unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns(3)
@@ -204,8 +328,8 @@ if page == "Home":
     """)
 
 
-elif page == "Molecule Input":
-    st.markdown('<div class="sub-header">Molecule Input & Structure Viewer</div>', unsafe_allow_html=True)
+elif page == "Molecule Studio":
+    st.markdown('<div class="sub-header">Molecule Studio</div>', unsafe_allow_html=True)
     
     input_method = st.radio("Input Method", ["SMILES String", "Draw Structure (Coming Soon)", "Upload File"], horizontal=True)
     
@@ -252,8 +376,8 @@ elif page == "Molecule Input":
                 st.error(f"Invalid SMILES: {canonical_smiles}")
 
 
-elif page == "ADME/PK Analysis":
-    st.markdown('<div class="sub-header">ADME/PK Property Prediction</div>', unsafe_allow_html=True)
+elif page == "ADME Navigator":
+    st.markdown('<div class="sub-header">ADME Navigator</div>', unsafe_allow_html=True)
     
     st.info("""
     **Note:** ADME/PK predictions use heuristic scoring functions based on molecular descriptors (LogP, TPSA, molecular weight, etc.).  
@@ -307,8 +431,8 @@ elif page == "ADME/PK Analysis":
             st.error("Invalid SMILES string")
 
 
-elif page == "Toxicity Profile":
-    st.markdown('<div class="sub-header">Toxicity Risk Assessment</div>', unsafe_allow_html=True)
+elif page == "Toxicity Radar":
+    st.markdown('<div class="sub-header">Toxicity Radar</div>', unsafe_allow_html=True)
     
     st.info("""
     **Note:** Toxicity predictions use heuristic scoring based on structural alerts and molecular properties.  
@@ -418,8 +542,78 @@ elif page == "Target Prediction":
             st.error("Invalid SMILES string")
 
 
-elif page == "ML Models":
-    st.markdown('<div class="sub-header">Machine Learning Models & Explainability</div>', unsafe_allow_html=True)
+elif page == "Drug-Likeness Deck":
+    st.markdown('<div class="sub-header">Drug-Likeness Deck</div>', unsafe_allow_html=True)
+    
+    st.info("""
+    **Comprehensive drug-likeness assessment** using validated pharmaceutical criteria: Lipinski Rule of 5, Veber rules, QED score, and Synthetic Accessibility.
+    """)
+    
+    smiles_input = st.text_input("Enter SMILES String", "CC(C)Cc1ccc(cc1)C(C)C(=O)O")
+    
+    if st.button("Assess Drug-Likeness", type="primary"):
+        is_valid, canonical_smiles = mol_processor.validate_smiles(smiles_input)
+        
+        if is_valid:
+            mol = mol_processor.smiles_to_mol(canonical_smiles)
+            
+            col1, col2 = st.columns([1, 1])
+            
+            with col1:
+                st.markdown("#### Lipinski Rule of 5")
+                lipinski = mol_processor.calculate_lipinski_descriptors(mol)
+                
+                for key, value in lipinski.items():
+                    if key != 'Passes' and key != 'Violations':
+                        st.metric(key, value)
+                
+                if lipinski['Passes']:
+                    st.markdown('<div class="risk-pill safe-zone">Safe Zone — Drug-Like</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown(f'<div class="risk-pill caution-zone">Caution Zone — {lipinski["Violations"]} Violations</div>', unsafe_allow_html=True)
+            
+            with col2:
+                st.markdown("#### Veber Rules")
+                veber = mol_processor.calculate_veber_descriptors(mol)
+                
+                st.metric("Rotatable Bonds", veber['Rotatable Bonds'])
+                st.metric("TPSA", f"{veber['TPSA']} Ų")
+                
+                if veber['Passes']:
+                    st.markdown('<div class="risk-pill safe-zone">Safe Zone — Passes</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<div class="risk-pill caution-zone">Caution Zone — Does Not Pass</div>', unsafe_allow_html=True)
+            
+            col3, col4 = st.columns(2)
+            with col3:
+                st.markdown("#### QED Score")
+                qed = mol_processor.calculate_qed(mol)
+                st.metric("QED", f"{qed:.3f}")
+                
+                if qed >= 0.7:
+                    st.markdown('<div class="risk-pill safe-zone">Safe Zone — High Drug-Likeness</div>', unsafe_allow_html=True)
+                elif qed >= 0.4:
+                    st.markdown('<div class="risk-pill caution-zone">Caution Zone — Moderate</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<div class="risk-pill critical-zone">Critical Zone — Low Drug-Likeness</div>', unsafe_allow_html=True)
+            
+            with col4:
+                st.markdown("#### Synthetic Accessibility")
+                sa_score = mol_processor.calculate_sa_score(mol)
+                st.metric("SA Score", f"{sa_score:.2f}")
+                
+                if sa_score <= 3:
+                    st.markdown('<div class="risk-pill safe-zone">Safe Zone — Easy to Synthesize</div>', unsafe_allow_html=True)
+                elif sa_score <= 6:
+                    st.markdown('<div class="risk-pill caution-zone">Caution Zone — Moderate Complexity</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<div class="risk-pill critical-zone">Critical Zone — Difficult to Synthesize</div>', unsafe_allow_html=True)
+        else:
+            st.error("Invalid SMILES string")
+
+
+elif page == "Explainability Canvas":
+    st.markdown('<div class="sub-header">Explainability Canvas</div>', unsafe_allow_html=True)
     
     smiles_input = st.text_input("Enter SMILES String", "CC(C)Cc1ccc(cc1)C(C)C(=O)O")
     
@@ -508,8 +702,8 @@ elif page == "Knowledge Graph":
             st.markdown(f"**Associated diseases:** {', '.join(diseases) if diseases else 'None in database'}")
 
 
-elif page == "Batch Screening":
-    st.markdown('<div class="sub-header">Batch Screening & Lead Prioritization</div>', unsafe_allow_html=True)
+elif page == "Lead Lab":
+    st.markdown('<div class="sub-header">Lead Lab — Batch Screening & Prioritization</div>', unsafe_allow_html=True)
     
     st.info("""
     Upload a CSV file with SMILES strings or use the example dataset to screen multiple compounds.
@@ -638,10 +832,10 @@ elif page == "Case Study":
 
 
 elif page == "About":
-    st.markdown('<div class="sub-header">About This Platform</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">About Ardit BioStudio</div>', unsafe_allow_html=True)
     
     st.markdown("""
-    ### AI-Powered Drug Discovery Platform
+    ### Ardit BioStudio — AI-Powered Molecular Intelligence Platform
     
     An open-source educational platform demonstrating computational drug discovery workflows using 
     cheminformatics, QSAR modeling, and machine learning techniques used in pharmaceutical research.
@@ -694,11 +888,14 @@ elif page == "About":
     st.markdown('<div class="sub-header">Contact</div>', unsafe_allow_html=True)
     st.write("For questions about this platform or to discuss pharmaceutical AI/ML applications.")
 
-st.markdown("---")
 st.markdown("""
-<div style='text-align: center; color: #888; font-size: 0.8rem;'>
-    <p>AI-Powered Drug Discovery Platform | Open-Source Pharmaceutical Research Tool</p>
-    <p>Built with RDKit • scikit-learn • XGBoost • Streamlit • FastAPI</p>
-    <p>Developed by Ardit Mishra | github.com/ardit-mishra</p>
+<div class="biostudio-footer">
+    <p>Created by <span class="gold-accent">Ardit</span> • <span class="gold-accent">Ardit BioStudio</span> • AI Molecular Intelligence • v1.0</p>
+    <p style="font-size: 0.85rem; margin-top: 0.5rem;">
+        Built with RDKit • scikit-learn • XGBoost • Streamlit • FastAPI
+    </p>
+    <p style="font-size: 0.8rem; margin-top: 0.3rem;">
+        <a href="https://github.com/ardit-mishra" style="color: #4A90E2; text-decoration: none;">github.com/ardit-mishra</a>
+    </p>
 </div>
 """, unsafe_allow_html=True)

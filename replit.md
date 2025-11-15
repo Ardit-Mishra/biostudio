@@ -1,12 +1,12 @@
-# AI-Powered Drug Discovery Platform
+# Ardit BioStudio
 
-## ⚠️ Important Note
+## AI-Powered Molecular Intelligence Platform
 
 **This is an educational/research platform** demonstrating pharmaceutical data science workflows and machine learning techniques used in modern drug discovery. Current ADME/PK, toxicity, and target class predictors use **heuristic scoring functions** based on RDKit molecular descriptors. For production applications, these should be replaced with validated, data-driven QSAR models trained on curated pharmaceutical datasets.
 
 ## Project Overview
 
-An open-source platform demonstrating computational drug discovery workflows using cheminformatics, QSAR modeling, and machine learning. This project provides well-documented, replicable implementations of pharmaceutical AI/ML techniques for educational and research purposes.
+Ardit BioStudio is an open-source platform demonstrating computational drug discovery workflows using cheminformatics, QSAR modeling, and machine learning. This project provides well-documented, replicable implementations of pharmaceutical AI/ML techniques for educational and research purposes.
 
 ## Key Features
 
@@ -121,8 +121,9 @@ This platform demonstrates pharmaceutical industry best practices:
 ✅ Comprehensive README documentation  
 ⏳ Protein language model integration (pending dependency resolution)  
 
-## About
+## About Ardit BioStudio
 
+**Ardit BioStudio** — AI-Powered Molecular Intelligence Platform  
 Open-source pharmaceutical AI/ML research platform  
 Developed by Ardit Mishra (github.com/ardit-mishra)  
 Demonstrating computational drug discovery workflows with comprehensive documentation

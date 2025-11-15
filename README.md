@@ -1,6 +1,8 @@
-# AI-Powered Drug Discovery Platform
+# Ardit BioStudio
 
-**Open-Source Research Platform for Computational Drug Discovery**
+**AI-Powered Molecular Intelligence Platform**
+
+*Open-Source Research Platform for Computational Drug Discovery*
 
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
 [![RDKit](https://img.shields.io/badge/RDKit-2022.9-green.svg)](https://www.rdkit.org/)
@@ -372,10 +374,12 @@ For questions about this project or to discuss pharmaceutical AI/ML applications
 
 <div align="center">
 
-**Built with 🧬 for pharmaceutical research**
+**Ardit BioStudio**
+
+*AI-Powered Molecular Intelligence Platform*
 
 RDKit • scikit-learn • XGBoost • Streamlit • FastAPI
 
-*Demonstrating computational drug discovery workflows with comprehensive documentation*
+Created by Ardit • github.com/ardit-mishra
 
 </div>
