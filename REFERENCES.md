@@ -142,6 +142,28 @@ DOI: [10.1093/toxsci/kft189](https://doi.org/10.1093/toxsci/kft189)
 **[19]** Xu, Y., Dai, Z., Chen, F., Gao, S., Pei, J., & Lai, L. (2015). Deep learning for drug-induced liver injury. *Journal of Chemical Information and Modeling*, 55(10), 2085-2093.  
 DOI: [10.1021/acs.jcim.5b00238](https://doi.org/10.1021/acs.jcim.5b00238)
 
+- **Deep neural networks for hepatotoxicity achieving AUC 0.76**
+- Multi-layer perceptron with molecular descriptors and fingerprints
+- DILIrank dataset for model training
+
+### Multi-Endpoint Toxicity Prediction (Deep Learning)
+
+**[19a]** Mayr, A., Klambauer, G., Unterthiner, T., & Hochreiter, S. (2016). DeepTox: Toxicity prediction using deep learning. *Frontiers in Environmental Science*, 3, 80.  
+DOI: [10.3389/fenvs.2015.00080](https://doi.org/10.3389/fenvs.2015.00080)
+
+- **Winner of Tox21 Data Challenge (2014) across 12 toxicity endpoints**
+- Deep neural network architecture with multi-task learning
+- AUC 0.86-0.92 across multiple endpoints (SR, NR, stress response pathways)
+- Demonstrated superiority of deep learning over traditional QSAR
+- Influential work establishing deep learning for toxicity prediction
+
+**[19b]** Xu, Y., Pei, J., & Lai, L. (2017). Deep learning based regression and multiclass models for acute oral toxicity prediction with automatic chemical feature extraction. *Journal of Chemical Information and Modeling*, 57(11), 2672-2685.  
+DOI: [10.1021/acs.jcim.7b00244](https://doi.org/10.1021/acs.jcim.7b00244)
+
+- Multi-task learning for toxicity prediction
+- Automatic feature learning from molecular structures
+- Regression models for LD50 prediction
+
 ### Mutagenicity (Ames Test)
 
 **[20]** Honma, M., Kitazawa, A., Cayley, A., Williams, R. V., Barber, C., Hanser, T., ... & Myatt, G. J. (2019). Improvement of quantitative structure-activity relationship (QSAR) tools for predicting Ames mutagenicity: outcomes of the Ames/QSAR International Challenge Project. *Mutagenesis*, 34(1), 3-16.  
