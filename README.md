@@ -46,29 +46,49 @@ This platform demonstrates:
 
 ## 🎯 Key Features
 
-### Core Capabilities
+### Small Molecule Analysis
 
-- **Molecular Processing**: SMILES validation, descriptor calculation, fingerprint generation
-- **ADME/PK Prediction**: LogP, Caco-2 permeability, BBB penetration, CYP450 metabolism, clearance
-- **Toxicity Profiling**: Hepatotoxicity, hERG inhibition, mutagenicity (Ames), carcinogenicity
-- **Target Class Prediction**: Kinase, GPCR, ion channel, enzyme inhibitor likelihood
+- **Molecular Processing**: SMILES validation, descriptor calculation, Morgan fingerprint generation
+- **ADME/PK Prediction**: LogP, Caco-2 permeability, BBB penetration, CYP450 metabolism, clearance *(heuristic)*
+- **Toxicity Profiling - Dual System**:
+  - 🧠 **Neural Network**: Deep learning with 2078 features (30 descriptors + 2048 Morgan FP bits)
+  - 📋 **Heuristic**: Structural alerts for hepatotoxicity, hERG, mutagenicity, carcinogenicity
+  - 🔬 **Comparison Mode**: Side-by-side evaluation for educational insights
+- **Target Class Prediction**: Kinase, GPCR, ion channel, enzyme inhibitor likelihood *(heuristic)*
 - **Drug-Likeness Scoring**: Lipinski Rule of 5, Veber descriptors, QED, Synthetic Accessibility
 - **Multi-Model ML**: Random Forest, XGBoost, Neural Network ensemble predictions
-- **Model Explainability**: SHAP values, feature importance visualization
-- **Knowledge Graph**: Drug-target-disease relationships with interactive exploration
+- **Model Explainability**: Feature importance visualization for transparency
+
+### Biologic & Protein Analysis **[NEW]**
+
+- **Protein/Peptide Processing**: FASTA validation, sequence analysis, amino acid composition
+- **Biologic Developability Assessment**:
+  - **Solubility Prediction**: Charge distribution + hydrophobicity analysis
+  - **Aggregation Risk**: Hydrophobicity index (GRAVY) + sequence patterns
+  - **Stability Prediction**: Instability index (dipeptide-based, threshold <40)
+  - **Thermostability**: Aliphatic index calculation
+- **Sequence Analysis**: Length, molecular weight, sequence type classification (peptide vs protein)
+- **Example Library**: 16 biologics (10 small molecules, 6 therapeutic peptides, 5 target proteins)
+- **Intelligent Input Detection**: Auto-detects SMILES vs FASTA, provides context-aware suggestions
+
+### Advanced Capabilities
+
+- **Knowledge Graph**: Drug-target-disease relationships with interactive network exploration
 - **Batch Screening**: CSV upload for high-throughput lead prioritization
 - **FastAPI Backend**: REST API endpoints for pharmaceutical predictions
 - **Case Study**: "Ranking Potential Kinase Inhibitor Leads" demonstration
+- **Educational Content**: Beginner-friendly explanations for all technical concepts
 
 ### Industry Alignment
 
 This platform demonstrates pharmaceutical industry best practices:
 
 1. **ADME/PK Focus**: Critical for small-molecule drug development
-2. **Kinase Inhibitor Analysis**: Important target class in oncology research
-3. **Toxicity Risk Assessment**: hERG, hepatotoxicity, mutagenicity screening
-4. **Multi-Model Approach**: Ensemble predictions for robust predictions
-5. **Knowledge Graphs**: Drug-target-disease relationship mapping
+2. **Biologic Developability**: Solubility, aggregation, stability assessment (emerging importance)
+3. **Deep Learning Toxicity**: Multi-endpoint neural network following DeepTox architecture
+4. **Kinase Inhibitor Analysis**: Important target class in oncology research
+5. **Multi-Modal Support**: Both small molecules (SMILES) and biologics (FASTA)
+6. **Knowledge Graphs**: Drug-target-disease relationship mapping
 
 ---
 
@@ -99,6 +119,56 @@ This platform demonstrates pharmaceutical industry best practices:
 - **NetworkX**: Knowledge graph construction
 - **PyVis**: Interactive network visualization
 - **Pandas/NumPy**: Data manipulation and analysis
+
+---
+
+## 📐 Architecture
+
+The platform uses a modular architecture for scalability and maintainability:
+
+```
+├── app.py                          # Main Streamlit application (10 pages)
+│
+├── features/                       # Feature extraction & analysis modules
+│   ├── protein_utils.py            # Protein/peptide analysis (FASTA, developability)
+│   └── input_detector.py           # Intelligent SMILES/FASTA detection
+│
+├── models/                         # Prediction models
+│   ├── adme_predictors.py          # ADME/PK predictions (heuristic)
+│   ├── toxicity_predictors.py      # Heuristic toxicity models
+│   ├── neural_toxicity.py          # Deep learning toxicity predictor **[NEW]**
+│   ├── target_predictors.py        # Target class prediction
+│   └── ml_models.py                # Random Forest, XGBoost, ensemble
+│
+├── utils/                          # Utility modules
+│   ├── molecular_utils.py          # SMILES processing, descriptors, fingerprints
+│   ├── drug_likeness.py            # Lipinski, Veber, QED, SA score
+│   ├── knowledge_graph.py          # Drug-target-disease network
+│   └── visualization_utils.py      # Molecular viz, plots, clustering
+│
+├── data/                           # Data and example molecules
+│   ├── kinase_inhibitors.py        # Case study data
+│   └── example_molecules.py        # 16 example biologics (drugs, peptides, proteins) **[NEW]**
+│
+├── api/                            # REST API backend
+│   └── prediction_api.py           # FastAPI endpoints
+│
+└── documentation/                  # Comprehensive documentation
+    ├── README.md                   # Project overview (this file)
+    ├── METHODOLOGY.md              # Scientific methodology
+    ├── REFERENCES.md               # Complete bibliography
+    ├── SETUP.md                    # Installation guide
+    ├── TUTORIAL.md                 # User guide
+    └── LICENSE                     # MIT license
+```
+
+### Key Design Principles
+
+1. **Modularity**: Features, models, and utilities separated for easy maintenance
+2. **Scalability**: New models can be added to `/models` without affecting existing code
+3. **Documentation**: Every module has comprehensive docstrings and scientific references
+4. **Educational**: Code designed for learning with clear explanations
+5. **Dual System**: Heuristic + Neural Network approaches for educational comparison
 
 ---
 
@@ -165,14 +235,29 @@ All code includes:
 
 ## 🧪 Modules & Features
 
-### 1. Molecular Processing (`utils/molecular_utils.py`)
+### 1. Molecular Processing
+
+#### Small Molecules (`utils/molecular_utils.py`)
 
 - SMILES validation and canonicalization
 - Molecular descriptor calculation (200+ properties)
-- Fingerprint generation (Morgan, MACCS, Topological)
+- Fingerprint generation (Morgan/ECFP, MACCS, Topological)
 - Basic property calculation (MW, LogP, HBA, HBD)
 
-**Methods referenced**: RDKit documentation, Wildman-Crippen LogP¹, Lipinski descriptors²
+**Methods referenced**: RDKit documentation, Wildman-Crippen LogP¹, Morgan fingerprints (Rogers & Hahn 2010)
+
+#### Proteins & Biologics (`features/protein_utils.py`) **[NEW]**
+
+- **FASTA Validation**: Format detection and sequence validation
+- **Amino Acid Composition**: 20 amino acids, hydrophobic/polar/charged percentages
+- **Biophysical Properties**:
+  - GRAVY (Grand Average of Hydrophobicity) using Kyte-Doolittle scale
+  - Instability Index (dipeptide-based, threshold <40 for stability)
+  - Aliphatic Index (thermostability predictor)
+- **Developability Assessment**: Solubility, aggregation risk, stability predictions
+- **Sequence Classification**: Auto-detects peptide vs protein (based on length)
+
+**Methods referenced**: Kyte-Doolittle hydrophobicity, Guruprasad instability index
 
 ### 2. Drug-Likeness Assessment (`utils/drug_likeness.py`)
 
@@ -191,14 +276,26 @@ All code includes:
 
 **Note**: Current implementations use heuristic scoring. See `METHODOLOGY.md` for details and `REFERENCES.md` for literature on validated QSAR models.
 
-### 4. Toxicity Prediction (`models/toxicity_predictors.py`)
+### 4. Toxicity Prediction
 
-- **Hepatotoxicity**: Liver toxicity risk assessment¹⁰
+#### Neural Network Toxicity Predictor (`models/neural_toxicity.py`) **[NEW]**
+
+- **Architecture**: Feed-forward neural network (2078 → 512 → 256 → 128 → 4)
+- **Features**: 30 RDKit descriptors + 2048 Morgan fingerprint bits (ECFP4, radius=2)
+- **Endpoints**: Hepatotoxicity, Cardiotoxicity (hERG), Mutagenicity (Ames), Carcinogenicity
+- **Training**: Synthetic data for demonstration (production requires Tox21, ToxCast, DILIrank)
+- **Output**: Probability scores (0-100%) with risk level classification
+
+**Methodology**: Follows DeepTox architecture (Mayr et al. 2016), winner of Tox21 Data Challenge
+
+#### Heuristic Toxicity Predictor (`models/toxicity_predictors.py`)
+
+- **Hepatotoxicity**: Liver toxicity structural alerts¹⁰
 - **hERG Inhibition**: Cardiotoxicity screening¹¹,¹²
 - **Ames Mutagenicity**: Genetic toxicity prediction¹³
 - **Carcinogenicity**: Long-term cancer risk¹⁴
 
-**Note**: State-of-the-art models achieve AUC 0.90-0.96 for hERG using Graph Neural Networks¹². Current heuristic implementation is for demonstration.
+**Platform Feature**: Side-by-side comparison of neural network vs heuristic predictions for educational insights
 
 ### 5. Target Class Prediction (`models/target_predictors.py`)
 

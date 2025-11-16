@@ -18,6 +18,7 @@ from models.toxicity_predictors import ToxicityPredictor
 from models.target_predictors import TargetClassPredictor
 from models.ml_models import MultiModelPredictor
 from models.neural_toxicity import NeuralToxicityPredictor
+from models.protein_ligand_compatibility import ProteinLigandCompatibilityScorer
 from data.kinase_inhibitors import get_case_study_data, get_approved_kinase_drugs
 from features.protein_utils import ProteinAnalyzer
 from features.input_detector import InputDetector
@@ -125,6 +126,7 @@ def load_models():
     adme_predictor = ADMEPredictor()
     toxicity_predictor = ToxicityPredictor()
     neural_tox_predictor = NeuralToxicityPredictor()
+    protein_ligand_scorer = ProteinLigandCompatibilityScorer()
     target_predictor = TargetClassPredictor()
     ml_predictor = MultiModelPredictor()
     kg = BiomedicalKnowledgeGraph()
@@ -133,11 +135,11 @@ def load_models():
     input_detector = InputDetector()
     
     return (mol_processor, drug_likeness, adme_predictor, toxicity_predictor, neural_tox_predictor,
-            target_predictor, ml_predictor, kg, visualizer, protein_analyzer, input_detector)
+            protein_ligand_scorer, target_predictor, ml_predictor, kg, visualizer, protein_analyzer, input_detector)
 
 
 (mol_processor, drug_likeness, adme_predictor, toxicity_predictor, neural_tox_predictor,
- target_predictor, ml_predictor, kg, visualizer, protein_analyzer, input_detector) = load_models()
+ protein_ligand_scorer, target_predictor, ml_predictor, kg, visualizer, protein_analyzer, input_detector) = load_models()
 
 
 st.markdown('<div class="main-header">Ardit BioStudio</div>', unsafe_allow_html=True)
@@ -968,6 +970,118 @@ elif page == "Protein & Biologic Studio":
         else:
             st.error(f"Invalid sequence: {error}")
             st.info("Please enter a valid protein/peptide sequence using single-letter amino acid code (A, C, D, E, F, G, H, I, K, L, M, N, P, Q, R, S, T, V, W, Y)")
+    
+    st.markdown("---")
+    st.markdown("### 🔬 Protein-Ligand Compatibility Testing")
+    st.markdown("Test binding compatibility between a protein target and a small molecule ligand")
+    
+    with st.expander("ℹ️ **What is Protein-Ligand Compatibility?**"):
+        st.markdown("""
+        ### Understanding Protein-Ligand Binding
+        
+        **Protein-Ligand Compatibility** predicts how well a small molecule drug might bind to a protein target. Think of proteins as locks and drugs as keys!
+        
+        ### How It Works
+        
+        Our neural network combines:
+        1. **Protein Features** (24 features):
+           - Sequence length
+           - Amino acid composition (20 amino acids)
+           - Charge distribution (positive, negative, neutral)
+           - Hydrophobicity (GRAVY score)
+        
+        2. **Ligand Features** (2078 features):
+           - Molecular descriptors (MW, LogP, etc.)
+           - Morgan fingerprints (structural patterns)
+        
+        3. **Neural Network** (2102 → 512 → 256 → 128 → 64 → 1):
+           - Predicts binding probability (0-100%)
+           - Outputs compatibility level (High/Moderate/Low)
+        
+        ### Example Use Cases
+        - **Drug Discovery**: Test if a compound might bind to a disease target
+        - **Target Validation**: Screen multiple ligands against a protein
+        - **Lead Optimization**: Compare binding predictions for structural analogs
+        
+        ### How to Use
+        1. **Enter protein sequence** (FASTA or plain amino acid sequence)
+        2. **Enter ligand SMILES** (small molecule structure)
+        3. **Click "Test Compatibility"**
+        4. **Review binding score** and compatibility assessment
+        
+        **Example Pair**: BCR-ABL protein + Imatinib (kinase inhibitor)
+        """)
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("#### Protein Target")
+        protein_seq_compat = st.text_area(
+            "Protein Sequence (FASTA or plain)",
+            value="MDRWWLARLLLQRVRPGPDSDGPGSSCSAPVDSLQPAENSISRGDWKRKRSLVDQRGL",
+            height=100,
+            help="Enter the target protein sequence"
+        )
+    
+    with col2:
+        st.markdown("#### Small Molecule Ligand")
+        ligand_smiles_compat = st.text_input(
+            "Ligand SMILES",
+            value="CN1CCN(CC1)CC(=O)Nc2ccc3c(c2)c(ncn3)c4ccc(c(c4)F)Cl",
+            help="Enter the small molecule SMILES (e.g., Imatinib)"
+        )
+    
+    if st.button("Test Compatibility", type="primary"):
+        # Validate protein sequence (strip to remove trailing newlines/spaces from textarea)
+        is_protein_valid, clean_prot_seq, prot_error = protein_analyzer.validate_fasta(protein_seq_compat.strip())
+        
+        # Validate ligand SMILES
+        is_ligand_valid, canonical_ligand = mol_processor.validate_smiles(ligand_smiles_compat)
+        
+        if is_protein_valid and is_ligand_valid:
+            ligand_mol = mol_processor.smiles_to_mol(canonical_ligand)
+            
+            # Predict compatibility
+            compat_result = protein_ligand_scorer.predict_binding_compatibility(clean_prot_seq, ligand_mol)
+            
+            st.markdown("### Binding Compatibility Results")
+            
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.metric("Binding Score", f"{compat_result['binding_score']}/100")
+                st.metric("Probability", compat_result['percentage'])
+            
+            with col2:
+                st.metric("Compatibility", compat_result['compatibility'])
+                if compat_result['compatibility'] == 'High':
+                    st.markdown('<div class="risk-pill safe-zone">High Compatibility</div>', unsafe_allow_html=True)
+                elif compat_result['compatibility'] == 'Moderate':
+                    st.markdown('<div class="risk-pill caution-zone">Moderate Compatibility</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<div class="risk-pill critical-zone">Low Compatibility</div>', unsafe_allow_html=True)
+            
+            with col3:
+                st.metric("Protein Length", f"{compat_result['protein_length']} AA")
+                st.metric("Ligand MW", f"{compat_result['ligand_mw']} Da")
+            
+            st.info(f"**Recommendation**: {compat_result['recommendation']}")
+            st.caption(f"Prediction Method: {compat_result['confidence']}")
+            
+            st.markdown("### Interpretation")
+            st.write("""
+            **Binding Score Interpretation**:
+            - **70-100**: High predicted binding - strong candidate for further study
+            - **40-69**: Moderate predicted binding - consider for optimization
+            - **0-39**: Low predicted binding - may require significant modification
+            
+            **Note**: This is a computational prediction. Experimental validation (binding assays, crystallography, etc.) is required for definitive confirmation.
+            """)
+        
+        elif not is_protein_valid:
+            st.error(f"Invalid protein sequence: {prot_error}")
+        elif not is_ligand_valid:
+            st.error("Invalid ligand SMILES string")
 
 
 elif page == "Drug-Likeness Deck":
