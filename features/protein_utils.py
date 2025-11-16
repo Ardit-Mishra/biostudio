@@ -8,7 +8,7 @@ Author: Ardit Mishra
 """
 
 import re
-from typing import Dict, Tuple, Optional, List
+from typing import Dict, Tuple, Optional, List, Any
 import numpy as np
 
 
@@ -86,7 +86,7 @@ class ProteinAnalyzer:
         
         return True, seq, ""
     
-    def calculate_amino_acid_composition(self, sequence: str) -> Dict[str, float]:
+    def calculate_amino_acid_composition(self, sequence: str) -> Dict[str, Any]:
         """
         Calculate amino acid composition percentages.
         
@@ -201,7 +201,7 @@ class ProteinAnalyzer:
         
         return round(weight, 2)
     
-    def predict_aggregation_risk(self, sequence: str) -> Dict[str, any]:
+    def predict_aggregation_risk(self, sequence: str) -> Dict[str, Any]:
         """
         Predict aggregation propensity based on sequence properties.
         
@@ -256,7 +256,7 @@ class ProteinAnalyzer:
             'net_charge': round(net_charge, 2)
         }
     
-    def predict_solubility(self, sequence: str) -> Dict[str, any]:
+    def predict_solubility(self, sequence: str) -> Dict[str, Any]:
         """
         Predict solubility based on charge and hydrophobicity.
         
@@ -307,7 +307,7 @@ class ProteinAnalyzer:
             'recommendation': recommendation
         }
     
-    def comprehensive_biologic_profile(self, sequence: str) -> Dict[str, any]:
+    def comprehensive_biologic_profile(self, sequence: str) -> Dict[str, Any]:
         """
         Generate complete biologic developability assessment.
         
