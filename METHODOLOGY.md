@@ -307,9 +307,146 @@ def predict_clearance(mol):
 
 ## Toxicity Profiling
 
-**⚠️ IMPORTANT**: Current toxicity predictions use **heuristic structural alerts and descriptor thresholds**. Not validated QSAR models.
+**⚠️ IMPORTANT**: Platform offers two toxicity prediction approaches:
+1. **Neural Network Predictor** (Deep Learning): Multi-layer perceptron using molecular descriptors + Morgan fingerprints
+2. **Heuristic Predictors** (Rule-Based): Structural alerts and descriptor thresholds for educational comparison
 
-### 1. hERG Cardiac Toxicity
+Both are trained on synthetic data for demonstration purposes. Production systems require training on validated toxicity datasets (Tox21, ToxCast, DILIrank).
+
+---
+
+### Neural Network Toxicity Predictor (Deep Learning)
+
+**Method**: Feed-forward neural network for multi-endpoint toxicity prediction [REFERENCES.md: TBD - Mayr et al. 2016, Xu et al. 2017]
+
+**Architecture**:
+```
+Input Layer:    2,078 features (30 descriptors + 2,048 Morgan FP bits)
+Hidden Layer 1: 512 neurons (ReLU activation)
+Hidden Layer 2: 256 neurons (ReLU activation)
+Hidden Layer 3: 128 neurons (ReLU activation)
+Output Layer:   4 neurons (Sigmoid activation - multi-label classification)
+```
+
+**Feature Engineering**:
+```python
+def extract_molecular_features(mol):
+    # 30 RDKit descriptors
+    descriptors = [
+        MolWt, MolLogP, TPSA, NumHDonors, NumHAcceptors,
+        NumRotatableBonds, NumAromaticRings, NumAliphaticRings,
+        NumSaturatedRings, NumHeteroatoms, RingCount,
+        FractionCsp3, NumAromaticCarbocycles, NumAromaticHeterocycles,
+        # ... (30 total descriptors)
+        BalabanJ, BertzCT, Chi0, Chi1, HallKierAlpha,
+        Kappa1, Kappa2, Kappa3, LabuteASA,
+        PEOE_VSA1, SMR_VSA1, SlogP_VSA1
+    ]
+    
+    # Morgan fingerprints (ECFP4, radius=2, 2048 bits)
+    morgan_fp = GetMorganFingerprintAsBitVect(mol, radius=2, nBits=2048)
+    
+    # Concatenate: [30 descriptors] + [2048 FP bits] = 2078 features
+    return np.concatenate([descriptors, morgan_fp])
+```
+
+**Toxicity Endpoints**:
+1. **Hepatotoxicity** (Drug-Induced Liver Injury - DILI)
+2. **Cardiotoxicity** (hERG channel inhibition)
+3. **Mutagenicity** (Ames test prediction)
+4. **Carcinogenicity** (Cancer risk assessment)
+
+**Training Protocol** (Current - Synthetic):
+- **Dataset**: Synthetic pharmaceutical dataset (1,000 compounds)
+- **Loss Function**: Binary cross-entropy (multi-label)
+- **Optimizer**: Adam (learning rate = 0.001)
+- **Regularization**: None (demonstration model)
+- **Validation**: Not performed (educational demonstration)
+
+**Output**:
+```python
+{
+    'Hepatotoxicity': {
+        'probability': 0.342,
+        'percentage': '34.2%',
+        'risk_level': 'Low',
+        'confidence': 'Neural Network'
+    },
+    'Cardiotoxicity (hERG)': {
+        'probability': 0.689,
+        'percentage': '68.9%',
+        'risk_level': 'Moderate',
+        'confidence': 'Neural Network'
+    },
+    # ... (4 endpoints total)
+}
+```
+
+**Scientific Basis**:
+- **Morgan Fingerprints (ECFP)**: Capture local chemical environments up to radius=2 bonds
+- **Multi-task Learning**: Single network predicts all 4 endpoints simultaneously
+- **Descriptor Normalization**: Min-max scaling for numerical stability
+- **Heuristic Adjustments**: Post-processing rules based on known toxicophores (interim solution)
+
+**Validation Status**: ⚠️ Demonstration model (synthetic training data)
+
+**Production Recommendations**:
+1. **Replace Training Data**:
+   - **Hepatotoxicity**: DILIrank dataset (1,036 drugs with DILI annotations)
+   - **Cardiotoxicity**: ChEMBL hERG IC50 data (~5,000 compounds)
+   - **Mutagenicity**: Hansen benchmark (6,512 Ames-tested compounds)
+   - **Carcinogenicity**: CPDB + NTP datasets (~1,500 compounds)
+
+2. **Architecture Improvements**:
+   - Add dropout layers (0.3-0.5) for regularization
+   - Implement early stopping with validation monitoring
+   - Use batch normalization for training stability
+   - Consider graph neural networks (GCN, GAT) for better performance
+
+3. **Model Validation**:
+   - 5-fold cross-validation on training data
+   - External test set (20% holdout) for unbiased evaluation
+   - Applicability domain analysis (chemical space coverage)
+   - Uncertainty quantification (Monte Carlo dropout, ensembles)
+
+4. **State-of-the-Art Baselines**:
+   - **DeepTox** (Mayr et al. 2016): Winner of Tox21 challenge, AUC 0.86-0.92
+   - **hERG-GNN** (Cai et al. 2020): Graph neural network, AUC 0.96
+   - **DILIPredictor** (Chen et al. 2016): Random Forest + structural alerts, AUC 0.76
+
+**Current Limitations**:
+- ❌ Not trained on real toxicity data (synthetic dataset only)
+- ❌ No validation metrics (accuracy, precision, recall, AUC)
+- ❌ No applicability domain checks
+- ❌ Heuristic post-processing reduces model purity
+- ✅ Demonstrates proper neural network architecture for toxicity prediction
+- ✅ Feature engineering follows industry best practices
+
+**Next Steps for Production**:
+```python
+# 1. Data collection
+train_data = load_dili_rank()  # Hepatotoxicity
+herg_data = load_chembl_herg()  # Cardiotoxicity
+ames_data = load_hansen_ames()  # Mutagenicity
+
+# 2. Feature extraction
+X_train = extract_features(train_data)
+y_train = train_data[['hepato', 'cardio', 'mutagen', 'carcino']]
+
+# 3. Model training
+model.fit(X_train, y_train, epochs=100, batch_size=32, validation_split=0.2)
+
+# 4. Evaluation
+test_metrics = evaluate(model, X_test, y_test)  # AUC, accuracy, precision, recall
+```
+
+---
+
+### Heuristic Toxicity Predictors (Rule-Based)
+
+The platform also includes traditional rule-based predictors for educational comparison and ensemble approaches.
+
+### 1. hERG Cardiac Toxicity (Heuristic)
 
 **Method**: Heuristic scoring based on LogP, TPSA, and basic count [REFERENCES.md: 14-17]
 

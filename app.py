@@ -17,6 +17,7 @@ from models.adme_predictors import ADMEPredictor
 from models.toxicity_predictors import ToxicityPredictor
 from models.target_predictors import TargetClassPredictor
 from models.ml_models import MultiModelPredictor
+from models.neural_toxicity import NeuralToxicityPredictor
 from data.kinase_inhibitors import get_case_study_data, get_approved_kinase_drugs
 from features.protein_utils import ProteinAnalyzer
 from features.input_detector import InputDetector
@@ -123,6 +124,7 @@ def load_models():
     drug_likeness = DrugLikenessCalculator()
     adme_predictor = ADMEPredictor()
     toxicity_predictor = ToxicityPredictor()
+    neural_tox_predictor = NeuralToxicityPredictor()
     target_predictor = TargetClassPredictor()
     ml_predictor = MultiModelPredictor()
     kg = BiomedicalKnowledgeGraph()
@@ -130,11 +132,11 @@ def load_models():
     protein_analyzer = ProteinAnalyzer()
     input_detector = InputDetector()
     
-    return (mol_processor, drug_likeness, adme_predictor, toxicity_predictor, 
+    return (mol_processor, drug_likeness, adme_predictor, toxicity_predictor, neural_tox_predictor,
             target_predictor, ml_predictor, kg, visualizer, protein_analyzer, input_detector)
 
 
-(mol_processor, drug_likeness, adme_predictor, toxicity_predictor,
+(mol_processor, drug_likeness, adme_predictor, toxicity_predictor, neural_tox_predictor,
  target_predictor, ml_predictor, kg, visualizer, protein_analyzer, input_detector) = load_models()
 
 
@@ -527,9 +529,17 @@ elif page == "Toxicity Radar":
         """)
     
     st.info("""
-    **Note:** Toxicity predictions use heuristic scoring based on structural alerts and molecular properties.  
-    For production use, replace with validated toxicophore models and QSAR trained on experimental toxicity data (Tox21, ToxCast).
+    **🎯 Dual Prediction System:** This platform offers both **Neural Network** (deep learning) and **Heuristic** (rule-based) toxicity predictions for educational comparison.  
+    Both use synthetic training data for demonstration. Production systems require validated datasets (Tox21, ToxCast, DILIrank).
     """)
+    
+    prediction_method = st.radio(
+        "Select Prediction Method",
+        ["Neural Network (Deep Learning)", "Heuristic (Rule-Based)", "Both (Comparison)"],
+        index=0,
+        horizontal=True,
+        help="Neural Network uses molecular descriptors + Morgan fingerprints. Heuristic uses structural alerts."
+    )
     
     smiles_input = st.text_input("Enter SMILES String", "CC(C)Cc1ccc(cc1)C(C)C(=O)O")
     
@@ -538,48 +548,138 @@ elif page == "Toxicity Radar":
         
         if is_valid:
             mol = mol_processor.smiles_to_mol(canonical_smiles)
-            tox_profile = toxicity_predictor.comprehensive_toxicity_profile(mol)
             
-            col1, col2 = st.columns(2)
+            if prediction_method == "Neural Network (Deep Learning)":
+                st.markdown("### 🧠 Neural Network Toxicity Predictions")
+                st.caption("Feed-forward neural network | 2,078 features | 4 toxicity endpoints")
+                
+                neural_profile = neural_tox_predictor.comprehensive_toxicity_profile(mol)
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown("#### Hepatotoxicity (Liver Damage)")
+                    data = neural_profile['Hepatotoxicity']
+                    st.metric("Probability", data['percentage'])
+                    st.metric("Risk Level", data['risk_level'])
+                    st.caption(f"Confidence: {data['confidence']}")
+                    
+                    if data['risk_level'] == 'High':
+                        st.markdown('<div class="risk-pill critical-zone">High Risk</div>', unsafe_allow_html=True)
+                    elif data['risk_level'] == 'Moderate':
+                        st.markdown('<div class="risk-pill caution-zone">Moderate Risk</div>', unsafe_allow_html=True)
+                    else:
+                        st.markdown('<div class="risk-pill safe-zone">Low Risk</div>', unsafe_allow_html=True)
+                    
+                    st.markdown("#### Mutagenicity (Ames Test)")
+                    data = neural_profile['Mutagenicity (Ames)']
+                    st.metric("Probability", data['percentage'])
+                    st.metric("Result", data['risk_level'])
+                    st.caption(f"Confidence: {data['confidence']}")
+                
+                with col2:
+                    st.markdown("#### Cardiotoxicity (hERG)")
+                    data = neural_profile['Cardiotoxicity (hERG)']
+                    st.metric("Probability", data['percentage'])
+                    st.metric("Risk Level", data['risk_level'])
+                    st.caption(f"Confidence: {data['confidence']}")
+                    
+                    if data['risk_level'] == 'High':
+                        st.markdown('<div class="risk-pill critical-zone">High Risk</div>', unsafe_allow_html=True)
+                    elif data['risk_level'] == 'Moderate':
+                        st.markdown('<div class="risk-pill caution-zone">Moderate Risk</div>', unsafe_allow_html=True)
+                    else:
+                        st.markdown('<div class="risk-pill safe-zone">Low Risk</div>', unsafe_allow_html=True)
+                    
+                    st.markdown("#### Carcinogenicity")
+                    data = neural_profile['Carcinogenicity']
+                    st.metric("Probability", data['percentage'])
+                    st.metric("Risk Level", data['risk_level'])
+                    st.caption(f"Confidence: {data['confidence']}")
             
-            with col1:
-                st.markdown("#### Hepatotoxicity")
-                data = tox_profile['Hepatotoxicity']
-                st.metric("Risk Level", data['Hepatotoxicity Risk'])
-                st.markdown(f"**Category:** {data['Category']}")
+            elif prediction_method == "Heuristic (Rule-Based)":
+                st.markdown("### 📋 Heuristic Toxicity Predictions")
+                st.caption("Structural alerts + descriptor thresholds")
                 
-                if 'High' in data['Category']:
-                    st.markdown(f'<div class="danger-box">{data["Recommendation"]}</div>', unsafe_allow_html=True)
-                elif 'Moderate' in data['Category']:
-                    st.markdown(f'<div class="warning-box">{data["Recommendation"]}</div>', unsafe_allow_html=True)
-                else:
-                    st.markdown(f'<div class="success-box">{data["Recommendation"]}</div>', unsafe_allow_html=True)
+                tox_profile = toxicity_predictor.comprehensive_toxicity_profile(mol)
                 
-                st.markdown("#### Mutagenicity (Ames Test)")
-                data = tox_profile['Mutagenicity (Ames)']
-                st.metric("Risk Level", data['Mutagenicity Risk'])
-                st.markdown(f"**Probability:** {data['Ames Positive Probability']}")
-                st.info(data['Recommendation'])
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown("#### Hepatotoxicity")
+                    data = tox_profile['Hepatotoxicity']
+                    st.metric("Risk Level", data['Hepatotoxicity Risk'])
+                    st.markdown(f"**Category:** {data['Category']}")
+                    
+                    if 'High' in data['Category']:
+                        st.markdown(f'<div class="danger-box">{data["Recommendation"]}</div>', unsafe_allow_html=True)
+                    elif 'Moderate' in data['Category']:
+                        st.markdown(f'<div class="warning-box">{data["Recommendation"]}</div>', unsafe_allow_html=True)
+                    else:
+                        st.markdown(f'<div class="success-box">{data["Recommendation"]}</div>', unsafe_allow_html=True)
+                    
+                    st.markdown("#### Mutagenicity (Ames Test)")
+                    data = tox_profile['Mutagenicity (Ames)']
+                    st.metric("Risk Level", data['Mutagenicity Risk'])
+                    st.markdown(f"**Probability:** {data['Ames Positive Probability']}")
+                    st.info(data['Recommendation'])
+                
+                with col2:
+                    st.markdown("#### Cardiotoxicity (hERG)")
+                    data = tox_profile['Cardiotoxicity (hERG)']
+                    st.metric("hERG Inhibition Risk", data['hERG Inhibition Risk'])
+                    st.markdown(f"**Category:** {data['Category']}")
+                    st.markdown(f"**IC50 Estimate:** {data['IC50 Estimate']}")
+                    
+                    if 'High' in data['Category']:
+                        st.markdown(f'<div class="danger-box">{data["Recommendation"]}</div>', unsafe_allow_html=True)
+                    elif 'Moderate' in data['Category']:
+                        st.markdown(f'<div class="warning-box">{data["Recommendation"]}</div>', unsafe_allow_html=True)
+                    else:
+                        st.markdown(f'<div class="success-box">{data["Recommendation"]}</div>', unsafe_allow_html=True)
+                    
+                    st.markdown("#### Carcinogenicity")
+                    data = tox_profile['Carcinogenicity']
+                    st.metric("Risk Level", data['Carcinogenicity Risk'])
+                    st.markdown(f"**Category:** {data['Category']}")
+                    st.info(data['Recommendation'])
             
-            with col2:
-                st.markdown("#### Cardiotoxicity (hERG)")
-                data = tox_profile['Cardiotoxicity (hERG)']
-                st.metric("hERG Inhibition Risk", data['hERG Inhibition Risk'])
-                st.markdown(f"**Category:** {data['Category']}")
-                st.markdown(f"**IC50 Estimate:** {data['IC50 Estimate']}")
+            else:
+                st.markdown("### 🔬 Side-by-Side Comparison")
+                st.caption("Neural Network vs Heuristic Methods")
                 
-                if 'High' in data['Category']:
-                    st.markdown(f'<div class="danger-box">{data["Recommendation"]}</div>', unsafe_allow_html=True)
-                elif 'Moderate' in data['Category']:
-                    st.markdown(f'<div class="warning-box">{data["Recommendation"]}</div>', unsafe_allow_html=True)
-                else:
-                    st.markdown(f'<div class="success-box">{data["Recommendation"]}</div>', unsafe_allow_html=True)
+                neural_profile = neural_tox_predictor.comprehensive_toxicity_profile(mol)
+                tox_profile = toxicity_predictor.comprehensive_toxicity_profile(mol)
                 
-                st.markdown("#### Carcinogenicity")
-                data = tox_profile['Carcinogenicity']
-                st.metric("Risk Level", data['Carcinogenicity Risk'])
-                st.markdown(f"**Category:** {data['Category']}")
-                st.info(data['Recommendation'])
+                endpoints = ['Hepatotoxicity', 'Cardiotoxicity (hERG)', 'Mutagenicity (Ames)', 'Carcinogenicity']
+                
+                for endpoint in endpoints:
+                    st.markdown(f"#### {endpoint}")
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.markdown("**🧠 Neural Network**")
+                        neural_data = neural_profile[endpoint]
+                        st.metric("Probability", neural_data['percentage'])
+                        st.caption(f"Risk: {neural_data['risk_level']}")
+                    
+                    with col2:
+                        st.markdown("**📋 Heuristic**")
+                        heur_data = tox_profile[endpoint]
+                        if endpoint == 'Hepatotoxicity':
+                            st.metric("Risk", heur_data['Hepatotoxicity Risk'])
+                            st.caption(f"Category: {heur_data['Category']}")
+                        elif endpoint == 'Cardiotoxicity (hERG)':
+                            st.metric("Risk", heur_data['hERG Inhibition Risk'])
+                            st.caption(f"IC50: {heur_data['IC50 Estimate']}")
+                        elif endpoint == 'Mutagenicity (Ames)':
+                            st.metric("Risk", heur_data['Mutagenicity Risk'])
+                            st.caption(f"Prob: {heur_data['Ames Positive Probability']}")
+                        else:
+                            st.metric("Risk", heur_data['Carcinogenicity Risk'])
+                            st.caption(f"Category: {heur_data['Category']}")
+                    
+                    st.markdown("---")
         else:
             st.error("Invalid SMILES string")
 
