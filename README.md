@@ -182,8 +182,8 @@ The platform uses a modular architecture for scalability and maintainability:
 
 ```bash
 # Clone the repository
-git clone https://github.com/ardit-mishra/drug-discovery-platform.git
-cd drug-discovery-platform
+git clone https://github.com/ardit-mishra/ardit-biocore.git
+cd ardit-biocore
 
 # Install dependencies
 pip install -r requirements.txt
@@ -446,8 +446,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **Ardit Mishra**
 
 - GitHub: [@ardit-mishra](https://github.com/ardit-mishra)
-- Email: [Your email]
-- LinkedIn: [Your LinkedIn]
+- Email: amishra7599@gmail.com
+- LinkedIn: [linkedin.com/in/ardit-mishra](https://www.linkedin.com/in/ardit-mishra)
 
 ---
 
@@ -465,7 +465,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 For questions about this project or to discuss pharmaceutical AI/ML applications:
 
 - Open an issue on GitHub
-- Email: [Your email]
+- Email: amishra7599@gmail.com
 
 ---
 
