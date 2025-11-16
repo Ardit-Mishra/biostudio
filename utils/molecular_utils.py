@@ -570,3 +570,85 @@ class MolecularProcessor:
             descriptors.append(0)
         
         return np.array(descriptors[:200])
+
+
+class MolecularFeatureExtractor:
+    """
+    Shared molecular feature extractor for neural network models.
+    
+    Extracts standardized feature vectors combining:
+    - 30 RDKit molecular descriptors
+    - 2048 Morgan fingerprint bits (ECFP4, radius=2)
+    
+    Total: 2078 features
+    
+    Used by:
+    - NeuralToxicityPredictor (models/neural_toxicity.py)
+    - ProteinLigandCompatibilityScorer (models/protein_ligand_compatibility.py)
+    """
+    
+    @staticmethod
+    def extract_features(mol) -> np.ndarray:
+        """
+        Extract comprehensive molecular feature vector.
+        
+        Combines:
+        - RDKit molecular descriptors (30 features)
+        - Morgan fingerprints (2048 bits, radius=2)
+        
+        Args:
+            mol: RDKit molecule object
+        
+        Returns:
+            Feature vector (2078 dimensions)
+        """
+        if mol is None:
+            return np.zeros(2078)
+        
+        # Extract 30 key molecular descriptors
+        descriptors = np.array([
+            Descriptors.MolWt(mol),
+            Descriptors.MolLogP(mol),
+            Descriptors.TPSA(mol),
+            Descriptors.NumHDonors(mol),
+            Descriptors.NumHAcceptors(mol),
+            Descriptors.NumRotatableBonds(mol),
+            Descriptors.NumAromaticRings(mol),
+            Descriptors.NumAliphaticRings(mol),
+            Descriptors.NumSaturatedRings(mol),
+            Descriptors.NumHeteroatoms(mol),
+            Descriptors.RingCount(mol),
+            Descriptors.FractionCSP3(mol),
+            Descriptors.NumAromaticCarbocycles(mol),
+            Descriptors.NumAromaticHeterocycles(mol),
+            Descriptors.NumSaturatedCarbocycles(mol),
+            Descriptors.NumSaturatedHeterocycles(mol),
+            Descriptors.NumAliphaticCarbocycles(mol),
+            Descriptors.NumAliphaticHeterocycles(mol),
+            Descriptors.BalabanJ(mol),
+            Descriptors.BertzCT(mol),
+            Descriptors.Chi0(mol),
+            Descriptors.Chi1(mol),
+            Descriptors.HallKierAlpha(mol),
+            Descriptors.Kappa1(mol),
+            Descriptors.Kappa2(mol),
+            Descriptors.Kappa3(mol),
+            Descriptors.LabuteASA(mol),
+            Descriptors.PEOE_VSA1(mol),
+            Descriptors.SMR_VSA1(mol),
+            Descriptors.SlogP_VSA1(mol)
+        ])
+        
+        # Generate Morgan fingerprints (ECFP4, radius=2, 2048 bits)
+        from rdkit.Chem import DataStructs
+        morgan_fp = AllChem.GetMorganFingerprintAsBitVect(mol, radius=2, nBits=2048)
+        fp_array = np.zeros(2048)
+        DataStructs.ConvertToNumpyArray(morgan_fp, fp_array)
+        
+        # Concatenate features
+        features = np.concatenate([descriptors, fp_array])
+        
+        # Normalize descriptors (simple min-max scaling)
+        features[:30] = features[:30] / (np.max(features[:30]) + 1e-8)
+        
+        return features
