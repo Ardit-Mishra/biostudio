@@ -20,9 +20,14 @@ References:
 import numpy as np
 from typing import Dict, Tuple
 from rdkit import Chem
-from rdkit.Chem import Descriptors, AllChem, DataStructs
+from rdkit.Chem import Descriptors
+import sys
+import os
 import warnings
 warnings.filterwarnings('ignore')
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.molecular_utils import MolecularFeatureExtractor
 
 
 class NeuralToxicityPredictor:
@@ -72,7 +77,7 @@ class NeuralToxicityPredictor:
     
     def extract_molecular_features(self, mol) -> np.ndarray:
         """
-        Extract comprehensive molecular feature vector.
+        Extract comprehensive molecular feature vector using shared extractor.
         
         Combines:
         - RDKit molecular descriptors (30 features)
@@ -84,55 +89,7 @@ class NeuralToxicityPredictor:
         Returns:
             Feature vector (2078 dimensions)
         """
-        if mol is None:
-            return np.zeros(self.input_size)
-        
-        # Extract 30 key molecular descriptors
-        descriptors = np.array([
-            Descriptors.MolWt(mol),
-            Descriptors.MolLogP(mol),
-            Descriptors.TPSA(mol),
-            Descriptors.NumHDonors(mol),
-            Descriptors.NumHAcceptors(mol),
-            Descriptors.NumRotatableBonds(mol),
-            Descriptors.NumAromaticRings(mol),
-            Descriptors.NumAliphaticRings(mol),
-            Descriptors.NumSaturatedRings(mol),
-            Descriptors.NumHeteroatoms(mol),
-            Descriptors.RingCount(mol),
-            Descriptors.FractionCSP3(mol),
-            Descriptors.NumAromaticCarbocycles(mol),
-            Descriptors.NumAromaticHeterocycles(mol),
-            Descriptors.NumSaturatedCarbocycles(mol),
-            Descriptors.NumSaturatedHeterocycles(mol),
-            Descriptors.NumAliphaticCarbocycles(mol),
-            Descriptors.NumAliphaticHeterocycles(mol),
-            Descriptors.BalabanJ(mol),
-            Descriptors.BertzCT(mol),
-            Descriptors.Chi0(mol),
-            Descriptors.Chi1(mol),
-            Descriptors.HallKierAlpha(mol),
-            Descriptors.Kappa1(mol),
-            Descriptors.Kappa2(mol),
-            Descriptors.Kappa3(mol),
-            Descriptors.LabuteASA(mol),
-            Descriptors.PEOE_VSA1(mol),
-            Descriptors.SMR_VSA1(mol),
-            Descriptors.SlogP_VSA1(mol)
-        ])
-        
-        # Generate Morgan fingerprints (ECFP4, radius=2, 2048 bits)
-        morgan_fp = AllChem.GetMorganFingerprintAsBitVect(mol, radius=2, nBits=2048)
-        fp_array = np.zeros(2048)
-        DataStructs.ConvertToNumpyArray(morgan_fp, fp_array)
-        
-        # Concatenate features
-        features = np.concatenate([descriptors, fp_array])
-        
-        # Normalize descriptors (simple min-max scaling)
-        features[:30] = features[:30] / (np.max(features[:30]) + 1e-8)
-        
-        return features
+        return MolecularFeatureExtractor.extract_features(mol)
     
     def _relu(self, x):
         """ReLU activation function."""
