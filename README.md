@@ -1,4 +1,4 @@
-# Ardit BioStudio
+# Ardit BioCore
 
 **AI-Powered Molecular Intelligence Platform**
 
@@ -16,7 +16,7 @@
 
 **This is an educational/research platform** demonstrating pharmaceutical data science workflows and machine learning techniques used in modern drug discovery. Current ADME/PK, toxicity, and target class predictors use **heuristic scoring functions** based on RDKit molecular descriptors. For production applications, these should be replaced with validated, data-driven QSAR models trained on curated pharmaceutical datasets.
 
-**All methods are backed by peer-reviewed research.** See [`references.md`](references.md) for complete scientific citations.
+**All methods are backed by peer-reviewed research.** See [`REFERENCES.md`](REFERENCES.md) for complete scientific citations.
 
 ---
 
@@ -471,7 +471,7 @@ For questions about this project or to discuss pharmaceutical AI/ML applications
 
 <div align="center">
 
-**Ardit BioStudio**
+**Ardit BioCore**
 
 *AI-Powered Molecular Intelligence Platform*
 

@@ -1,4 +1,4 @@
-# Ardit BioStudio
+# Ardit BioCore
 
 ## AI-Powered Molecular Intelligence Platform
 
@@ -6,7 +6,7 @@
 
 ## Project Overview
 
-Ardit BioStudio is an open-source platform demonstrating computational drug discovery workflows using cheminformatics, QSAR modeling, and machine learning. This project provides well-documented, replicable implementations of pharmaceutical AI/ML techniques for educational and research purposes.
+Ardit BioCore is an open-source platform demonstrating computational drug discovery workflows using cheminformatics, QSAR modeling, and machine learning. This project provides well-documented, replicable implementations of pharmaceutical AI/ML techniques for educational and research purposes.
 
 ## Key Features
 
@@ -135,9 +135,9 @@ This platform demonstrates pharmaceutical industry best practices:
 ✅ **All tools have beginner-friendly explanations** (NEW)
 ⏳ Protein language model integration (pending dependency resolution)  
 
-## About Ardit BioStudio
+## About Ardit BioCore
 
-**Ardit BioStudio** — AI-Powered Molecular Intelligence Platform  
+**Ardit BioCore** — AI-Powered Molecular Intelligence Platform  
 Open-source pharmaceutical AI/ML research platform  
 Developed by Ardit Mishra (github.com/ardit-mishra)  
 Demonstrating computational drug discovery workflows with comprehensive documentation
