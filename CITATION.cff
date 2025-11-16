@@ -1,0 +1,64 @@
+cff-version: 1.2.0
+message: "If you use Ardit BioCore in your research, please cite it as below."
+type: software
+title: "Ardit BioCore: AI-Powered Molecular Intelligence Platform"
+abstract: "An open-source research platform demonstrating computational drug discovery workflows using cheminformatics, QSAR modeling, and machine learning. The platform provides educational implementations of pharmaceutical AI/ML techniques including ADME/PK prediction, neural network-based toxicity assessment, protein-ligand compatibility scoring, and biologic developability analysis."
+authors:
+  - family-names: "Mishra"
+    given-names: "Ardit"
+    email: "amishra7599@gmail.com"
+    orcid: "https://orcid.org/0000-0000-0000-0000"  # Add your ORCID if available
+repository-code: "https://github.com/ardit-mishra/ardit-biocore"
+url: "https://github.com/ardit-mishra/ardit-biocore"
+license: MIT
+version: "1.2.0"
+date-released: "2025-11-16"
+keywords:
+  - drug-discovery
+  - cheminformatics
+  - QSAR
+  - machine-learning
+  - deep-learning
+  - ADME-prediction
+  - toxicity-prediction
+  - protein-analysis
+  - pharmaceutical-AI
+  - RDKit
+  - computational-chemistry
+  - bioinformatics
+  - neural-networks
+references:
+  - type: article
+    title: "Toxicity Prediction using Deep Learning"
+    authors:
+      - family-names: "Mayr"
+        given-names: "Andreas"
+    year: 2016
+    journal: "Frontiers in Environmental Science"
+    doi: "10.3389/fenvs.2015.00080"
+  - type: article
+    title: "Experimental and computational approaches to estimate solubility and permeability in drug discovery and development settings"
+    authors:
+      - family-names: "Lipinski"
+        given-names: "Christopher A."
+    year: 2001
+    journal: "Advanced Drug Delivery Reviews"
+    doi: "10.1016/S0169-409X(00)00129-0"
+  - type: article
+    title: "Quantitative analysis of the chemical space occupied by marketed drugs"
+    authors:
+      - family-names: "Bickerton"
+        given-names: "G. Richard"
+    year: 2012
+    journal: "Nature Chemistry"
+    doi: "10.1038/nchem.1243"
+
+preferred-citation:
+  type: software
+  title: "Ardit BioCore: AI-Powered Molecular Intelligence Platform"
+  authors:
+    - family-names: "Mishra"
+      given-names: "Ardit"
+  year: 2025
+  url: "https://github.com/ardit-mishra/ardit-biocore"
+  version: "1.2.0"
