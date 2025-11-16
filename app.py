@@ -18,6 +18,9 @@ from models.toxicity_predictors import ToxicityPredictor
 from models.target_predictors import TargetClassPredictor
 from models.ml_models import MultiModelPredictor
 from data.kinase_inhibitors import get_case_study_data, get_approved_kinase_drugs
+from features.protein_utils import ProteinAnalyzer
+from features.input_detector import InputDetector
+from data.example_molecules import get_all_peptide_names, get_all_protein_names, get_peptide, get_protein
 
 st.set_page_config(
     page_title="Ardit BioStudio | AI-Powered Molecular Intelligence",
@@ -124,13 +127,15 @@ def load_models():
     ml_predictor = MultiModelPredictor()
     kg = BiomedicalKnowledgeGraph()
     visualizer = MolecularVisualizer()
+    protein_analyzer = ProteinAnalyzer()
+    input_detector = InputDetector()
     
     return (mol_processor, drug_likeness, adme_predictor, toxicity_predictor, 
-            target_predictor, ml_predictor, kg, visualizer)
+            target_predictor, ml_predictor, kg, visualizer, protein_analyzer, input_detector)
 
 
 (mol_processor, drug_likeness, adme_predictor, toxicity_predictor,
- target_predictor, ml_predictor, kg, visualizer) = load_models()
+ target_predictor, ml_predictor, kg, visualizer, protein_analyzer, input_detector) = load_models()
 
 
 st.markdown('<div class="main-header">Ardit BioStudio</div>', unsafe_allow_html=True)
@@ -148,8 +153,8 @@ with st.sidebar:
     page = st.radio(
         "Select Module",
         ["Home", "Molecule Studio", "ADME Navigator", "Toxicity Radar", 
-         "Drug-Likeness Deck", "Target Prediction", "Explainability Canvas", "Knowledge Graph", 
-         "Lead Lab", "Case Study", "About"],
+         "Drug-Likeness Deck", "Target Prediction", "Protein & Biologic Studio", 
+         "Explainability Canvas", "Knowledge Graph", "Lead Lab", "Case Study", "About"],
         label_visibility="collapsed"
     )
     
@@ -671,6 +676,198 @@ elif page == "Target Prediction":
                 st.markdown(f"**Category:** {data['Category']}")
         else:
             st.error("Invalid SMILES string")
+
+
+elif page == "Protein & Biologic Studio":
+    st.markdown('<div class="sub-header">Protein & Biologic Studio</div>', unsafe_allow_html=True)
+    
+    with st.expander("ℹ️ **Analyzing Proteins, Peptides & Biologics**"):
+        st.markdown("""
+        ### What are Biologics?
+        **Biologics** are large-molecule drugs made from living cells, including:
+        - **Therapeutic proteins** (insulin, growth factors, enzymes)
+        - **Monoclonal antibodies** (cancer treatments, autoimmune diseases)
+        - **Peptides** (short amino acid chains)
+        
+        **Difference from small molecules**: SMILES only work for small chemicals. Biologics need **amino acid sequences**.
+        
+        ### What Can You Analyze?
+        
+        **1. Peptides (5-60 amino acids)** 💊
+        - Examples: Insulin fragments, Semaglutide, Octreotide
+        - Used for: Diabetes, hormones, cancer
+        
+        **2. Proteins (>60 amino acids)** 🧬
+        - Examples: Antibodies, interferons, growth factors
+        - Used for: Cancer, autoimmune diseases, blood disorders
+        
+        ### Biologic Developability Profile
+        
+        This tool predicts how "manufacturable" and stable your biologic is:
+        
+        **Solubility** 💧
+        - Can it dissolve in solution?
+        - **High**: Easy to formulate
+        - **Low**: Difficult manufacturing
+        
+        **Aggregation Risk** 🔗
+        - Will it clump together?
+        - **Low**: Stable formulation
+        - **High**: Shelf-life problems
+        
+        **Stability** 🌡️
+        - Will it degrade quickly?
+        - **Stable** (index < 40): Good shelf life
+        - **Unstable** (index > 40): Needs cold storage
+        
+        ### How to Use
+        1. **Select an example** from the dropdown (or enter your own sequence)
+        2. **Enter protein sequence** (FASTA format or plain amino acids)
+        3. **Click "Analyze Biologic"**
+        4. **Review developability profile** (solubility, aggregation, stability)
+        
+        ### Input Formats Accepted
+        
+        **Plain sequence**:
+        ```
+        MVHLTPEEKSAVTALWGKVNVDEVGGEALGRLLVVYPWTQRF
+        ```
+        
+        **FASTA format**:
+        ```
+        >Insulin B-chain
+        MVHLTPEEKSAVTALWGKVNVDEVGGEALGRLLVVYPWTQRF
+        ```
+        
+        **Note**: These are computational predictions for educational purposes. Real biologics need extensive lab testing!
+        """)
+    
+    st.info("""
+    **Educational Tool**: Biologic developability predictions use sequence-based algorithms (hydrophobicity, charge distribution, composition analysis).  
+    For production use, replace with lab-validated assays and protein engineering tools.
+    """)
+    
+    example_biologics = ["Enter your own"] + get_all_peptide_names() + get_all_protein_names()
+    selected_example = st.selectbox("Select Example Biologic", example_biologics)
+    
+    if selected_example != "Enter your own":
+        peptide_data = get_peptide(selected_example)
+        protein_data = get_protein(selected_example)
+        
+        if peptide_data:
+            default_seq = peptide_data['sequence']
+            st.caption(f"**{selected_example}** - {peptide_data['description']} ({peptide_data['length']} amino acids)")
+        elif protein_data:
+            default_seq = protein_data['sequence']
+            st.caption(f"**{selected_example}** - {protein_data['description']} ({protein_data['length']} amino acids)")
+        else:
+            default_seq = ""
+    else:
+        default_seq = ""
+    
+    sequence_input = st.text_area(
+        "Enter Protein/Peptide Sequence (FASTA or plain)", 
+        value=default_seq,
+        height=150,
+        help="Enter amino acid sequence using single-letter code (A, C, D, E, F, G, H, I, K, L, M, N, P, Q, R, S, T, V, W, Y)"
+    )
+    
+    if st.button("Analyze Biologic", type="primary"):
+        is_valid, clean_seq, error = protein_analyzer.validate_fasta(sequence_input)
+        
+        if is_valid:
+            profile = protein_analyzer.comprehensive_biologic_profile(sequence_input)
+            
+            st.markdown("### Sequence Information")
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Length", f"{profile['length']} AA")
+            col2.metric("Molecular Weight", f"{profile['molecular_weight']:.2f} Da")
+            seq_type = protein_analyzer.detect_sequence_type(clean_seq)
+            type_display = {
+                'peptide_small': 'Small Peptide',
+                'peptide_medium': 'Medium Peptide',
+                'protein': 'Protein'
+            }
+            col3.metric("Type", type_display.get(seq_type, 'Unknown'))
+            
+            st.markdown("### Biologic Developability Profile")
+            
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.markdown("#### Solubility")
+                sol_data = profile['solubility']
+                st.metric("Solubility Score", f"{sol_data['solubility_score']}/100")
+                
+                if sol_data['solubility_score'] >= 70:
+                    st.markdown('<div class="risk-pill safe-zone">High Solubility</div>', unsafe_allow_html=True)
+                elif sol_data['solubility_score'] >= 40:
+                    st.markdown('<div class="risk-pill caution-zone">Moderate Solubility</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<div class="risk-pill critical-zone">Low Solubility</div>', unsafe_allow_html=True)
+                
+                st.info(sol_data['recommendation'])
+            
+            with col2:
+                st.markdown("#### Aggregation Risk")
+                agg_data = profile['aggregation_risk']
+                st.metric("Aggregation Score", f"{agg_data['aggregation_score']}/100")
+                
+                if agg_data['aggregation_score'] < 30:
+                    st.markdown('<div class="risk-pill safe-zone">Low Risk</div>', unsafe_allow_html=True)
+                elif agg_data['aggregation_score'] < 60:
+                    st.markdown('<div class="risk-pill caution-zone">Moderate Risk</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<div class="risk-pill critical-zone">High Risk</div>', unsafe_allow_html=True)
+                
+                st.warning(agg_data['recommendation'])
+            
+            with col3:
+                st.markdown("#### Stability")
+                st.metric("Instability Index", f"{profile['instability_index']}")
+                st.metric("Category", profile['stability_category'])
+                
+                if profile['stability_category'] == "Stable":
+                    st.markdown('<div class="risk-pill safe-zone">Stable</div>', unsafe_allow_html=True)
+                    st.success("Predicted stable (index < 40). Favorable for biologic development.")
+                else:
+                    st.markdown('<div class="risk-pill critical-zone">Unstable</div>', unsafe_allow_html=True)
+                    st.error("Predicted unstable (index > 40). May require formulation optimization.")
+            
+            st.markdown("### Physicochemical Properties")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("#### Amino Acid Composition")
+                comp = profile['amino_acid_composition']
+                st.write(f"**Hydrophobic:** {comp['hydrophobic_percent']}%")
+                st.write(f"**Polar:** {comp['polar_percent']}%")
+                st.write(f"**Charged:** {comp['charged_percent']}%")
+                st.write(f"- Positive: {comp['positive_percent']}%")
+                st.write(f"- Negative: {comp['negative_percent']}%")
+            
+            with col2:
+                st.markdown("#### Advanced Indices")
+                st.metric("Hydrophobicity (GRAVY)", f"{profile['hydrophobicity_index']}")
+                st.metric("Aliphatic Index", f"{profile['aliphatic_index']}")
+                
+                if profile['hydrophobicity_index'] > 0:
+                    st.caption("Positive GRAVY = hydrophobic")
+                else:
+                    st.caption("Negative GRAVY = hydrophilic")
+            
+            with st.expander("📋 View Full Amino Acid Composition"):
+                comp_df = pd.DataFrame([
+                    {'Amino Acid': aa, 'Percentage': f"{perc:.2f}%"}
+                    for aa, perc in sorted(comp['composition'].items(), key=lambda x: x[1], reverse=True)
+                    if perc > 0
+                ])
+                st.dataframe(comp_df, use_container_width=True, hide_index=True)
+        
+        else:
+            st.error(f"Invalid sequence: {error}")
+            st.info("Please enter a valid protein/peptide sequence using single-letter amino acid code (A, C, D, E, F, G, H, I, K, L, M, N, P, Q, R, S, T, V, W, Y)")
 
 
 elif page == "Drug-Likeness Deck":
