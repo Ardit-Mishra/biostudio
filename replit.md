@@ -15,7 +15,7 @@ Ardit BioCore is an open-source platform demonstrating computational drug discov
 - **Target Class Prediction**: Kinase, GPCR, ion channel, enzyme inhibitors *(heuristic-based)*
 - **Drug-Likeness**: Lipinski, Veber, QED, Synthetic Accessibility scores  
 - **ML Models**: Random Forest, XGBoost, Neural Network ensemble *(trained on synthetic data)*
-- **Knowledge Graph**: Drug-target-disease relationships *(demonstration dataset)*
+- **Knowledge Graph**: 70+ FDA-approved drugs with interactive PyVis visualization, drug repurposing AI, network analytics, multi-format export
 - **FastAPI Backend**: REST API endpoints demonstrating pharmaceutical prediction services
 - **Batch Screening**: High-throughput lead prioritization workflow demonstration
 - **Case Study**: "Ranking Potential Kinase Inhibitor Leads" educational example
@@ -27,6 +27,7 @@ Ardit BioCore is an open-source platform demonstrating computational drug discov
 - **Backend**: FastAPI, Uvicorn
 - **Frontend**: Streamlit
 - **Data**: NetworkX (knowledge graphs), Pandas, NumPy
+- **Visualization**: PyVis (interactive network graphs), Plotly (charts)
 
 ## Architecture
 
@@ -84,6 +85,41 @@ This platform demonstrates pharmaceutical industry best practices:
 5. **Knowledge Graphs**: Drug-target-disease relationship mapping
 
 ## Recent Changes
+
+### 2025-11-17 (Knowledge Graph Enhancement)
+- **Major Feature Addition**: Complete overhaul of Knowledge Graph module with advanced capabilities
+- **Interactive Visualization**: PyVis-powered interactive network with 700px canvas
+  - Color-coded nodes: Blue (Drugs), Green (Targets), Red (Diseases), Purple (Pathways)
+  - Physics simulation with Barnes-Hut algorithm for natural clustering
+  - Zoom, pan, drag functionality with hover tooltips showing node details
+  - Node size proportional to connection count (degree centrality)
+  - Multi-select filtering by node type
+- **Expanded Dataset**: Increased from 11 to 70+ FDA-approved drugs covering:
+  - Cancer therapies (kinase inhibitors, immunotherapy, PARP inhibitors)
+  - Autoimmune treatments (JAK inhibitors, TNF-alpha blockers)
+  - Targeted therapies across multiple disease areas
+  - 45+ protein targets and 25+ biological pathways
+- **Drug Repurposing AI**: Network-based prediction engine
+  - Identifies shared targets between drugs and unapproved diseases
+  - Calculates repurposing scores using target overlap and network distance
+  - Ranks candidates by therapeutic potential
+  - Provides mechanistic rationale for each prediction
+- **Network Analytics Dashboard**:
+  - Hub detection via degree/betweenness/closeness centrality
+  - Shortest path finder between any two nodes
+  - Centrality rankings with top-N filtering
+- **Data Export Suite**: Multi-format export capabilities
+  - JSON: Full graph with metadata and statistics
+  - CSV: Separate node/edge tables for analysis
+  - GraphML: Cytoscape/Gephi-compatible format
+- **Enhanced Query System**: 5-tab interface
+  - Tab 1: Interactive Visualization with filtering
+  - Tab 2: Query Graph (Drug/Target/Disease lookups)
+  - Tab 3: Drug Repurposing predictions
+  - Tab 4: Network Analytics (hubs, paths, centrality)
+  - Tab 5: Export Data (JSON/CSV/GraphML downloads)
+- **Performance**: Optimized graph operations with NetworkX algorithms
+- **Dependencies**: Added PyVis for visualization layer
 
 ### 2025-11-15 (Accessibility Update)
 - **Major Enhancement**: Added comprehensive educational content for non-technical users

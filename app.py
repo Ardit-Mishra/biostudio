@@ -1328,81 +1328,417 @@ elif page == "Knowledge Graph":
         
         ### What You Can Explore
         
-        **1. Drug Mechanism** 🔍
-        - Pick a drug (like Imatinib or Gefitinib)
+        **1. Interactive Visualization** 🎨
+        - See the entire network as a beautiful interactive graph
+        - Color-coded nodes (Blue=Drugs, Green=Targets, Red=Diseases, Purple=Pathways)
+        - Zoom, pan, and drag nodes to explore connections
+        - Hover over nodes to see detailed information
+        - Filter by node type to focus on specific relationships
+        
+        **2. Drug Mechanism** 🔍
+        - Pick a drug (like Imatinib or Pembrolizumab)
         - See what proteins it targets
         - See what diseases it treats
         - Learn about biological pathways involved
         
-        **2. Target Information** 🎯
-        - Pick a protein target (like EGFR or BCR-ABL)
+        **3. Target Information** 🎯
+        - Pick a protein target (like EGFR or PD-1)
         - See all drugs that hit this target
         - See diseases linked to this target
         
-        ### Example Drugs in Our Graph
-        - **Imatinib**: Cancer drug (leukemia, GIST)
-        - **Gefitinib**: Lung cancer drug
-        - **Sorafenib**: Kidney/liver cancer drug
-        - **Venetoclax**: Leukemia drug
-        - **Adalimumab**: Arthritis/Crohn's disease drug
+        **4. Disease Insights** 🏥
+        - Select a disease (like Melanoma or Breast Cancer)
+        - Find approved drugs for treatment
+        - Discover associated protein targets
+        - Identify involved biological pathways
+        
+        **5. Drug Repurposing** 💡
+        - AI-powered predictions for new disease uses
+        - Based on shared targets and network patterns
+        - Discover potential new applications for existing drugs
+        
+        **6. Network Analytics** 📊
+        - Find the most connected nodes (hubs)
+        - Discover shortest paths between drugs and diseases
+        - Measure node importance with centrality metrics
+        
+        **7. Export & Share** 💾
+        - Download graph data in multiple formats
+        - JSON, CSV, or GraphML for analysis in other tools
+        - Share findings with colleagues
+        
+        ### Example Drugs in Our Graph (70+ total)
+        - **Cancer**: Imatinib, Pembrolizumab, Trastuzumab, Olaparib
+        - **Immunotherapy**: Nivolumab, Atezolizumab, Durvalumab
+        - **Arthritis**: Adalimumab, Infliximab, Tofacitinib
+        - **And many more!**
         
         ### Key Terms
         - **Target**: The protein the drug interacts with
         - **Pathway**: Chain of biological events (like a domino effect)
         - **Indication**: The disease the drug treats
         - **Mechanism of Action (MOA)**: How the drug works in your body
-        
-        ### How to Use
-        1. **Choose query type** (Drug Mechanism or Target Information)
-        2. **Select a drug or target** from the dropdown
-        3. **Click the button** to see connections
-        4. **Explore the relationships**
+        - **Centrality**: How important/connected a node is in the network
+        - **Repurposing**: Finding new uses for existing drugs
         
         **This shows how drugs work!** Real pharmaceutical researchers use similar graphs with millions of connections.
         """)
     
     st.info("""
-    This knowledge graph connects drugs, protein targets, biological pathways, and diseases,
-    demonstrating how pharmaceutical researchers link molecular data across multiple data sources for drug discovery.
+    This knowledge graph contains 70+ FDA-approved drugs with their targets, pathways, and disease indications.
+    Explore connections visually, discover drug repurposing opportunities, and export data for further analysis.
     """)
     
     stats = kg.get_graph_statistics()
     
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5 = st.columns(5)
     col1.metric("Total Nodes", stats['Total Nodes'])
-    col2.metric("Compounds", stats['Compounds'])
+    col2.metric("Drugs", stats['Compounds'])
     col3.metric("Targets", stats['Targets'])
     col4.metric("Diseases", stats['Diseases'])
+    col5.metric("Pathways", stats['Pathways'])
     
-    st.markdown("### Query Knowledge Graph")
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "🎨 Interactive Visualization",
+        "🔍 Query Graph", 
+        "💡 Drug Repurposing",
+        "📊 Network Analytics",
+        "💾 Export Data"
+    ])
     
-    query_type = st.selectbox("Query Type", ["Drug Mechanism", "Target Information", "Disease Relationships"])
-    
-    if query_type == "Drug Mechanism":
-        drugs = ['Imatinib', 'Gefitinib', 'Sorafenib', 'Venetoclax', 'Upadacitinib', 'Adalimumab']
-        selected_drug = st.selectbox("Select Drug", drugs)
+    with tab1:
+        st.markdown("### Interactive Network Visualization")
         
-        if st.button("Get Mechanism of Action"):
-            moa = kg.get_mechanism_of_action(selected_drug)
-            
-            if 'error' not in moa:
-                st.markdown(f"#### {moa['Drug']}")
-                st.markdown(f"**Targets:** {', '.join(moa['Targets'])}")
-                st.markdown(f"**Pathways:** {', '.join(moa['Pathways']) if moa['Pathways'] else 'N/A'}")
-                st.markdown(f"**Indications:** {', '.join(moa['Indications'])}")
-            else:
-                st.warning(moa['error'])
-    
-    elif query_type == "Target Information":
-        targets = ['BCR-ABL', 'EGFR', 'VEGFR', 'BCL-2', 'JAK1', 'TNF-alpha']
-        selected_target = st.selectbox("Select Target", targets)
+        st.info("💡 **Tip**: The visualization may take a few seconds to load. Zoom, pan, and drag nodes to explore!")
         
-        if st.button("Get Target Information"):
-            drugs = kg.find_similar_drugs(selected_target)
-            diseases = kg.get_target_diseases(selected_target)
+        filter_options = st.multiselect(
+            "Filter by Node Type",
+            options=['compound', 'target', 'disease', 'pathway'],
+            default=['compound', 'target', 'disease', 'pathway'],
+            help="Select which types of nodes to display"
+        )
+        
+        col_viz1, col_viz2 = st.columns([3, 1])
+        
+        with col_viz2:
+            st.markdown("**Legend**")
+            st.markdown("🔵 **Drugs** (Blue)")
+            st.markdown("🟢 **Targets** (Green)")
+            st.markdown("🔴 **Diseases** (Red)")
+            st.markdown("🟣 **Pathways** (Purple)")
+            st.markdown("---")
+            st.markdown("**Node Size** = Number of connections")
+            st.markdown("**Hover** = See details")
+        
+        with col_viz1:
+            if st.button("Generate Interactive Graph", type="primary"):
+                with st.spinner("Creating interactive visualization..."):
+                    try:
+                        html_file = kg.create_interactive_visualization(
+                            filter_types=filter_options if filter_options else None
+                        )
+                        
+                        with open(html_file, 'r', encoding='utf-8') as f:
+                            html_content = f.read()
+                        
+                        st.components.v1.html(html_content, height=700, scrolling=True)
+                        st.success("✅ Visualization loaded! Drag nodes to rearrange, scroll to zoom.")
+                    except Exception as e:
+                        st.error(f"Error generating visualization: {str(e)}")
+    
+    with tab2:
+        st.markdown("### Query Knowledge Graph")
+        
+        query_type = st.selectbox(
+            "Query Type", 
+            ["Drug Mechanism", "Target Information", "Disease Relationships"]
+        )
+        
+        if query_type == "Drug Mechanism":
+            all_drugs = sorted([n for n, d in kg.graph.nodes(data=True) 
+                               if d.get('node_type') == 'compound'])
+            selected_drug = st.selectbox("Select Drug", all_drugs)
             
-            st.markdown(f"**Drugs targeting {selected_target}:** {', '.join(drugs) if drugs else 'None in database'}")
-            st.markdown(f"**Associated diseases:** {', '.join(diseases) if diseases else 'None in database'}")
+            if st.button("Get Mechanism of Action"):
+                moa = kg.get_mechanism_of_action(selected_drug)
+                
+                if 'error' not in moa:
+                    st.markdown(f"### {moa['Drug']}")
+                    
+                    col_moa1, col_moa2 = st.columns(2)
+                    with col_moa1:
+                        st.markdown("**🎯 Targets**")
+                        for target in moa['Targets']:
+                            st.markdown(f"- {target}")
+                    
+                    with col_moa2:
+                        st.markdown("**🏥 Indications**")
+                        for indication in moa['Indications']:
+                            st.markdown(f"- {indication}")
+                    
+                    if moa['Pathways']:
+                        st.markdown("**🔬 Biological Pathways**")
+                        for pathway in moa['Pathways']:
+                            st.markdown(f"- {pathway}")
+                    else:
+                        st.info("No pathway information available")
+                else:
+                    st.warning(moa['error'])
+        
+        elif query_type == "Target Information":
+            all_targets = sorted([n for n, d in kg.graph.nodes(data=True) 
+                                 if d.get('node_type') == 'target'])
+            selected_target = st.selectbox("Select Target", all_targets)
+            
+            if st.button("Get Target Information"):
+                drugs = kg.find_similar_drugs(selected_target)
+                diseases = kg.get_target_diseases(selected_target)
+                
+                st.markdown(f"### {selected_target}")
+                
+                col_tgt1, col_tgt2 = st.columns(2)
+                with col_tgt1:
+                    st.markdown(f"**💊 Drugs Targeting {selected_target}** ({len(drugs)})")
+                    if drugs:
+                        for drug in drugs:
+                            st.markdown(f"- {drug}")
+                    else:
+                        st.info("No drugs found")
+                
+                with col_tgt2:
+                    st.markdown(f"**🏥 Associated Diseases** ({len(diseases)})")
+                    if diseases:
+                        for disease in diseases:
+                            st.markdown(f"- {disease}")
+                    else:
+                        st.info("No diseases found")
+        
+        else:
+            all_diseases = sorted([n for n, d in kg.graph.nodes(data=True) 
+                                  if d.get('node_type') == 'disease'])
+            selected_disease = st.selectbox("Select Disease", all_diseases)
+            
+            if st.button("Get Disease Information"):
+                disease_info = kg.get_disease_relationships(selected_disease)
+                
+                if 'error' not in disease_info:
+                    st.markdown(f"### {disease_info['Disease']}")
+                    
+                    col_dis1, col_dis2, col_dis3 = st.columns(3)
+                    
+                    with col_dis1:
+                        st.metric("Approved Drugs", disease_info['Total_Drugs'])
+                        if disease_info['Approved_Drugs']:
+                            for drug in disease_info['Approved_Drugs']:
+                                st.markdown(f"- {drug}")
+                    
+                    with col_dis2:
+                        st.metric("Associated Targets", disease_info['Total_Targets'])
+                        if disease_info['Associated_Targets']:
+                            for target in disease_info['Associated_Targets']:
+                                st.markdown(f"- {target}")
+                    
+                    with col_dis3:
+                        st.markdown("**🔬 Pathways**")
+                        if disease_info['Involved_Pathways']:
+                            for pathway in disease_info['Involved_Pathways']:
+                                st.markdown(f"- {pathway}")
+                        else:
+                            st.info("No pathways")
+                else:
+                    st.warning(disease_info['error'])
+    
+    with tab3:
+        st.markdown("### 💡 Drug Repurposing Predictions")
+        st.info("""
+        **Drug repurposing** identifies new therapeutic uses for existing drugs. This AI-powered analysis uses 
+        network patterns and shared targets to predict potential new indications.
+        """)
+        
+        all_drugs = sorted([n for n, d in kg.graph.nodes(data=True) 
+                           if d.get('node_type') == 'compound'])
+        selected_drug_repo = st.selectbox("Select Drug for Repurposing Analysis", all_drugs, key="repo_drug")
+        
+        num_predictions = st.slider("Number of Predictions", 3, 10, 5)
+        
+        if st.button("Predict Repurposing Opportunities", type="primary"):
+            with st.spinner("Analyzing network patterns..."):
+                predictions = kg.predict_drug_repurposing(selected_drug_repo, top_n=num_predictions)
+                
+                if predictions:
+                    st.success(f"✅ Found {len(predictions)} potential repurposing opportunities!")
+                    
+                    current_uses = kg.get_drug_indications(selected_drug_repo)
+                    st.markdown(f"**Current Approved Uses**: {', '.join(current_uses)}")
+                    st.markdown("---")
+                    
+                    for i, pred in enumerate(predictions, 1):
+                        with st.expander(f"#{i}: {pred['disease']} (Score: {pred['repurposing_score']:.1f})"):
+                            col_repo1, col_repo2 = st.columns(2)
+                            
+                            with col_repo1:
+                                st.markdown(f"**🎯 Shared Targets ({pred['num_shared_targets']})**")
+                                for target in pred['shared_targets']:
+                                    st.markdown(f"- {target}")
+                            
+                            with col_repo2:
+                                st.metric("Network Distance", f"{pred['path_length']} steps")
+                                st.metric("Repurposing Score", f"{pred['repurposing_score']:.1f}")
+                            
+                            st.info(f"💡 **Rationale**: {selected_drug_repo} targets {', '.join(pred['shared_targets'])}, which are also involved in {pred['disease']}.")
+                else:
+                    st.warning("No repurposing opportunities found. This drug may have limited target overlap with other diseases.")
+    
+    with tab4:
+        st.markdown("### 📊 Network Analytics")
+        
+        analytics_type = st.selectbox(
+            "Analysis Type",
+            ["Most Connected Nodes (Hubs)", "Shortest Path Finder", "Centrality Rankings"]
+        )
+        
+        if analytics_type == "Most Connected Nodes (Hubs)":
+            st.info("Identify the most connected nodes (hubs) in the network. Hubs often represent key drugs, targets, or diseases.")
+            
+            top_n_hubs = st.slider("Number of Top Nodes", 5, 20, 10)
+            
+            if st.button("Find Network Hubs"):
+                top_nodes = kg.get_top_central_nodes(metric='degree', top_n=top_n_hubs)
+                
+                st.markdown(f"### Top {top_n_hubs} Most Connected Nodes")
+                
+                hub_data = []
+                for node, centrality in top_nodes:
+                    node_type = kg.graph.nodes[node].get('node_type', 'unknown')
+                    degree = kg.graph.degree(node)
+                    hub_data.append({
+                        'Rank': len(hub_data) + 1,
+                        'Node': node,
+                        'Type': node_type.capitalize(),
+                        'Connections': degree,
+                        'Centrality': f"{centrality:.3f}"
+                    })
+                
+                hub_df = pd.DataFrame(hub_data)
+                st.dataframe(hub_df, use_container_width=True, hide_index=True)
+        
+        elif analytics_type == "Shortest Path Finder":
+            st.info("Find the shortest path between any two nodes in the knowledge graph.")
+            
+            col_path1, col_path2 = st.columns(2)
+            
+            all_nodes = sorted(kg.graph.nodes())
+            
+            with col_path1:
+                source_node = st.selectbox("Source Node", all_nodes)
+            with col_path2:
+                target_node = st.selectbox("Target Node", all_nodes, index=min(10, len(all_nodes)-1))
+            
+            if st.button("Find Shortest Path"):
+                if source_node == target_node:
+                    st.warning("Source and target must be different nodes!")
+                else:
+                    path = kg.find_shortest_path(source_node, target_node)
+                    
+                    if path:
+                        st.success(f"✅ Found path with {len(path)-1} steps!")
+                        st.markdown(f"**Path**: {' → '.join(path)}")
+                        st.metric("Path Length", len(path)-1)
+                    else:
+                        st.error("No path found between these nodes.")
+        
+        else:
+            st.info("Rank all nodes by centrality metrics to identify the most important entities.")
+            
+            metric_type = st.selectbox(
+                "Centrality Metric",
+                ["Degree (Connections)", "Betweenness (Bridge)", "Closeness (Proximity)"]
+            )
+            
+            metric_map = {
+                "Degree (Connections)": "degree",
+                "Betweenness (Bridge)": "betweenness",
+                "Closeness (Proximity)": "closeness"
+            }
+            
+            selected_metric = metric_map[metric_type]
+            top_n_central = st.slider("Number of Top Nodes", 5, 20, 10, key="central_slider")
+            
+            if st.button("Calculate Centrality Rankings"):
+                top_nodes = kg.get_top_central_nodes(metric=selected_metric, top_n=top_n_central)
+                
+                st.markdown(f"### Top {top_n_central} Nodes by {metric_type}")
+                
+                central_data = []
+                for node, centrality in top_nodes:
+                    node_type = kg.graph.nodes[node].get('node_type', 'unknown')
+                    central_data.append({
+                        'Rank': len(central_data) + 1,
+                        'Node': node,
+                        'Type': node_type.capitalize(),
+                        'Centrality Score': f"{centrality:.4f}"
+                    })
+                
+                central_df = pd.DataFrame(central_data)
+                st.dataframe(central_df, use_container_width=True, hide_index=True)
+    
+    with tab5:
+        st.markdown("### 💾 Export Knowledge Graph Data")
+        st.info("Download the knowledge graph in various formats for external analysis or sharing.")
+        
+        col_exp1, col_exp2, col_exp3 = st.columns(3)
+        
+        with col_exp1:
+            st.markdown("#### JSON Format")
+            st.markdown("Complete graph with metadata")
+            if st.button("Export as JSON"):
+                json_data = kg.export_to_json()
+                st.download_button(
+                    label="📥 Download JSON",
+                    data=json_data,
+                    file_name="knowledge_graph.json",
+                    mime="application/json"
+                )
+        
+        with col_exp2:
+            st.markdown("#### CSV Format")
+            st.markdown("Separate node & edge tables")
+            if st.button("Export as CSV"):
+                nodes_df, edges_df = kg.export_to_csv()
+                
+                nodes_csv = nodes_df.to_csv(index=False)
+                edges_csv = edges_df.to_csv(index=False)
+                
+                col_csv1, col_csv2 = st.columns(2)
+                with col_csv1:
+                    st.download_button(
+                        label="📥 Nodes CSV",
+                        data=nodes_csv,
+                        file_name="kg_nodes.csv",
+                        mime="text/csv"
+                    )
+                with col_csv2:
+                    st.download_button(
+                        label="📥 Edges CSV",
+                        data=edges_csv,
+                        file_name="kg_edges.csv",
+                        mime="text/csv"
+                    )
+        
+        with col_exp3:
+            st.markdown("#### GraphML Format")
+            st.markdown("For Cytoscape, Gephi, etc.")
+            if st.button("Export as GraphML"):
+                try:
+                    graphml_data = kg.export_to_graphml()
+                    st.download_button(
+                        label="📥 Download GraphML",
+                        data=graphml_data,
+                        file_name="knowledge_graph.graphml",
+                        mime="application/xml"
+                    )
+                except Exception as e:
+                    st.error(f"Error exporting GraphML: {str(e)}")
 
 
 elif page == "Lead Lab":
