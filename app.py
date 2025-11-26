@@ -1,83 +1,183 @@
+# =============================================================================
+# ARDIT BIOSTUDIO - MAIN STREAMLIT APPLICATION
+# =============================================================================
+# This is the main entry point for the Ardit BioStudio web application.
+# It provides an interactive interface for pharmaceutical AI/ML predictions.
+#
+# ARCHITECTURE:
+# - Frontend: Streamlit web framework with custom CSS styling
+# - Backend: Python modules for prediction (utils/, models/, data/)
+# - Caching: @st.cache_resource for model persistence
+#
+# MODULES:
+# - Home: Welcome page with platform overview
+# - Molecule Studio: Basic molecular property analysis
+# - ADME Navigator: Absorption, Distribution, Metabolism, Excretion predictions
+# - Toxicity Radar: Safety assessment (hepatotox, hERG, mutagenicity, carcinogenicity)
+# - Drug-Likeness Deck: Lipinski, Veber, QED, SA score evaluation
+# - Target Prediction: Kinase, GPCR, ion channel, enzyme prediction
+# - Protein & Biologic Studio: Peptide/protein analysis
+# - Explainability Canvas: ML model interpretability (feature importance)
+# - Knowledge Graph: Drug-target-disease network explorer
+# - Lead Lab: Batch screening and prioritization
+# - Case Study: Kinase inhibitor lead ranking demonstration
+# - About: Platform information and credits
+#
+# DEVELOPER: Ardit Mishra
+# LICENSE: MIT Open Source
+# REPOSITORY: github.com/ardit-mishra/ardit-biocore
+# =============================================================================
+
+# Import Streamlit framework for building the web interface
+# Streamlit converts Python scripts into interactive web apps
 import streamlit as st
+
+# Import pandas for data manipulation and display
+# Used for creating and displaying DataFrames in the UI
 import pandas as pd
+
+# Import numpy for numerical array operations
+# Used for molecular descriptor calculations
 import numpy as np
+
+# Import RDKit core chemistry module for molecular operations
 from rdkit import Chem
+# Import AllChem for fingerprints and DataStructs for similarity calculations
 from rdkit.Chem import AllChem, DataStructs
+
+# Import sys and os for path manipulation
+# Needed to import modules from sibling directories
 import sys
 import os
+
+# Import io for in-memory file operations (CSV downloads)
 import io
 
+# Add current directory to Python path
+# This allows importing from utils/, models/, data/ directories
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+# Import core molecular processing utilities
+# MolecularProcessor: SMILES validation, property calculation, fingerprints
 from utils.molecular_utils import MolecularProcessor
+
+# Import drug-likeness calculator
+# DrugLikenessCalculator: Lipinski, Veber, QED, SA score
 from utils.drug_likeness import DrugLikenessCalculator
+
+# Import knowledge graph for drug-target-disease relationships
 from utils.knowledge_graph import BiomedicalKnowledgeGraph
+
+# Import visualization utilities for molecular images and charts
 from utils.visualization_utils import MolecularVisualizer, ClusteringVisualizer
+
+# Import ADME prediction module (Absorption, Distribution, Metabolism, Excretion)
 from models.adme_predictors import ADMEPredictor
+
+# Import toxicity prediction module (hepatotox, hERG, mutagenicity, carcinogenicity)
 from models.toxicity_predictors import ToxicityPredictor
+
+# Import target class prediction module (kinase, GPCR, ion channel, enzyme)
 from models.target_predictors import TargetClassPredictor
+
+# Import ML models (Random Forest, XGBoost ensemble)
 from models.ml_models import MultiModelPredictor
+
+# Import neural network toxicity predictor
 from models.neural_toxicity import NeuralToxicityPredictor
+
+# Import protein-ligand compatibility scorer
 from models.protein_ligand_compatibility import ProteinLigandCompatibilityScorer
+
+# Import case study data (kinase inhibitor candidates)
 from data.kinase_inhibitors import get_case_study_data, get_approved_kinase_drugs
+
+# Import protein analysis utilities
 from features.protein_utils import ProteinAnalyzer
+
+# Import input type detector (SMILES vs sequence)
 from features.input_detector import InputDetector
+
+# Import example molecule data (peptides and proteins)
 from data.example_molecules import get_all_peptide_names, get_all_protein_names, get_peptide, get_protein
 
+# =============================================================================
+# STREAMLIT PAGE CONFIGURATION
+# =============================================================================
+# Configure the Streamlit app with page title, icon, layout settings
+# Must be called first before any other Streamlit commands
 st.set_page_config(
+    # Browser tab title
     page_title="Ardit BioStudio | AI-Powered Molecular Intelligence",
+    # Browser tab icon (DNA emoji)
     page_icon="🧬",
+    # Use wide layout to maximize screen space
     layout="wide",
+    # Keep sidebar expanded by default for navigation
     initial_sidebar_state="expanded"
 )
 
+# =============================================================================
+# CUSTOM CSS STYLING
+# =============================================================================
+# Inject custom CSS to create the futuristic dark theme with cyan/pink accents
+# This overrides Streamlit's default styling for a professional pharma look
 st.markdown("""
 <style>
+  /* Import Inter font from Google Fonts for modern typography */
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
 
+  /* CSS Variables for consistent color scheme */
   :root {
-    --bg-main: #00010a;
-    --bg-grid: rgba(0, 255, 200, 0.05);
-    --text-main: #dffdfc;
-    --text-dim: #8bc4c2;
-    --accent-cyan: #00f8c5;
-    --accent-pink: #ff7ddf;
-    --accent-yellow: #ffe36e;
+    --bg-main: #00010a;         /* Dark background color */
+    --bg-grid: rgba(0, 255, 200, 0.05);  /* Subtle grid pattern overlay */
+    --text-main: #dffdfc;       /* Main text color (off-white) */
+    --text-dim: #8bc4c2;        /* Dimmed text color for secondary content */
+    --accent-cyan: #00f8c5;     /* Primary accent color (cyan/teal) */
+    --accent-pink: #ff7ddf;     /* Secondary accent color (pink) */
+    --accent-yellow: #ffe36e;   /* Warning/caution color (yellow) */
   }
 
+  /* Main app container styling with grid background pattern */
   .stApp {
     background: var(--bg-main);
     color: var(--text-main);
+    /* Layered backgrounds: solid color + horizontal lines + vertical lines */
     background-image:
       linear-gradient(var(--bg-main), var(--bg-main)),
       linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px),
       linear-gradient(var(--bg-grid) 1px, transparent 1px);
+    /* Grid cell size of 40x40 pixels */
     background-size: 100%, 40px 40px, 40px 40px;
   }
 
-  /* Sidebar */
+  /* Sidebar styling - dark with cyan border */
   [data-testid="stSidebar"] {
     background: #00010a;
     border-right: 1px solid #00c9a4;
   }
 
+  /* Make all sidebar text use the main text color */
   [data-testid="stSidebar"] * { color: var(--text-main); }
 
-  /* Title */
+  /* Main header styling with glowing effect */
   .main-header {
     font-size: 2.7rem;
     font-weight: 700;
     text-align: center;
     font-family: 'Inter';
     color: var(--accent-cyan);
+    /* Cyan glow effect */
     text-shadow: 0 0 12px rgba(0,248,197,0.7);
   }
 
+  /* Subtitle styling - dimmed and centered */
   .subtitle {
     color: var(--text-dim);
     text-align: center;
   }
 
+  /* Card styling for metric displays */
   .metric-card {
     background: rgba(0,0,0,0.35);
     border: 1px solid #00c9a4;
@@ -86,9 +186,12 @@ st.markdown("""
     box-shadow: 0 0 25px rgba(0,255,200,0.15);
   }
 
+  /* Success message box styling */
   .success-box { background: rgba(0,255,200,0.1); border-left: 4px solid var(--accent-cyan); }
+  /* Danger/error message box styling */
   .danger-box { background: rgba(255,125,223,0.13); border-left: 4px solid var(--accent-pink); }
 
+  /* Pill-shaped labels for risk levels */
   .risk-pill {
     padding: 0.2rem 0.7rem;
     border-radius: 999px;
@@ -96,10 +199,14 @@ st.markdown("""
     font-weight: 600;
   }
 
+  /* Green pill for safe/low risk */
   .safe-zone { background: rgba(0,255,200,0.2); color: var(--accent-cyan); }
+  /* Yellow pill for moderate risk */
   .caution-zone { background: rgba(255,227,110,0.2); color: var(--accent-yellow); }
+  /* Pink pill for high risk */
   .critical-zone { background: rgba(255,125,223,0.2); color: var(--accent-pink); }
 
+  /* Primary button styling with gradient and glow */
   .stButton > button {
     background: linear-gradient(135deg, var(--accent-cyan), var(--accent-pink));
     border-radius: 999px;
@@ -110,6 +217,7 @@ st.markdown("""
     box-shadow: 0 0 18px rgba(0,248,197,0.6);
   }
 
+  /* Button hover effect with scale and pink glow */
   .stButton > button:hover {
     transform: scale(1.06);
     box-shadow: 0 0 35px rgba(255,125,223,0.7);
@@ -119,41 +227,99 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
+# =============================================================================
+# MODEL INITIALIZATION WITH CACHING
+# =============================================================================
+# Use @st.cache_resource to load models only once and reuse across sessions
+# This significantly improves performance by avoiding repeated initialization
 @st.cache_resource
 def load_models():
+    """
+    Load and cache all prediction models and utilities.
+    
+    This function is decorated with @st.cache_resource, which means it only
+    runs once per application session. All subsequent calls return the cached
+    objects, avoiding expensive re-initialization.
+    
+    Returns:
+        Tuple of initialized model instances:
+        - mol_processor: SMILES validation and property calculation
+        - drug_likeness: Lipinski, Veber, QED, SA score calculators
+        - adme_predictor: ADME/PK predictions
+        - toxicity_predictor: Heuristic toxicity predictions
+        - neural_tox_predictor: Neural network toxicity predictions
+        - protein_ligand_scorer: Protein-ligand binding predictions
+        - target_predictor: Target class predictions
+        - ml_predictor: RF/XGBoost ensemble predictor
+        - kg: Biomedical knowledge graph
+        - visualizer: Molecular visualization utilities
+        - protein_analyzer: Protein/peptide analysis
+        - input_detector: Input type detection
+    """
+    # Initialize molecular processing utilities
     mol_processor = MolecularProcessor()
+    # Initialize drug-likeness calculator (Lipinski, Veber, QED, SA)
     drug_likeness = DrugLikenessCalculator()
+    # Initialize ADME/PK predictor
     adme_predictor = ADMEPredictor()
+    # Initialize heuristic toxicity predictor
     toxicity_predictor = ToxicityPredictor()
+    # Initialize neural network toxicity predictor
     neural_tox_predictor = NeuralToxicityPredictor()
+    # Initialize protein-ligand compatibility scorer
     protein_ligand_scorer = ProteinLigandCompatibilityScorer()
+    # Initialize target class predictor (kinase, GPCR, ion channel, enzyme)
     target_predictor = TargetClassPredictor()
+    # Initialize ML ensemble predictor (Random Forest + XGBoost)
     ml_predictor = MultiModelPredictor()
+    # Initialize biomedical knowledge graph with 70+ drugs
     kg = BiomedicalKnowledgeGraph()
+    # Initialize molecular visualization utilities
     visualizer = MolecularVisualizer()
+    # Initialize protein/peptide analyzer
     protein_analyzer = ProteinAnalyzer()
+    # Initialize input type detector
     input_detector = InputDetector()
     
+    # Return all initialized objects as a tuple
     return (mol_processor, drug_likeness, adme_predictor, toxicity_predictor, neural_tox_predictor,
             protein_ligand_scorer, target_predictor, ml_predictor, kg, visualizer, protein_analyzer, input_detector)
 
 
+# Load all models and unpack into individual variables
+# This call either loads fresh models (first run) or returns cached ones
 (mol_processor, drug_likeness, adme_predictor, toxicity_predictor, neural_tox_predictor,
  protein_ligand_scorer, target_predictor, ml_predictor, kg, visualizer, protein_analyzer, input_detector) = load_models()
 
 
+# =============================================================================
+# HEADER AND TITLE SECTION
+# =============================================================================
+# Display the main application header with glowing effect
 st.markdown('<div class="main-header">Ardit BioStudio</div>', unsafe_allow_html=True)
+# Decorative gold underline (empty div for styling)
 st.markdown('<div class="gold-underline"></div>', unsafe_allow_html=True)
+# Subtitle describing the platform
 st.markdown('<div class="subtitle">AI-Powered Molecular Intelligence Platform</div>', unsafe_allow_html=True)
 
+# Important disclaimer about the educational nature of predictions
+# This is crucial for setting user expectations about prediction accuracy
 st.info("""
 **NOTE**: This is an educational/research platform demonstrating pharmaceutical data science workflows. 
 Current predictors use heuristic scoring functions based on RDKit molecular descriptors for demonstration purposes.  
 For production use, these should be replaced with validated, data-driven QSAR models trained on curated datasets.
 """)
 
+# =============================================================================
+# SIDEBAR NAVIGATION
+# =============================================================================
+# Create sidebar for page navigation and platform information
 with st.sidebar:
+    # Navigation header
     st.markdown("### BioStudio Navigation")
+    
+    # Radio buttons for page selection
+    # Each option corresponds to a different module
     page = st.radio(
         "Select Module",
         ["Home", "Molecule Studio", "ADME Navigator", "Toxicity Radar", 
@@ -162,13 +328,19 @@ with st.sidebar:
         label_visibility="collapsed"
     )
     
+    # Visual separator
     st.markdown("---")
+    
+    # Quick statistics section (placeholder values)
     st.markdown("### Quick Stats")
     st.metric("Models Deployed", "8")
     st.metric("Predictions Today", "0")
     st.metric("Success Rate", "95%")
     
+    # Visual separator
     st.markdown("---")
+    
+    # Platform capabilities summary
     st.markdown("""
     <small style="color: #5D6D7E;">
     <strong>Platform Modules:</strong><br>
@@ -182,10 +354,16 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
 
+# =============================================================================
+# HOME PAGE
+# =============================================================================
+# Welcome page with platform overview and beginner's guide
 if page == "Home":
+    # Section header
     st.markdown('<div class="sub-header">Welcome to Ardit BioStudio</div>', 
                 unsafe_allow_html=True)
     
+    # Expandable beginner's guide
     with st.expander("🎓 **New to Drug Discovery? Start Here!**", expanded=False):
         st.markdown("""
         ### What is Ardit BioStudio?
@@ -241,8 +419,10 @@ if page == "Home":
         **No chemistry knowledge needed!** Each tool explains what it does and what the results mean.
         """)
     
+    # Platform capabilities section
     st.markdown('<div class="sub-header">Platform Capabilities</div>', unsafe_allow_html=True)
     
+    # Create DataFrame with module capabilities
     capabilities = pd.DataFrame({
         'Module': ['ADME/PK', 'Toxicity', 'Drug-likeness', 'Target Prediction', 'ML Models', 'Knowledge Graph'],
         'Capabilities': [
@@ -256,8 +436,10 @@ if page == "Home":
         'Status': ['Active'] * 6
     })
     
+    # Display capabilities table
     st.dataframe(capabilities, use_container_width=True, hide_index=True)
     
+    # Industry alignment section
     st.markdown('<div class="sub-header">Industry Alignment</div>', unsafe_allow_html=True)
     st.info("""
     This platform mirrors pharmaceutical industry best practices used in modern drug discovery:
@@ -270,9 +452,15 @@ if page == "Home":
     """)
 
 
+# =============================================================================
+# MOLECULE STUDIO PAGE
+# =============================================================================
+# Basic molecular property analysis - the starting point for new molecules
 elif page == "Molecule Studio":
+    # Section header
     st.markdown('<div class="sub-header">Molecule Studio</div>', unsafe_allow_html=True)
     
+    # Help expander explaining what the module does
     with st.expander("ℹ️ **What does Molecule Studio do?**"):
         st.markdown("""
         ### Purpose
@@ -317,41 +505,58 @@ elif page == "Molecule Studio":
         - **Ibuprofen**: `CC(C)Cc1ccc(cc1)C(C)C(=O)O` (pre-filled)
         """)
     
+    # Input method selection (currently only SMILES implemented)
     input_method = st.radio("Input Method", ["SMILES String", "Draw Structure (Coming Soon)", "Upload File"], horizontal=True)
     
+    # SMILES input section
     if input_method == "SMILES String":
+        # Text input for SMILES with Ibuprofen as default
         smiles_input = st.text_input("Enter SMILES String", "CC(C)Cc1ccc(cc1)C(C)C(=O)O")
+        # Optional molecule name input
         molecule_name = st.text_input("Molecule Name (Optional)", "Ibuprofen")
         
+        # Analysis button
         if st.button("Validate & Analyze", type="primary"):
+            # Validate the SMILES input
             is_valid, canonical_smiles = mol_processor.validate_smiles(smiles_input)
             
             if is_valid:
+                # Show success message with canonical SMILES
                 st.success(f"Valid SMILES: `{canonical_smiles}`")
                 
+                # Convert to RDKit molecule object
                 mol = mol_processor.smiles_to_mol(canonical_smiles)
                 
+                # Create two-column layout
                 col1, col2 = st.columns([1, 1])
                 
+                # Left column: 2D structure visualization
                 with col1:
                     st.markdown("#### 2D Structure")
+                    # Generate molecular image
                     img = visualizer.mol_to_image(mol, size=(400, 400))
                     if img:
                         st.image(img)
                 
+                # Right column: Property table
                 with col2:
                     st.markdown("#### Basic Properties")
+                    # Calculate all basic properties
                     props = mol_processor.calculate_basic_properties(mol)
                     
+                    # Convert to DataFrame for display
                     props_df = pd.DataFrame([props]).T
                     props_df.columns = ['Value']
                     st.dataframe(props_df, use_container_width=True)
                 
+                # Drug-likeness quick check section
                 st.markdown("#### Drug-Likeness Quick Check")
+                # Calculate all drug-likeness metrics
                 lipinski = mol_processor.calculate_lipinski_descriptors(mol)
                 veber = mol_processor.calculate_veber_descriptors(mol)
                 qed = mol_processor.calculate_qed(mol)
                 
+                # Display metrics in 4 columns
                 col1, col2, col3, col4 = st.columns(4)
                 col1.metric("Lipinski Violations", lipinski['Violations'])
                 col2.metric("Veber Pass", "Pass" if veber['Passes'] else "Fail")
@@ -359,12 +564,19 @@ elif page == "Molecule Studio":
                 col4.metric("Overall", "Drug-like" if lipinski['Violations'] <= 1 and veber['Passes'] else "Review")
                 
             else:
+                # Show error for invalid SMILES
                 st.error(f"Invalid SMILES: {canonical_smiles}")
 
 
+# =============================================================================
+# ADME NAVIGATOR PAGE
+# =============================================================================
+# Predicts Absorption, Distribution, Metabolism, Excretion properties
 elif page == "ADME Navigator":
+    # Section header
     st.markdown('<div class="sub-header">ADME Navigator</div>', unsafe_allow_html=True)
     
+    # Help expander with detailed ADME explanation
     with st.expander("ℹ️ **Understanding ADME - What Happens to a Drug in Your Body**"):
         st.markdown("""
         ### What is ADME?
@@ -421,40 +633,50 @@ elif page == "ADME Navigator":
         **Note**: These are predictive models for educational purposes. Real drugs need lab testing!
         """)
     
+    # Disclaimer about heuristic predictions
     st.info("""
     **Note:** ADME/PK predictions use heuristic scoring functions based on molecular descriptors (LogP, TPSA, molecular weight, etc.).  
     For production use, replace with validated QSAR models trained on experimental ADME data.
     """)
     
+    # SMILES input
     smiles_input = st.text_input("Enter SMILES String", "CC(C)Cc1ccc(cc1)C(C)C(=O)O")
     
+    # Analysis button
     if st.button("Run ADME/PK Analysis", type="primary"):
+        # Validate SMILES
         is_valid, canonical_smiles = mol_processor.validate_smiles(smiles_input)
         
         if is_valid:
+            # Convert to molecule and run ADME analysis
             mol = mol_processor.smiles_to_mol(canonical_smiles)
             adme_profile = adme_predictor.comprehensive_adme_profile(mol)
             
+            # Create tabs for each ADME property
             tab1, tab2, tab3, tab4, tab5 = st.tabs(["LogP", "Caco-2 Permeability", "BBB Penetration", "CYP450 Metabolism", "Clearance"])
             
+            # Tab 1: LogP (lipophilicity)
             with tab1:
                 data = adme_profile['LogP']
                 st.markdown(f"**LogP:** {data['LogP']}")
                 st.markdown(f"**Category:** {data['Category']}")
                 st.info(data['Interpretation'])
             
+            # Tab 2: Caco-2 permeability (absorption)
             with tab2:
                 data = adme_profile['Caco-2 Permeability']
                 st.markdown(f"**Caco-2 Score:** {data['Caco-2 Score']}")
                 st.markdown(f"**Category:** {data['Category']}")
                 st.info(data['Interpretation'])
             
+            # Tab 3: BBB penetration (distribution)
             with tab3:
                 data = adme_profile['BBB Penetration']
                 st.markdown(f"**BBB Score:** {data['BBB Score']}")
                 st.markdown(f"**Probability:** {data['Probability']}")
                 st.info(data['Recommendation'])
             
+            # Tab 4: CYP450 metabolism
             with tab4:
                 data = adme_profile['CYP450 Metabolism']
                 st.markdown(f"**Primary Metabolizer:** {data['Primary Metabolizer']}")
@@ -463,6 +685,7 @@ elif page == "ADME Navigator":
                 st.write(f"- CYP2C9: {data['CYP2C9 Substrate Probability']}")
                 st.warning(data['Interpretation'])
             
+            # Tab 5: Clearance (excretion)
             with tab5:
                 data = adme_profile['Clearance']
                 st.markdown(f"**Clearance Score:** {data['Clearance Score']}")
@@ -473,9 +696,15 @@ elif page == "ADME Navigator":
             st.error("Invalid SMILES string")
 
 
+# =============================================================================
+# TOXICITY RADAR PAGE
+# =============================================================================
+# Safety assessment for hepatotoxicity, hERG, mutagenicity, carcinogenicity
 elif page == "Toxicity Radar":
+    # Section header
     st.markdown('<div class="sub-header">Toxicity Radar</div>', unsafe_allow_html=True)
     
+    # Help expander with toxicity explanation
     with st.expander("ℹ️ **Understanding Toxicity - Safety Screening Explained**"):
         st.markdown("""
         ### Why Check Toxicity?
@@ -530,11 +759,13 @@ elif page == "Toxicity Radar":
         **Remember**: These are predictions. Real drugs need extensive lab and clinical testing!
         """)
     
+    # Dual prediction system info
     st.info("""
     **🎯 Dual Prediction System:** This platform offers both **Neural Network** (deep learning) and **Heuristic** (rule-based) toxicity predictions for educational comparison.  
     Both use synthetic training data for demonstration. Production systems require validated datasets (Tox21, ToxCast, DILIrank).
     """)
     
+    # Prediction method selection
     prediction_method = st.radio(
         "Select Prediction Method",
         ["Neural Network (Deep Learning)", "Heuristic (Rule-Based)", "Both (Comparison)"],
@@ -543,22 +774,30 @@ elif page == "Toxicity Radar":
         help="Neural Network uses molecular descriptors + Morgan fingerprints. Heuristic uses structural alerts."
     )
     
+    # SMILES input
     smiles_input = st.text_input("Enter SMILES String", "CC(C)Cc1ccc(cc1)C(C)C(=O)O")
     
+    # Analysis button
     if st.button("Run Toxicity Analysis", type="primary"):
+        # Validate SMILES
         is_valid, canonical_smiles = mol_processor.validate_smiles(smiles_input)
         
         if is_valid:
+            # Convert to molecule
             mol = mol_processor.smiles_to_mol(canonical_smiles)
             
+            # Neural Network predictions
             if prediction_method == "Neural Network (Deep Learning)":
                 st.markdown("### 🧠 Neural Network Toxicity Predictions")
                 st.caption("Feed-forward neural network | 2,078 features | 4 toxicity endpoints")
                 
+                # Get neural network predictions
                 neural_profile = neural_tox_predictor.comprehensive_toxicity_profile(mol)
                 
+                # Two-column layout
                 col1, col2 = st.columns(2)
                 
+                # Left column: Hepatotoxicity and Mutagenicity
                 with col1:
                     st.markdown("#### Hepatotoxicity (Liver Damage)")
                     data = neural_profile['Hepatotoxicity']
@@ -566,6 +805,7 @@ elif page == "Toxicity Radar":
                     st.metric("Risk Level", data['risk_level'])
                     st.caption(f"Confidence: {data['confidence']}")
                     
+                    # Color-coded risk pill
                     if data['risk_level'] == 'High':
                         st.markdown('<div class="risk-pill critical-zone">High Risk</div>', unsafe_allow_html=True)
                     elif data['risk_level'] == 'Moderate':
@@ -579,6 +819,7 @@ elif page == "Toxicity Radar":
                     st.metric("Result", data['risk_level'])
                     st.caption(f"Confidence: {data['confidence']}")
                 
+                # Right column: Cardiotoxicity and Carcinogenicity
                 with col2:
                     st.markdown("#### Cardiotoxicity (hERG)")
                     data = neural_profile['Cardiotoxicity (hERG)']
@@ -599,12 +840,15 @@ elif page == "Toxicity Radar":
                     st.metric("Risk Level", data['risk_level'])
                     st.caption(f"Confidence: {data['confidence']}")
             
+            # Heuristic predictions
             elif prediction_method == "Heuristic (Rule-Based)":
                 st.markdown("### 📋 Heuristic Toxicity Predictions")
                 st.caption("Structural alerts + descriptor thresholds")
                 
+                # Get heuristic predictions
                 tox_profile = toxicity_predictor.comprehensive_toxicity_profile(mol)
                 
+                # Two-column layout
                 col1, col2 = st.columns(2)
                 
                 with col1:
@@ -646,13 +890,16 @@ elif page == "Toxicity Radar":
                     st.markdown(f"**Category:** {data['Category']}")
                     st.info(data['Recommendation'])
             
+            # Side-by-side comparison
             else:
                 st.markdown("### 🔬 Side-by-Side Comparison")
                 st.caption("Neural Network vs Heuristic Methods")
                 
+                # Get both prediction types
                 neural_profile = neural_tox_predictor.comprehensive_toxicity_profile(mol)
                 tox_profile = toxicity_predictor.comprehensive_toxicity_profile(mol)
                 
+                # Compare each endpoint
                 endpoints = ['Hepatotoxicity', 'Cardiotoxicity (hERG)', 'Mutagenicity (Ames)', 'Carcinogenicity']
                 
                 for endpoint in endpoints:
@@ -686,6 +933,10 @@ elif page == "Toxicity Radar":
             st.error("Invalid SMILES string")
 
 
+# =============================================================================
+# TARGET PREDICTION PAGE
+# =============================================================================
+# Predicts likely biological target class (kinase, GPCR, ion channel, enzyme)
 elif page == "Target Prediction":
     st.markdown('<div class="sub-header">Target Class Prediction</div>', unsafe_allow_html=True)
     
@@ -738,6 +989,7 @@ elif page == "Target Prediction":
     For production use, replace with validated bioactivity models trained on ChEMBL or similar databases.
     """)
     
+    # Default SMILES is Imatinib (a kinase inhibitor)
     smiles_input = st.text_input("Enter SMILES String", "Cc1ccc(cc1Nc2nccc(n2)c3cccnc3)NC(=O)c4ccc(cc4)CN5CCN(CC5)C")
     
     if st.button("Predict Target Class", type="primary"):
@@ -780,6 +1032,10 @@ elif page == "Target Prediction":
             st.error("Invalid SMILES string")
 
 
+# =============================================================================
+# PROTEIN & BIOLOGIC STUDIO PAGE
+# =============================================================================
+# Analysis of proteins, peptides, and biologics (not small molecules)
 elif page == "Protein & Biologic Studio":
     st.markdown('<div class="sub-header">Protein & Biologic Studio</div>', unsafe_allow_html=True)
     
@@ -849,9 +1105,11 @@ elif page == "Protein & Biologic Studio":
     For production use, replace with lab-validated assays and protein engineering tools.
     """)
     
+    # Example biologic dropdown
     example_biologics = ["Enter your own"] + get_all_peptide_names() + get_all_protein_names()
     selected_example = st.selectbox("Select Example Biologic", example_biologics)
     
+    # Set default sequence based on selection
     if selected_example != "Enter your own":
         peptide_data = get_peptide(selected_example)
         protein_data = get_protein(selected_example)
@@ -867,17 +1125,19 @@ elif page == "Protein & Biologic Studio":
     else:
         default_seq = ""
     
+    # Sequence input
     sequence_input = st.text_area(
-        "Enter Protein/Peptide Sequence (FASTA or plain)", 
+        "Enter Protein/Peptide Sequence (FASTA or plain)",
         value=default_seq,
-        height=150,
-        help="Enter amino acid sequence using single-letter code (A, C, D, E, F, G, H, I, K, L, M, N, P, Q, R, S, T, V, W, Y)"
+        height=100,
+        help="Enter a valid amino acid sequence using single-letter codes"
     )
     
     if st.button("Analyze Biologic", type="primary"):
         is_valid, clean_seq, error = protein_analyzer.validate_fasta(sequence_input)
         
         if is_valid:
+            # Run comprehensive biologic analysis
             profile = protein_analyzer.comprehensive_biologic_profile(sequence_input)
             
             st.markdown("### Sequence Information")
@@ -971,6 +1231,7 @@ elif page == "Protein & Biologic Studio":
             st.error(f"Invalid sequence: {error}")
             st.info("Please enter a valid protein/peptide sequence using single-letter amino acid code (A, C, D, E, F, G, H, I, K, L, M, N, P, Q, R, S, T, V, W, Y)")
     
+    # Protein-Ligand Compatibility section
     st.markdown("---")
     st.markdown("### 🔬 Protein-Ligand Compatibility Testing")
     st.markdown("Test binding compatibility between a protein target and a small molecule ligand")
@@ -1032,16 +1293,11 @@ elif page == "Protein & Biologic Studio":
         )
     
     if st.button("Test Compatibility", type="primary"):
-        # Validate protein sequence (strip to remove trailing newlines/spaces from textarea)
         is_protein_valid, clean_prot_seq, prot_error = protein_analyzer.validate_fasta(protein_seq_compat.strip())
-        
-        # Validate ligand SMILES
         is_ligand_valid, canonical_ligand = mol_processor.validate_smiles(ligand_smiles_compat)
         
         if is_protein_valid and is_ligand_valid:
             ligand_mol = mol_processor.smiles_to_mol(canonical_ligand)
-            
-            # Predict compatibility
             compat_result = protein_ligand_scorer.predict_binding_compatibility(clean_prot_seq, ligand_mol)
             
             st.markdown("### Binding Compatibility Results")
@@ -1084,6 +1340,10 @@ elif page == "Protein & Biologic Studio":
             st.error("Invalid ligand SMILES string")
 
 
+# =============================================================================
+# DRUG-LIKENESS DECK PAGE
+# =============================================================================
+# Comprehensive drug-likeness assessment (Lipinski, Veber, QED, SA)
 elif page == "Drug-Likeness Deck":
     st.markdown('<div class="sub-header">Drug-Likeness Deck</div>', unsafe_allow_html=True)
     
@@ -1217,6 +1477,10 @@ elif page == "Drug-Likeness Deck":
             st.error("Invalid SMILES string")
 
 
+# =============================================================================
+# EXPLAINABILITY CANVAS PAGE
+# =============================================================================
+# ML model interpretability with feature importance
 elif page == "Explainability Canvas":
     st.markdown('<div class="sub-header">Explainability Canvas</div>', unsafe_allow_html=True)
     
@@ -1280,7 +1544,7 @@ elif page == "Explainability Canvas":
             mol = mol_processor.smiles_to_mol(canonical_smiles)
             descriptors = mol_processor.calculate_molecular_descriptors(mol)
             
-            # ML models trained on 30 features, use first 30 descriptors
+            # ML models trained on 30 features
             prediction = ml_predictor.predict_with_ensemble(descriptors[:30])
             
             st.markdown("### Ensemble Prediction Results")
@@ -1312,6 +1576,10 @@ elif page == "Explainability Canvas":
             st.error("Invalid SMILES string")
 
 
+# =============================================================================
+# KNOWLEDGE GRAPH PAGE
+# =============================================================================
+# Drug-target-disease relationship explorer with interactive visualization
 elif page == "Knowledge Graph":
     st.markdown('<div class="sub-header">Biomedical Knowledge Graph Explorer</div>', unsafe_allow_html=True)
     
@@ -1389,6 +1657,7 @@ elif page == "Knowledge Graph":
     Explore connections visually, discover drug repurposing opportunities, and export data for further analysis.
     """)
     
+    # Graph statistics
     stats = kg.get_graph_statistics()
     
     col1, col2, col3, col4, col5 = st.columns(5)
@@ -1398,6 +1667,7 @@ elif page == "Knowledge Graph":
     col4.metric("Diseases", stats['Diseases'])
     col5.metric("Pathways", stats['Pathways'])
     
+    # Tabbed interface for different features
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "🎨 Interactive Visualization",
         "🔍 Query Graph", 
@@ -1406,6 +1676,7 @@ elif page == "Knowledge Graph":
         "💾 Export Data"
     ])
     
+    # Tab 1: Interactive PyVis visualization
     with tab1:
         st.markdown("### Interactive Network Visualization")
         
@@ -1446,6 +1717,7 @@ elif page == "Knowledge Graph":
                     except Exception as e:
                         st.error(f"Error generating visualization: {str(e)}")
     
+    # Tab 2: Query Graph
     with tab2:
         st.markdown("### Query Knowledge Graph")
         
@@ -1548,6 +1820,7 @@ elif page == "Knowledge Graph":
                 else:
                     st.warning(disease_info['error'])
     
+    # Tab 3: Drug Repurposing
     with tab3:
         st.markdown("### 💡 Drug Repurposing Predictions")
         st.info("""
@@ -1589,6 +1862,7 @@ elif page == "Knowledge Graph":
                 else:
                     st.warning("No repurposing opportunities found. This drug may have limited target overlap with other diseases.")
     
+    # Tab 4: Network Analytics
     with tab4:
         st.markdown("### 📊 Network Analytics")
         
@@ -1682,6 +1956,7 @@ elif page == "Knowledge Graph":
                 central_df = pd.DataFrame(central_data)
                 st.dataframe(central_df, use_container_width=True, hide_index=True)
     
+    # Tab 5: Export Data
     with tab5:
         st.markdown("### 💾 Export Knowledge Graph Data")
         st.info("Download the knowledge graph in various formats for external analysis or sharing.")
@@ -1741,6 +2016,10 @@ elif page == "Knowledge Graph":
                     st.error(f"Error exporting GraphML: {str(e)}")
 
 
+# =============================================================================
+# LEAD LAB PAGE
+# =============================================================================
+# Batch screening and prioritization of multiple molecules
 elif page == "Lead Lab":
     st.markdown('<div class="sub-header">Lead Lab — Batch Screening & Prioritization</div>', unsafe_allow_html=True)
     
@@ -1806,6 +2085,7 @@ elif page == "Lead Lab":
     
     if input_method == "Example Dataset":
         if st.button("Run Batch Analysis on Example Set"):
+            # Example molecules for demonstration
             example_molecules = [
                 ("Ibuprofen", "CC(C)Cc1ccc(cc1)C(C)C(=O)O"),
                 ("Aspirin", "CC(=O)Oc1ccccc1C(=O)O"),
@@ -1855,6 +2135,10 @@ elif page == "Lead Lab":
             st.info("CSV upload functionality ready. Add your SMILES data!")
 
 
+# =============================================================================
+# CASE STUDY PAGE
+# =============================================================================
+# Demonstration of kinase inhibitor lead ranking workflow
 elif page == "Case Study":
     st.markdown('<div class="sub-header">Case Study: Ranking Kinase Inhibitor Leads</div>', 
                 unsafe_allow_html=True)
@@ -1921,6 +2205,7 @@ elif page == "Case Study":
         Instead of spending millions testing all 5 in the lab, you predict first and test only the winner!
         """)
     
+    # Load case study data
     case_study = get_case_study_data()
     
     st.markdown(f"#### {case_study['title']}")
@@ -1939,12 +2224,14 @@ elif page == "Case Study":
             if is_valid:
                 mol = mol_processor.smiles_to_mol(canonical_smiles)
                 
+                # Run all analyses
                 lipinski = drug_likeness.lipinski_rule_of_5(mol)
                 qed = drug_likeness.qed_score(mol)
                 kinase_pred = target_predictor.predict_kinase_inhibitor(mol)
                 adme = adme_predictor.predict_caco2_permeability(mol)
                 tox = toxicity_predictor.predict_hepatotoxicity(mol)
                 
+                # Calculate overall score
                 score = 0
                 if lipinski['Passes']: score += 20
                 if qed['QED Score'] >= 0.5: score += 20
@@ -1962,6 +2249,7 @@ elif page == "Case Study":
                     'Overall Score': score
                 })
         
+        # Sort by overall score
         results_df = pd.DataFrame(results)
         results_df = results_df.sort_values('Overall Score', ascending=False)
         results_df['Rank'] = range(1, len(results_df) + 1)
@@ -1985,6 +2273,10 @@ elif page == "Case Study":
         """)
 
 
+# =============================================================================
+# ABOUT PAGE
+# =============================================================================
+# Platform information and credits
 elif page == "About":
     st.markdown('<div class="sub-header">About Ardit BioStudio</div>', unsafe_allow_html=True)
     
@@ -2042,6 +2334,10 @@ elif page == "About":
     st.markdown('<div class="sub-header">Contact</div>', unsafe_allow_html=True)
     st.write("For questions about this platform or to discuss pharmaceutical AI/ML applications.")
 
+# =============================================================================
+# FOOTER
+# =============================================================================
+# Display footer with credits and links
 st.markdown("""
 <div class="biostudio-footer">
     <p>Created by <span class="gold-accent">Ardit</span> • <span class="gold-accent">Ardit BioStudio</span> • AI Molecular Intelligence • v1.0</p>
