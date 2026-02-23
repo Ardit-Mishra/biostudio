@@ -1,7 +1,16 @@
 [project]
-name = "repl-nix-workspace"
-version = "0.1.0"
-description = "AI-Powered Drug Discovery Platform - Educational Research Tool"
+name = "biostudio"
+version = "1.2.0"
+description = "BioStudio — AI-Powered Molecular Intelligence Platform for Educational Drug Discovery"
+license = {text = "MIT"}
+authors = [
+    {name = "Ardit Mishra", email = "amishra7599@gmail.com"}
+]
+
+[project.urls]
+Homepage = "https://github.com/Ardit-Mishra/biostudio"
+Repository = "https://github.com/Ardit-Mishra/biostudio"
+Issues = "https://github.com/Ardit-Mishra/biostudio/issues"
 requires-python = ">=3.11,<3.12"
 dependencies = [
     "biopython>=1.86",

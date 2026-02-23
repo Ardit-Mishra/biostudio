@@ -1,15 +1,15 @@
 cff-version: 1.2.0
-message: "If you use Ardit BioCore in your research, please cite it as below."
+message: "If you use BioStudio in your research, please cite it as below."
 type: software
-title: "Ardit BioCore: AI-Powered Molecular Intelligence Platform"
+title: "BioStudio: AI-Powered Molecular Intelligence Platform"
 abstract: "An open-source research platform demonstrating computational drug discovery workflows using cheminformatics, QSAR modeling, and machine learning. The platform provides educational implementations of pharmaceutical AI/ML techniques including ADME/PK prediction, neural network-based toxicity assessment, protein-ligand compatibility scoring, and biologic developability analysis."
 authors:
   - family-names: "Mishra"
     given-names: "Ardit"
     email: "amishra7599@gmail.com"
     orcid: "https://orcid.org/0000-0000-0000-0000"  # Add your ORCID if available
-repository-code: "https://github.com/ardit-mishra/ardit-biocore"
-url: "https://github.com/ardit-mishra/ardit-biocore"
+repository-code: "https://github.com/Ardit-Mishra/biostudio"
+url: "https://github.com/Ardit-Mishra/biostudio"
 license: MIT
 version: "1.2.0"
 date-released: "2025-11-16"
@@ -55,10 +55,10 @@ references:
 
 preferred-citation:
   type: software
-  title: "Ardit BioCore: AI-Powered Molecular Intelligence Platform"
+  title: "BioStudio: AI-Powered Molecular Intelligence Platform"
   authors:
     - family-names: "Mishra"
       given-names: "Ardit"
   year: 2025
-  url: "https://github.com/ardit-mishra/ardit-biocore"
+  url: "https://github.com/Ardit-Mishra/biostudio"
   version: "1.2.0"

@@ -1,4 +1,4 @@
-# Ardit BioCore Examples
+# BioStudio Examples
 
 Example scripts and notebooks demonstrating platform usage.
 
@@ -80,9 +80,9 @@ Sorafenib  0.68          80.1           High      4.55
 Screen a virtual library to identify promising candidates:
 
 ```python
-from examples.api_usage_demo import ArditBioCoreAPI
+from examples.api_usage_demo import BioStudioAPI
 
-api = ArditBioCoreAPI()
+api = BioStudioAPI()
 
 # Your library of SMILES
 library = [...]  # List of SMILES strings
@@ -122,7 +122,7 @@ Quickly flag compounds with toxicity concerns:
 ```python
 def flag_toxic_compounds(smiles_list):
     """Flag compounds with high toxicity risk."""
-    api = ArditBioCoreAPI()
+    api = BioStudioAPI()
     flagged = []
     
     for smiles in smiles_list:
@@ -156,7 +156,7 @@ import pandas as pd
 df = pd.read_csv('molecules.csv')
 
 # Add predictions
-api = ArditBioCoreAPI()
+api = BioStudioAPI()
 df['qed'] = df['SMILES'].apply(
     lambda s: api.predict_druglikeness(s)['qed']
 )
@@ -173,7 +173,7 @@ from rdkit import Chem
 from rdkit.Chem import Draw
 
 # Get predictions
-api = ArditBioCoreAPI()
+api = BioStudioAPI()
 result = api.comprehensive_analysis(smiles)
 
 # Visualize with RDKit

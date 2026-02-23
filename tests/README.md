@@ -1,4 +1,4 @@
-# Test Suite for Ardit BioCore
+# Test Suite for BioStudio
 
 Unit tests for molecular processing, drug-likeness calculations, and prediction models.
 

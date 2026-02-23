@@ -1,6 +1,6 @@
-# Ardit BioCore Tutorial
+# BioStudio Tutorial
 
-Complete user guide for **Ardit BioCore** - AI-Powered Molecular Intelligence Platform
+Complete user guide for **BioStudio** - AI-Powered Molecular Intelligence Platform
 
 ---
 
@@ -23,7 +23,7 @@ Complete user guide for **Ardit BioCore** - AI-Powered Molecular Intelligence Pl
 
 ```bash
 # Navigate to project directory
-cd ardit-biocore
+cd biostudio
 
 # Activate virtual environment (if using)
 source venv/bin/activate  # Linux/macOS
@@ -778,7 +778,7 @@ The platform uses consistent color coding:
 - **Documentation**: [README.md](README.md), [METHODOLOGY.md](METHODOLOGY.md), [REFERENCES.md](REFERENCES.md)
 - **Setup Issues**: [SETUP.md](SETUP.md)
 - **Scientific Questions**: Read references in METHODOLOGY.md
-- **GitHub Issues**: https://github.com/ardit-mishra/ardit-biocore/issues
+- **GitHub Issues**: https://github.com/ardit-mishra/biostudio/issues
 
 ### Contact
 

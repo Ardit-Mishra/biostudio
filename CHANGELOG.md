@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to **Ardit BioCore** will be documented in this file.
+All notable changes to **BioStudio** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -270,9 +270,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for information on how to contribute to t
 
 ## Links
 
-- **Repository**: https://github.com/ardit-mishra/ardit-biocore
-- **Issues**: https://github.com/ardit-mishra/ardit-biocore/issues
-- **Discussions**: https://github.com/ardit-mishra/ardit-biocore/discussions
+- **Repository**: https://github.com/ardit-mishra/biostudio
+- **Issues**: https://github.com/ardit-mishra/biostudio/issues
+- **Discussions**: https://github.com/ardit-mishra/biostudio/discussions
 
 ---
 

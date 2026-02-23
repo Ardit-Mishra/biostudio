@@ -164,4 +164,4 @@ Any specific areas you'd like reviewers to focus on?
 
 ---
 
-**Thank you for contributing to Ardit BioCore!** 🧬
+**Thank you for contributing to BioStudio!** 🧬

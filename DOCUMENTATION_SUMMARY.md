@@ -1,9 +1,9 @@
-# Documentation Summary for Ardit BioCore
+# Documentation Summary for BioStudio
 
 ## Files Created/Updated for GitHub Publication
 
 ### Core Documentation (8 files)
-1. ✅ README.md - Updated with ardit-biocore repository and contact info
+1. ✅ README.md - Updated with biostudio repository and contact info
 2. ✅ SETUP.md - Comprehensive installation guide (11KB)
 3. ✅ TUTORIAL.md - Complete user guide with examples (19KB)
 4. ✅ CONTRIBUTING.md - Contribution guidelines (15KB)
@@ -44,7 +44,7 @@
 - ✅ Code of conduct
 
 ### Repository Branding
-- ✅ Repository name: ardit-biocore (consistent across all files)
+- ✅ Repository name: biostudio (consistent across all files)
 - ✅ Contact: amishra7599@gmail.com
 - ✅ LinkedIn: linkedin.com/in/ardit-mishra
 - ✅ GitHub: github.com/ardit-mishra
@@ -106,7 +106,7 @@ Total documentation: ~120 KB across 20 files
 - [x] Clear dependency management
 
 ### Branding & Contact ✅
-- [x] Repository name: ardit-biocore
+- [x] Repository name: biostudio
 - [x] Contact email: amishra7599@gmail.com
 - [x] LinkedIn: linkedin.com/in/ardit-mishra
 - [x] Professional author attribution

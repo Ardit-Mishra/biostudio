@@ -13,7 +13,7 @@ We currently support the following versions with security updates:
 
 ## Reporting a Vulnerability
 
-We take security vulnerabilities seriously. If you discover a security issue in Ardit BioCore, please follow responsible disclosure practices.
+We take security vulnerabilities seriously. If you discover a security issue in BioStudio, please follow responsible disclosure practices.
 
 ### How to Report
 
@@ -229,11 +229,11 @@ For security concerns:
 **PGP Key**: [If available]  
 **GitHub**: [@ardit-mishra](https://github.com/ardit-mishra)
 
-For general bugs (non-security): [GitHub Issues](https://github.com/ardit-mishra/ardit-biocore/issues)
+For general bugs (non-security): [GitHub Issues](https://github.com/ardit-mishra/biostudio/issues)
 
 ---
 
 **Last Updated**: November 2025  
 **Maintained by**: Ardit Mishra
 
-Thank you for helping keep Ardit BioCore secure! 🔒
+Thank you for helping keep BioStudio secure! 🔒

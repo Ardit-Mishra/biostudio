@@ -45,7 +45,7 @@ Any other context, screenshots, mockups, or examples.
 
 ## Checklist
 
-- [ ] I've checked [existing issues](https://github.com/ardit-mishra/ardit-biocore/issues) for similar requests
+- [ ] I've checked [existing issues](https://github.com/ardit-mishra/biostudio/issues) for similar requests
 - [ ] This feature aligns with the project's scope (computational drug discovery)
 - [ ] I've provided scientific references (if applicable)
 - [ ] I'm willing to contribute to implementation (optional)

@@ -1,6 +1,6 @@
-# Contributing to Ardit BioCore
+# Contributing to BioStudio
 
-Thank you for your interest in contributing to **Ardit BioCore** - AI-Powered Molecular Intelligence Platform!
+Thank you for your interest in contributing to **BioStudio** - AI-Powered Molecular Intelligence Platform!
 
 This document provides guidelines for contributing to ensure high-quality, scientifically rigorous additions to the project.
 
@@ -33,7 +33,7 @@ This project adheres to the [Contributor Covenant Code of Conduct](CODE_OF_CONDU
 
 Before submitting a bug report:
 
-1. Check [existing issues](https://github.com/ardit-mishra/ardit-biocore/issues)
+1. Check [existing issues](https://github.com/Ardit-Mishra/biostudio/issues)
 2. Verify you're using the correct NumPy version (<2.0)
 3. Test with a fresh virtual environment
 
@@ -95,8 +95,8 @@ Areas where contributions are particularly welcome:
 
 ```bash
 # Fork the repository on GitHub
-git clone https://github.com/YOUR_USERNAME/ardit-biocore.git
-cd ardit-biocore
+git clone https://github.com/YOUR_USERNAME/biostudio.git
+cd biostudio
 ```
 
 ### 2. Create Development Environment
@@ -638,9 +638,9 @@ Notes:
 
 ## Questions?
 
-- **Technical Issues**: Open a [GitHub Issue](https://github.com/ardit-mishra/ardit-biocore/issues)
+- **Technical Issues**: Open a [GitHub Issue](https://github.com/Ardit-Mishra/biostudio/issues)
 - **Scientific Questions**: Email amishra7599@gmail.com
-- **General Discussion**: Start a [Discussion](https://github.com/ardit-mishra/ardit-biocore/discussions)
+- **General Discussion**: Start a [Discussion](https://github.com/Ardit-Mishra/biostudio/discussions)
 
 ---
 
@@ -652,7 +652,7 @@ Contributors will be acknowledged in:
 - CHANGELOG.md for specific contributions
 - Academic citations (if applicable)
 
-Thank you for helping make Ardit BioCore better! 🧬
+Thank you for helping make BioStudio better! 🧬
 
 ---
 

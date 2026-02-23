@@ -57,7 +57,7 @@ Any additional information that might help diagnose the issue:
 
 ## Checklist
 
-- [ ] I've checked [existing issues](https://github.com/ardit-mishra/ardit-biocore/issues) for duplicates
+- [ ] I've checked [existing issues](https://github.com/ardit-mishra/biostudio/issues) for duplicates
 - [ ] I'm using Python 3.11
 - [ ] I'm using NumPy <2.0 (verify with `python -c "import numpy; print(numpy.__version__)"`)
 - [ ] I've tested in a fresh virtual environment

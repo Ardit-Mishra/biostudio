@@ -1,6 +1,6 @@
 # Model Validation & Performance
 
-Comprehensive documentation of validation approaches, benchmarks, performance metrics, and limitations for **Ardit BioCore** predictive models.
+Comprehensive documentation of validation approaches, benchmarks, performance metrics, and limitations for **BioStudio** predictive models.
 
 ---
 

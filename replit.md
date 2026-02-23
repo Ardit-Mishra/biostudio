@@ -1,8 +1,8 @@
-# Ardit BioCore
+# BioStudio
 
 ## Overview
 
-Ardit BioCore is an AI-powered molecular intelligence platform for computational drug discovery. It provides interactive tools for analyzing small molecules and proteins, including drug-likeness assessment, ADME/PK prediction, toxicity profiling, target class prediction, protein-ligand compatibility scoring, and biomedical knowledge graph exploration.
+BioStudio is an AI-powered molecular intelligence platform for computational drug discovery. It provides interactive tools for analyzing small molecules and proteins, including drug-likeness assessment, ADME/PK prediction, toxicity profiling, target class prediction, protein-ligand compatibility scoring, and biomedical knowledge graph exploration.
 
 The platform is primarily educational and research-oriented. It implements a mix of validated industry-standard methods (Lipinski Rule of 5, Veber rules, QED scoring) and demonstration/heuristic models (ADME predictions, toxicity scoring, target prediction). Neural network models are trained on synthetic data as proof-of-concept. All methods are backed by peer-reviewed scientific references documented in REFERENCES.md.
 

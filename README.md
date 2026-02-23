@@ -1,8 +1,10 @@
-# Ardit BioCore
+# BioStudio
 
 **AI-Powered Molecular Intelligence Platform**
 
 *Open-Source Research Platform for Computational Drug Discovery*
+
+> **Live Demo**: _Coming soon_
 
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
 [![RDKit](https://img.shields.io/badge/RDKit-2022.9-green.svg)](https://www.rdkit.org/)
@@ -182,8 +184,8 @@ The platform uses a modular architecture for scalability and maintainability:
 
 ```bash
 # Clone the repository
-git clone https://github.com/ardit-mishra/ardit-biocore.git
-cd ardit-biocore
+git clone https://github.com/Ardit-Mishra/biostudio.git
+cd biostudio
 
 # Install dependencies
 pip install -r requirements.txt
@@ -460,6 +462,16 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
+## 🔁 Reproducibility
+
+All results shown in this platform can be reproduced from source:
+
+- **Installation**: See [`SETUP.md`](SETUP.md) for complete environment setup (pip, conda, Docker)
+- **Usage Guide**: See [`TUTORIAL.md`](TUTORIAL.md) for step-by-step walkthrough of every module
+- **Validation**: See [`VALIDATION.md`](VALIDATION.md) for model benchmarks and limitations
+
+---
+
 ## 📞 Contact
 
 For questions about this project or to discuss pharmaceutical AI/ML applications:
@@ -471,12 +483,12 @@ For questions about this project or to discuss pharmaceutical AI/ML applications
 
 <div align="center">
 
-**Ardit BioCore**
+**BioStudio**
 
 *AI-Powered Molecular Intelligence Platform*
 
 RDKit • scikit-learn • XGBoost • Streamlit • FastAPI
 
-Created by Ardit • github.com/ardit-mishra
+Created by Ardit Mishra • [github.com/Ardit-Mishra/biostudio](https://github.com/Ardit-Mishra/biostudio)
 
 </div>

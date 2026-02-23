@@ -62,13 +62,18 @@ htmlcov/
 .env.local
 .env.*.local
 
-# Replit
+# Hosted-IDE / local environment
 .replit
 replit.nix
 .config/
 .cache/
 .upm/
 .pythonlibs/
+.local/
+
+# Runtime artifacts
+outputs/
+runs/
 
 # Streamlit
 .streamlit/secrets.toml

@@ -1,6 +1,6 @@
 # Installation & Setup Guide
 
-Complete installation instructions for **Ardit BioCore** - AI-Powered Molecular Intelligence Platform
+Complete installation instructions for **BioStudio** - AI-Powered Molecular Intelligence Platform
 
 ---
 
@@ -43,8 +43,8 @@ Complete installation instructions for **Ardit BioCore** - AI-Powered Molecular 
 
 ```bash
 # Clone the repository
-git clone https://github.com/ardit-mishra/ardit-biocore.git
-cd ardit-biocore
+git clone https://github.com/ardit-mishra/biostudio.git
+cd biostudio
 
 # Create virtual environment
 python3.11 -m venv venv
@@ -58,8 +58,8 @@ pip install -r requirements.txt
 
 ```bash
 # Clone the repository
-git clone https://github.com/ardit-mishra/ardit-biocore.git
-cd ardit-biocore
+git clone https://github.com/ardit-mishra/biostudio.git
+cd biostudio
 
 # Install uv if not already installed
 pip install uv
@@ -72,8 +72,8 @@ uv pip install -r requirements.txt
 
 ```bash
 # Clone the repository
-git clone https://github.com/ardit-mishra/ardit-biocore.git
-cd ardit-biocore
+git clone https://github.com/ardit-mishra/biostudio.git
+cd biostudio
 
 # Install with pip
 pip install -e .
@@ -97,8 +97,8 @@ python3.11 -m venv venv
 source venv/bin/activate
 
 # Using conda
-conda create -n ardit-biocore python=3.11
-conda activate ardit-biocore
+conda create -n biostudio python=3.11
+conda activate biostudio
 ```
 
 #### Windows
@@ -109,8 +109,8 @@ python -m venv venv
 venv\Scripts\activate
 
 # Using conda
-conda create -n ardit-biocore python=3.11
-conda activate ardit-biocore
+conda create -n biostudio python=3.11
+conda activate biostudio
 ```
 
 ### Deactivating Virtual Environment
@@ -285,7 +285,7 @@ print(f'✓ Expected: 2078 features (30 descriptors + 2048 FP bits)')
 
 ```bash
 # Navigate to project directory
-cd ardit-biocore
+cd biostudio
 
 # Activate virtual environment
 source venv/bin/activate  # Linux/macOS
@@ -302,7 +302,7 @@ streamlit run app.py --server.port 5000
 
 ```bash
 # In a separate terminal
-cd ardit-biocore
+cd biostudio
 source venv/bin/activate
 
 # Run FastAPI server
@@ -496,7 +496,7 @@ mypy models/ utils/ features/
 pip install jupyter ipykernel
 
 # Create kernel for this project
-python -m ipykernel install --user --name=ardit-biocore
+python -m ipykernel install --user --name=biostudio
 
 # Launch Jupyter
 jupyter notebook examples/
@@ -532,10 +532,10 @@ See `Dockerfile` for containerized setup:
 
 ```bash
 # Build image
-docker build -t ardit-biocore .
+docker build -t biostudio .
 
 # Run container
-docker run -p 5000:5000 ardit-biocore
+docker run -p 5000:5000 biostudio
 ```
 
 ---
@@ -544,7 +544,7 @@ docker run -p 5000:5000 ardit-biocore
 
 If you encounter issues not covered here:
 
-1. Check existing [GitHub Issues](https://github.com/ardit-mishra/ardit-biocore/issues)
+1. Check existing [GitHub Issues](https://github.com/ardit-mishra/biostudio/issues)
 2. Review RDKit documentation: https://www.rdkit.org/docs/
 3. Open a new issue with:
    - Python version (`python --version`)
