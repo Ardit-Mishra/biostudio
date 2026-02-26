@@ -1,3 +1,4 @@
+![Project Banner](assets/banner.png)
 # BioStudio
 
 Computational drug discovery research platform implemented in Python using RDKit, scikit-learn, XGBoost, Streamlit, and FastAPI.
