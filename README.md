@@ -34,11 +34,13 @@ Scientific foundations and methodological references are documented in `METHODOL
 - Morgan fingerprint generation (ECFP4, radius=2, 2048 bits)  
 - Drug-likeness scoring (Lipinski Rule of 5, Veber rules, QED, Synthetic Accessibility)  
 - ADME/PK heuristic scoring (LogP, permeability, BBB, CYP450, clearance)  
-- Toxicity prediction  
+- Toxicity and ADMET prediction  
   - Heuristic structural alerts  
-  - Neural network toxicity model (DeepTox-inspired architecture)  
-- Target class likelihood estimation (kinase, GPCR, ion channel, enzyme)  
-- Ensemble ML predictions (Random Forest, XGBoost, Neural Network)  
+  - Real XGBoost models trained on Therapeutics Data Commons, scaffold-split and
+    scored once on held-out test data: DILI 0.849, hERG 0.778, Ames 0.847,
+    BBB 0.905, P-gp 0.908 AUROC; CYP3A4 0.868 AUPRC; Caco-2 0.286 MAE.
+    Carcinogenicity has no model and reports as unavailable rather than guessing.  
+- Target class likelihood estimation (kinase, GPCR, ion channel, enzyme) — heuristic  
 - SHAP-based feature importance visualization  
 
 ### Biologic & Protein Analysis
