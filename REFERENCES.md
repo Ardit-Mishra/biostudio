@@ -346,6 +346,12 @@ DOI: [10.1093/nar/gkw1074](https://doi.org/10.1093/nar/gkw1074)
 **[48]** Kim, S., Chen, J., Cheng, T., Gindulyte, A., He, J., He, S., ... & Bolton, E. E. (2021). PubChem in 2021: new data content and improved web interfaces. *Nucleic Acids Research*, 49(D1), D1388-D1395.  
 DOI: [10.1093/nar/gkaa971](https://doi.org/10.1093/nar/gkaa971)
 
+**[51]** Huang, K., Fu, T., Gao, W., Zhao, Y., Roohani, Y., Leskovec, J., Coley, C. W., Xiao, C., Sun, J., & Zitnik, M. (2021). Therapeutics Data Commons: Machine Learning Datasets and Tasks for Drugs and Drug Targets. *NeurIPS Datasets and Benchmarks*.  
+URL: [https://tdcommons.ai/](https://tdcommons.ai/)
+
+- **The actual training data source for this platform's real ADMET models**: DILI, hERG, AMES, BBB_Martins, Pgp_Broccatelli, CYP3A4_Veith, and Caco2_Wang datasets, each trained with a TDC scaffold split (seed 1)
+- See `models/saved_models/admet_models_manifest.json` for per-endpoint dataset sizes and held-out test metrics
+
 ---
 
 ## Additional Reading
@@ -380,13 +386,13 @@ URL: [https://arxiv.org/abs/1502.02072](https://arxiv.org/abs/1502.02072)
 
 ## Note on Implementation
 
-This platform uses **heuristic scoring functions** based on the molecular descriptors and principles established in the above literature. For production applications, these heuristics should be replaced with:
+This platform's methods fall into three categories, and they should not be described uniformly:
 
-1. **Validated QSAR models** trained on curated pharmaceutical datasets (ChEMBL, proprietary data)
-2. **Deep learning models** (e.g., Graph Neural Networks for toxicity [17])
-3. **Experimental validation** of all predictions
+1. **Legitimate heuristic implementations**: Drug-likeness metrics (`utils/drug_likeness.py`) and the rule-based ADME/toxicity modules (`adme_predictors.py`, `toxicity_predictors.py`) are genuine, if simplified, implementations of the cited literature above — descriptor-based scoring functions grounded in the referenced papers, not data-driven models. For production applications these should be replaced with validated QSAR models trained on curated pharmaceutical datasets (ChEMBL, proprietary data) and confirmed with experimental validation.
 
-The scientific foundation for each method is sound, but implementation details differ between research papers and this demonstration platform.
+2. **Deprecated fabrications — implement none of the cited methods**: `models/neural_toxicity.py` and `models/ml_models.py` are not scientifically meaningful and should not be cited alongside the literature above. `neural_toxicity.py`'s weights are set via `np.random.randn() * 0.01` at initialization and never trained (no optimizer, no `.fit()` ever runs) — despite prior documentation attributing it to DeepTox (Mayr et al. 2016) [19a], it implements none of that methodology. `ml_models.py`'s Random Forest/XGBoost models are trained only on `create_synthetic_dataset()`, a programmatically fabricated dataset with no relationship to real pharmaceutical measurements. Both are deprecated.
+
+3. **Real validated ML**: Seven gradient-boosted (XGBoost) ADMET models (DILI, hERG, AMES, BBB_Martins, Pgp_Broccatelli, CYP3A4_Veith, Caco2_Wang) trained on real Therapeutics Data Commons (TDC) data with held-out scaffold-split testing. Metrics in `models/saved_models/admet_models_manifest.json`, served by `models/real_admet.py`. See [51] below for the TDC citation.
 
 ---
 

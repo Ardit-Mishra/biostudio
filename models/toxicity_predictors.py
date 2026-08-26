@@ -29,7 +29,10 @@ from rdkit.Chem import Descriptors, Crippen, Fragments, Lipinski
 # Main class for toxicity risk predictions
 # Uses rule-based scoring derived from known toxic structure patterns
 class ToxicityPredictor:
-    
+    """Rule-based / heuristic toxicity screen (not ML). All risk scores below
+    are computed from explicit structural-alert and property-threshold
+    formulas over RDKit descriptors, not from a trained model."""
+
     # Constructor initializes empty models dictionary
     # In production, this would load trained ML models
     def __init__(self):

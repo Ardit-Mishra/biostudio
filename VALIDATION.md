@@ -26,9 +26,10 @@ This platform demonstrates computational drug discovery workflows with **varying
 
 | Model Type | Validation Status | Production Ready? |
 |-----------|------------------|-------------------|
+| Real ADMET Models (XGBoost, 7 endpoints) | ✅ **Validated** - Held-out TDC scaffold-split test scores | Yes |
 | Drug-Likeness (Lipinski, Veber, QED, SA) | ✅ **Validated** - Standard industry metrics | Yes |
-| Neural Network Toxicity Predictor | ⚠️ **Demonstration** - Trained on synthetic data | No |
-| Protein-Ligand Compatibility | ⚠️ **Demonstration** - Trained on synthetic data | No |
+| Neural Network Toxicity Predictor | ❌ **NOT TRAINED** - frozen random weights (`np.random.randn`), no learning ever occurred | Deprecated/removed |
+| Protein-Ligand Compatibility | ⛔ **Disabled** - untrained random-weight demo (never fitted to any data) | No |
 | ADME/PK Heuristics | ⚠️ **Heuristic** - Rule-based scoring | No |
 | Toxicity Heuristics | ⚠️ **Heuristic** - Structural alerts | No |
 | Target Class Heuristics | ⚠️ **Heuristic** - Descriptor thresholds | No |
@@ -44,6 +45,24 @@ This platform demonstrates computational drug discovery workflows with **varying
 
 ## Model Categories
 
+### Category 0: Real Validated ML (XGBoost) ✅
+
+Seven gradient-boosted (XGBoost) ADMET models, trained and held-out-tested on **Therapeutics Data Commons (TDC)** scaffold splits (seed 1). These are the only legitimate ML models in the platform. Served by `models/real_admet.py` (`RealADMETPredictor.comprehensive_toxicity_profile()`). Full metrics: `models/saved_models/admet_models_manifest.json`.
+
+| Endpoint | App Label | Metric | Test Score | Threshold | n_train / n_test |
+|---|---|---|---|---|---|
+| DILI | Hepatotoxicity (DILI) | AUROC | 0.925 | 0.40 | 379 / 96 |
+| hERG | Cardiotoxicity (hERG) | AUROC | 0.809 | 0.35 | 523 / 132 |
+| AMES | Mutagenicity (Ames) | AUROC | 0.845 | 0.50 | 5,821 / 1,457 |
+| BBB_Martins | Blood-Brain Barrier | AUROC | 0.905 | 0.45 | 1,624 / 406 |
+| Pgp_Broccatelli | P-glycoprotein Inhibition | AUROC | 0.926 | 0.40 | 973 / 245 |
+| CYP3A4_Veith | CYP3A4 Inhibition | AUPRC | 0.869 | 0.55 | 9,861 / 2,467 |
+| Caco2_Wang | Caco-2 Permeability | MAE | 0.339 | n/a (regression) | 728 / 182 |
+
+**Features**: ECFP4/Morgan fingerprint (radius=2, 2048 bits) + 10 RDKit descriptors (MolWt, MolLogP, TPSA, NumHDonors, NumHAcceptors, NumRotatableBonds, NumAromaticRings, FractionCSP3, HeavyAtomCount, NumHeteroatoms) = 2,058 features.
+
+**Production Ready**: Yes, for screening/educational use — these are real held-out test metrics, not training-set numbers.
+
 ### Category 1: Validated Industry Standards ✅
 
 **Drug-likeness metrics** (Lipinski, Veber, QED, SA) are well-established, peer-reviewed methods used in pharmaceutical industry.
@@ -52,13 +71,13 @@ This platform demonstrates computational drug discovery workflows with **varying
 **Production Ready**: Yes  
 **Confidence**: High
 
-### Category 2: Demonstration Neural Networks ⚠️
+### Category 2: Deprecated/Never-Trained Modules ❌⚠️
 
-**Neural toxicity** and **protein-ligand compatibility** predictors are educational implementations showing ML architecture.
+**Neural toxicity** (`models/neural_toxicity.py`) was **never trained at all** — weights are set once via `np.random.randn() * 0.01` and no optimizer/`.fit()` ever runs. It is deprecated in favor of the real XGBoost models in Category 0. **Protein-ligand compatibility** is a separate educational implementation showing ML architecture (not covered by the real-model rebuild).
 
-**Validation**: Trained on synthetic data  
+**Validation**: `neural_toxicity.py` — none, never trained. `protein_ligand_compatibility.py` — none; its weights are one-shot random noise (`np.random.randn()*0.01`), never fitted to any dataset. Both are deprecated/disabled.  
 **Production Ready**: No  
-**Confidence**: Low - for demonstration only
+**Confidence**: None (neural_toxicity) / Low, demonstration only (protein-ligand compatibility)
 
 ### Category 3: Heuristic Scoring Functions ⚠️
 
@@ -288,7 +307,7 @@ logp = Descriptors.MolLogP(mol)
 
 ### Hepatotoxicity
 
-**Status**: ⚠️ **Heuristic (Structural Alerts) + 🧠 Neural Network (Demonstration)**
+**Status**: ⚠️ **Heuristic (Structural Alerts)** + ✅ **Real XGBoost (DILI, AUROC 0.925)** — legacy "Neural Network" module deprecated, never trained
 
 #### Heuristic Approach
 
@@ -304,34 +323,17 @@ logp = Descriptors.MolLogP(mol)
 - **Specificity**: 70-80%
 - **PPV**: ~50% (many false positives)
 
-#### Neural Network Approach
+#### Neural Network Approach — NOT TRAINED, deprecated
 
-**Method**: 5-layer feedforward network (2078 → 1024 → 512 → 256 → 128 → 1)
+**Status**: ❌ **NOT TRAINED** — `models/neural_toxicity.py` sets weights via `np.random.randn() * 0.01` once at initialization and never runs an optimizer or `.fit()`. No learning ever occurred; "5-layer feedforward network" describes an untrained, frozen-random-weight architecture, not a working model.
 
-**Training**: Synthetic dataset (demonstration only)
-
-**Architecture**:
-- Input: 30 RDKit descriptors + 2048 Morgan FP bits
-- Activation: ReLU
-- Output: Sigmoid (toxicity probability)
-
-**Performance**: Not validated on real data
-
-**Limitations**:
-- Trained on synthetic data
-- No dose-response information
-- Mechanism-agnostic
-
-**Production Alternative**:
-- Train on Tox21, DILIrank datasets
-- Multi-task learning for mechanisms
-- Include dose information
+**Real alternative**: DILI (hepatotoxicity) now has a real, held-out-validated XGBoost model — AUROC 0.925 (threshold 0.40) on a TDC scaffold split, n_test=96. See Category 0 above and `models/real_admet.py`.
 
 ---
 
 ### hERG Cardiotoxicity
 
-**Status**: ⚠️ **Heuristic + 🧠 Neural Network**
+**Status**: ⚠️ **Heuristic** + ✅ **Real XGBoost (AUROC 0.809)** — legacy "Neural Network" module deprecated, never trained
 
 #### Heuristic Approach
 
@@ -347,19 +349,17 @@ logp = Descriptors.MolLogP(mol)
 - **Accuracy**: 70-80%
 - **AUC**: 0.75-0.85 for binary classification
 
-#### Neural Network
+#### Neural Network — NOT TRAINED, deprecated
 
-**Performance**: Demonstration only, not validated
+**Status**: ❌ **NOT TRAINED** — fixed random weights (`np.random.randn`), no `fit`/backprop ever run. Module deprecated.
 
-**Production Alternative**:
-- QSAR models trained on hERG IC50 data (n>1000)
-- Expected AUC: 0.85-0.90
+**Real alternative**: Real, held-out-validated XGBoost model — hERG AUROC 0.809 (threshold 0.35) on a TDC scaffold split, n_test=132. See Category 0 above and `models/real_admet.py`.
 
 ---
 
 ### Mutagenicity (Ames Test)
 
-**Status**: ⚠️ **Heuristic + 🧠 Neural Network**
+**Status**: ⚠️ **Heuristic** + ✅ **Real XGBoost (AUROC 0.845)** — legacy "Neural Network" module deprecated, never trained
 
 #### Heuristic Approach
 
@@ -370,13 +370,11 @@ logp = Descriptors.MolLogP(mol)
 - **Specificity**: 80-90%
 - **False Negatives**: Common for pro-mutagens
 
-#### Neural Network
+#### Neural Network — NOT TRAINED, deprecated
 
-**Performance**: Demonstration only
+**Status**: ❌ **NOT TRAINED** — fixed random weights (`np.random.randn`), no `fit`/backprop ever run. Module deprecated.
 
-**Production Alternative**:
-- Models trained on AMES/CCRIS datasets
-- Expected accuracy: 85-90%
+**Real alternative**: Real, held-out-validated XGBoost model — AMES AUROC 0.845 (threshold 0.50) on a TDC scaffold split, n_test=1,457. See Category 0 above and `models/real_admet.py`.
 
 **References**:
 [5] Kazius et al. (2005). J Med Chem, 48(1):312-20. DOI: 10.1021/jm040835a
@@ -385,7 +383,7 @@ logp = Descriptors.MolLogP(mol)
 
 ### Carcinogenicity
 
-**Status**: ⚠️ **Heuristic + 🧠 Neural Network**
+**Status**: ⚠️ **Heuristic only**. A "Neural Network" carcinogenicity predictor was previously listed here, but `models/neural_toxicity.py` was **NOT TRAINED** (fixed random weights, `np.random.randn`, no `fit`/backprop ever run) and is deprecated. No real validated ML model exists for this endpoint in `admet_models_manifest.json` — heuristic structural alerts are the only prediction available.
 
 **Method**: Structural alerts for carcinogenic mechanisms
 
@@ -463,65 +461,13 @@ logp = Descriptors.MolLogP(mol)
 
 ## Machine Learning Models
 
-### Random Forest Ensemble
+### `ml_models.py` (Random Forest / XGBoost ensemble) — Deprecated
 
-**Status**: 🧠 **Demonstration Model**
+**Status**: ❌ **Deprecated — trained on fabricated data**
 
-**Architecture**:
-- 100 decision trees
-- Max depth: 10
-- Features: 2078 molecular descriptors + FP bits
+`models/ml_models.py` trains a Random Forest and an XGBoost classifier on `create_synthetic_dataset()` — a programmatically fabricated dataset, not real pharmaceutical measurements. The "Accuracy 85%/87%" and "AUC 0.88/0.90" figures previously reported here were computed on that fake data (effectively training-set numbers on synthetic labels) and **do not trace to any real, held-out validation** — they are not meaningful and have been removed from this document.
 
-**Training**: Synthetic pharmaceutical dataset
-
-**Performance** (Synthetic Data):
-- **Accuracy**: 85% (training)
-- **AUC**: 0.88 (training)
-
-**Validation**: Not tested on external datasets
-
-**Limitations**:
-- Overfitting likely
-- Needs real pharmaceutical data
-- No external validation
-
----
-
-### XGBoost Gradient Boosting
-
-**Status**: 🧠 **Demonstration Model**
-
-**Architecture**:
-- 50 boosting rounds
-- Learning rate: 0.1
-- Max depth: 6
-
-**Performance** (Synthetic Data):
-- **Accuracy**: 87% (training)
-- **AUC**: 0.90 (training)
-
-**Limitations**:
-- Same as Random Forest
-- Requires real data for production
-
----
-
-### Neural Network
-
-**Status**: 🧠 **Demonstration Model**
-
-**Architecture**:
-- Input: 2078 features
-- Hidden layers: [512, 256, 128]
-- Activation: ReLU
-- Output: Sigmoid
-
-**Training**: Synthetic data
-
-**Limitations**:
-- Small training set
-- No regularization optimization
-- Needs hyperparameter tuning
+**Real alternative**: See **Category 0: Real Validated ML (XGBoost)** above — `models/real_admet.py`, 7 endpoints, real held-out TDC scaffold-split test scores in `models/saved_models/admet_models_manifest.json`.
 
 ---
 
@@ -531,8 +477,8 @@ logp = Descriptors.MolLogP(mol)
 
 1. **Not for Clinical Decisions**: This platform is for research and education only
 2. **Heuristic Models**: Most ADME/Tox predictions use rule-based scoring, not data-driven QSAR
-3. **Synthetic Training Data**: ML models trained on synthetic data, not real pharmaceutical datasets
-4. **No Experimental Validation**: Predictions have not been experimentally validated
+3. **Deprecated Modules**: `ml_models.py` was trained only on fabricated synthetic data, and `neural_toxicity.py` was never trained at all (frozen random weights) — both are deprecated. The 7 real ADMET models (Category 0) were trained on real TDC datasets with held-out scaffold-split testing.
+4. **No Experimental Validation**: Predictions have not been experimentally validated against wet-lab assays, even for the real ADMET models — held-out test-set scores are not a substitute for experimental confirmation
 5. **Single-Endpoint Focus**: No multi-endpoint optimization or ADMET profiles
 
 ### Specific Disclaimers
@@ -543,8 +489,9 @@ logp = Descriptors.MolLogP(mol)
 - Should be validated with in vitro/in vivo studies
 
 ⚠️ **Toxicity Predictions**:
-- Structural alerts have high false positive rates
-- Neural networks trained on synthetic data
+- Structural alerts (rule-based) have high false positive rates
+- The real ADMET models are gradient-boosted (XGBoost) on public TDC data; small datasets
+  (e.g. DILI test n=96) mean real held-out variance
 - Cannot replace regulatory toxicology studies
 
 ⚠️ **Target Predictions**:
@@ -646,12 +593,13 @@ Recommended datasets for model validation:
 
 This platform demonstrates **computational drug discovery workflows** with **varying levels of validation**:
 
+- ✅ **ADMET Toxicity/ADME (7 endpoints)**: real gradient-boosted (XGBoost) models validated on held-out TDC scaffold splits — see `models/saved_models/admet_models_manifest.json`
 - ✅ **Drug-likeness metrics**: Production-ready, validated standards
-- ⚠️ **ADME/PK & Toxicity**: Heuristic methods for screening only
-- 🧠 **Neural Networks**: Demonstration models, not validated on real data
-- 🔬 **Future Work**: Replace heuristics with validated QSAR models
+- ⚠️ **Remaining ADME/PK & Toxicity endpoints**: Heuristic methods for screening only
+- ❌ **`neural_toxicity.py` / `ml_models.py`**: Were never legitimately trained (untrained random weights / fit-on-fake-data) and are being **removed**, not merely "demonstration"
+- 🔬 **Future Work**: Extend real XGBoost coverage to remaining heuristic endpoints (kinase, GPCR, ion channel target-class predictions)
 
-**For production use**, all heuristic and demonstration models must be replaced with validated QSAR models trained on curated pharmaceutical datasets following OECD QSAR validation principles.
+**For production use**, remaining heuristic modules should be replaced with validated QSAR models trained on curated pharmaceutical datasets following OECD QSAR validation principles, following the same held-out-validation approach already used for the 7 real ADMET models.
 
 ---
 

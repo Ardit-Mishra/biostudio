@@ -80,14 +80,10 @@ from models.toxicity_predictors import ToxicityPredictor
 # Import target class prediction module (kinase, GPCR, ion channel, enzyme)
 from models.target_predictors import TargetClassPredictor
 
-# Import ML models (Random Forest, XGBoost ensemble)
-from models.ml_models import MultiModelPredictor
-
-# Import neural network toxicity predictor
-from models.neural_toxicity import NeuralToxicityPredictor
-
-# Import protein-ligand compatibility scorer
-from models.protein_ligand_compatibility import ProteinLigandCompatibilityScorer
+# Import real, held-out-validated ADMET models (XGBoost trained on public TDC
+# datasets with scaffold splits) — replaces the previous random-weight "neural
+# network" toxicity demo.
+from models.real_admet import RealADMETPredictor
 
 # Import case study data (kinase inhibitor candidates)
 from data.kinase_inhibitors import get_case_study_data, get_approved_kinase_drugs
@@ -246,11 +242,9 @@ def load_models():
         - mol_processor: SMILES validation and property calculation
         - drug_likeness: Lipinski, Veber, QED, SA score calculators
         - adme_predictor: ADME/PK predictions
-        - toxicity_predictor: Heuristic toxicity predictions
-        - neural_tox_predictor: Neural network toxicity predictions
-        - protein_ligand_scorer: Protein-ligand binding predictions
+        - toxicity_predictor: Heuristic (rule-based) toxicity predictions
+        - real_admet_predictor: Real, held-out-validated XGBoost ADMET/toxicity models
         - target_predictor: Target class predictions
-        - ml_predictor: RF/XGBoost ensemble predictor
         - kg: Biomedical knowledge graph
         - visualizer: Molecular visualization utilities
         - protein_analyzer: Protein/peptide analysis
@@ -262,16 +256,12 @@ def load_models():
     drug_likeness = DrugLikenessCalculator()
     # Initialize ADME/PK predictor
     adme_predictor = ADMEPredictor()
-    # Initialize heuristic toxicity predictor
+    # Initialize heuristic (rule-based) toxicity predictor
     toxicity_predictor = ToxicityPredictor()
-    # Initialize neural network toxicity predictor
-    neural_tox_predictor = NeuralToxicityPredictor()
-    # Initialize protein-ligand compatibility scorer
-    protein_ligand_scorer = ProteinLigandCompatibilityScorer()
+    # Initialize real ADMET predictor (held-out-validated XGBoost models)
+    real_admet_predictor = RealADMETPredictor()
     # Initialize target class predictor (kinase, GPCR, ion channel, enzyme)
     target_predictor = TargetClassPredictor()
-    # Initialize ML ensemble predictor (Random Forest + XGBoost)
-    ml_predictor = MultiModelPredictor()
     # Initialize biomedical knowledge graph with 70+ drugs
     kg = BiomedicalKnowledgeGraph()
     # Initialize molecular visualization utilities
@@ -280,16 +270,16 @@ def load_models():
     protein_analyzer = ProteinAnalyzer()
     # Initialize input type detector
     input_detector = InputDetector()
-    
+
     # Return all initialized objects as a tuple
-    return (mol_processor, drug_likeness, adme_predictor, toxicity_predictor, neural_tox_predictor,
-            protein_ligand_scorer, target_predictor, ml_predictor, kg, visualizer, protein_analyzer, input_detector)
+    return (mol_processor, drug_likeness, adme_predictor, toxicity_predictor, real_admet_predictor,
+            target_predictor, kg, visualizer, protein_analyzer, input_detector)
 
 
 # Load all models and unpack into individual variables
 # This call either loads fresh models (first run) or returns cached ones
-(mol_processor, drug_likeness, adme_predictor, toxicity_predictor, neural_tox_predictor,
- protein_ligand_scorer, target_predictor, ml_predictor, kg, visualizer, protein_analyzer, input_detector) = load_models()
+(mol_processor, drug_likeness, adme_predictor, toxicity_predictor, real_admet_predictor,
+ target_predictor, kg, visualizer, protein_analyzer, input_detector) = load_models()
 
 
 # =============================================================================
@@ -424,30 +414,32 @@ if page == "Home":
     
     # Create DataFrame with module capabilities
     capabilities = pd.DataFrame({
-        'Module': ['ADME/PK', 'Toxicity', 'Drug-likeness', 'Target Prediction', 'ML Models', 'Knowledge Graph'],
+        'Module': ['ADME/PK', 'ADMET Models', 'Toxicity (rule-based)', 'Drug-likeness', 'Target Prediction', 'Knowledge Graph'],
         'Capabilities': [
             'LogP, Caco-2, BBB, CYP450, Clearance',
-            'Hepatotox, hERG, Ames, Carcinogenicity',
+            'Gradient-boosted (XGBoost), 7 endpoints — held-out validated',
+            'Hepatotox, hERG, Ames, Carcinogenicity (structural alerts)',
             'Lipinski, Veber, QED, SA Score',
             'Kinase, GPCR, Ion Channel, Enzyme',
-            'Random Forest, XGBoost, Neural Network',
             'Drug-Target-Disease Relationships'
         ],
         'Status': ['Active'] * 6
     })
-    
+
     # Display capabilities table
     st.dataframe(capabilities, use_container_width=True, hide_index=True)
-    
+
     # Industry alignment section
     st.markdown('<div class="sub-header">Industry Alignment</div>', unsafe_allow_html=True)
     st.info("""
     This platform mirrors pharmaceutical industry best practices used in modern drug discovery:
-    
-    - **ML Techniques**: Random Forest, XGBoost, and Neural Networks for property prediction
+
+    - **ML Techniques**: Gradient-boosted models (XGBoost) trained on public Therapeutics Data
+      Commons (TDC) datasets with scaffold splits, for ADMET property prediction
     - **ADME/PK Focus**: Critical for small molecule development pipelines
     - **Target Class Prediction**: Kinase inhibitors central to oncology drug discovery
-    - **Model Explainability**: SHAP values and feature importance for regulatory compliance
+    - **Rule-Based Screening**: Structural-alert and descriptor-threshold heuristics for
+      toxicity and drug-likeness (Lipinski, Veber, QED)
     - **Knowledge Graphs**: Drug-target-disease relationships for precision medicine
     """)
 
@@ -759,87 +751,69 @@ elif page == "Toxicity Radar":
         **Remember**: These are predictions. Real drugs need extensive lab and clinical testing!
         """)
     
-    # Dual prediction system info
+    # Prediction system info
     st.info("""
-    **🎯 Dual Prediction System:** This platform offers both **Neural Network** (deep learning) and **Heuristic** (rule-based) toxicity predictions for educational comparison.  
-    Both use synthetic training data for demonstration. Production systems require validated datasets (Tox21, ToxCast, DILIrank).
+    **ADMET toxicity models.** This platform offers two independent toxicity assessments:
+    real **gradient-boosted models (XGBoost)** trained on public Therapeutics Data Commons (TDC)
+    datasets with scaffold splits — each endpoint shows its held-out test score (AUROC) — and a
+    **Heuristic** (rule-based) screen using structural alerts and descriptor thresholds.
+    Educational tool — not a substitute for laboratory assays (Tox21, ToxCast, DILIrank).
     """)
-    
+
     # Prediction method selection
     prediction_method = st.radio(
         "Select Prediction Method",
-        ["Neural Network (Deep Learning)", "Heuristic (Rule-Based)", "Both (Comparison)"],
+        ["XGBoost (Gradient-Boosted)", "Heuristic (Rule-Based)", "Both (Comparison)"],
         index=0,
         horizontal=True,
-        help="Neural Network uses molecular descriptors + Morgan fingerprints. Heuristic uses structural alerts."
+        help="XGBoost models use ECFP4 fingerprints + RDKit descriptors, held-out validated on TDC. Heuristic uses structural alerts."
     )
-    
+
     # SMILES input
     smiles_input = st.text_input("Enter SMILES String", "CC(C)Cc1ccc(cc1)C(C)C(=O)O")
-    
+
     # Analysis button
     if st.button("Run Toxicity Analysis", type="primary"):
         # Validate SMILES
         is_valid, canonical_smiles = mol_processor.validate_smiles(smiles_input)
-        
+
         if is_valid:
             # Convert to molecule
             mol = mol_processor.smiles_to_mol(canonical_smiles)
-            
-            # Neural Network predictions
-            if prediction_method == "Neural Network (Deep Learning)":
-                st.markdown("### 🧠 Neural Network Toxicity Predictions")
-                st.caption("Feed-forward neural network | 2,078 features | 4 toxicity endpoints")
-                
-                # Get neural network predictions
-                neural_profile = neural_tox_predictor.comprehensive_toxicity_profile(mol)
-                
+
+            # Real XGBoost ADMET predictions
+            if prediction_method == "XGBoost (Gradient-Boosted)":
+                st.markdown("### XGBoost Toxicity Predictions")
+                st.caption("ECFP4(2048) + 10 RDKit descriptors | held-out validated on TDC | endpoints without a validated model are omitted")
+
+                # Get real ADMET predictions
+                admet_profile = real_admet_predictor.comprehensive_toxicity_profile(mol)
+
+                # Only display endpoints with an actual trained model (hide "Unavailable")
+                available = {k: v for k, v in admet_profile.items() if v.get('risk_level') != 'Unavailable'}
+
                 # Two-column layout
                 col1, col2 = st.columns(2)
-                
-                # Left column: Hepatotoxicity and Mutagenicity
-                with col1:
-                    st.markdown("#### Hepatotoxicity (Liver Damage)")
-                    data = neural_profile['Hepatotoxicity']
-                    st.metric("Probability", data['percentage'])
-                    st.metric("Risk Level", data['risk_level'])
-                    st.caption(f"Confidence: {data['confidence']}")
-                    
-                    # Color-coded risk pill
-                    if data['risk_level'] == 'High':
-                        st.markdown('<div class="risk-pill critical-zone">High Risk</div>', unsafe_allow_html=True)
-                    elif data['risk_level'] == 'Moderate':
-                        st.markdown('<div class="risk-pill caution-zone">Moderate Risk</div>', unsafe_allow_html=True)
-                    else:
-                        st.markdown('<div class="risk-pill safe-zone">Low Risk</div>', unsafe_allow_html=True)
-                    
-                    st.markdown("#### Mutagenicity (Ames Test)")
-                    data = neural_profile['Mutagenicity (Ames)']
-                    st.metric("Probability", data['percentage'])
-                    st.metric("Result", data['risk_level'])
-                    st.caption(f"Confidence: {data['confidence']}")
-                
-                # Right column: Cardiotoxicity and Carcinogenicity
-                with col2:
-                    st.markdown("#### Cardiotoxicity (hERG)")
-                    data = neural_profile['Cardiotoxicity (hERG)']
-                    st.metric("Probability", data['percentage'])
-                    st.metric("Risk Level", data['risk_level'])
-                    st.caption(f"Confidence: {data['confidence']}")
-                    
-                    if data['risk_level'] == 'High':
-                        st.markdown('<div class="risk-pill critical-zone">High Risk</div>', unsafe_allow_html=True)
-                    elif data['risk_level'] == 'Moderate':
-                        st.markdown('<div class="risk-pill caution-zone">Moderate Risk</div>', unsafe_allow_html=True)
-                    else:
-                        st.markdown('<div class="risk-pill safe-zone">Low Risk</div>', unsafe_allow_html=True)
-                    
-                    st.markdown("#### Carcinogenicity")
-                    data = neural_profile['Carcinogenicity']
-                    st.metric("Probability", data['percentage'])
-                    st.metric("Risk Level", data['risk_level'])
-                    st.caption(f"Confidence: {data['confidence']}")
-            
+                cols = [col1, col2]
+
+                for i, (label, data) in enumerate(available.items()):
+                    with cols[i % 2]:
+                        st.markdown(f"#### {label}")
+                        st.metric("Probability", data['percentage'])
+                        st.metric("Risk Level", data['risk_level'])
+                        st.caption(f"Model: {data['confidence']}")
+
+                        # Color-coded risk pill
+                        if data['risk_level'] in ('High', 'Positive'):
+                            st.markdown('<div class="risk-pill critical-zone">High Risk</div>', unsafe_allow_html=True)
+                        elif data['risk_level'] == 'Moderate':
+                            st.markdown('<div class="risk-pill caution-zone">Moderate Risk</div>', unsafe_allow_html=True)
+                        else:
+                            st.markdown('<div class="risk-pill safe-zone">Low Risk</div>', unsafe_allow_html=True)
+
+                if not available:
+                    st.warning("No held-out-validated model is available for this endpoint set.")
+
             # Heuristic predictions
             elif prediction_method == "Heuristic (Rule-Based)":
                 st.markdown("### 📋 Heuristic Toxicity Predictions")
@@ -893,25 +867,28 @@ elif page == "Toxicity Radar":
             # Side-by-side comparison
             else:
                 st.markdown("### 🔬 Side-by-Side Comparison")
-                st.caption("Neural Network vs Heuristic Methods")
-                
+                st.caption("XGBoost (gradient-boosted) vs Heuristic Methods")
+
                 # Get both prediction types
-                neural_profile = neural_tox_predictor.comprehensive_toxicity_profile(mol)
+                admet_profile = real_admet_predictor.comprehensive_toxicity_profile(mol)
                 tox_profile = toxicity_predictor.comprehensive_toxicity_profile(mol)
-                
+
                 # Compare each endpoint
                 endpoints = ['Hepatotoxicity', 'Cardiotoxicity (hERG)', 'Mutagenicity (Ames)', 'Carcinogenicity']
-                
+
                 for endpoint in endpoints:
                     st.markdown(f"#### {endpoint}")
                     col1, col2 = st.columns(2)
-                    
+
                     with col1:
-                        st.markdown("**🧠 Neural Network**")
-                        neural_data = neural_profile[endpoint]
-                        st.metric("Probability", neural_data['percentage'])
-                        st.caption(f"Risk: {neural_data['risk_level']}")
-                    
+                        st.markdown("**XGBoost**")
+                        admet_data = admet_profile[endpoint]
+                        if admet_data['risk_level'] == 'Unavailable':
+                            st.caption("No validated model for this endpoint")
+                        else:
+                            st.metric("Probability", admet_data['percentage'])
+                            st.caption(f"Risk: {admet_data['risk_level']} · {admet_data['confidence']}")
+
                     with col2:
                         st.markdown("**📋 Heuristic**")
                         heur_data = tox_profile[endpoint]
@@ -1231,113 +1208,20 @@ elif page == "Protein & Biologic Studio":
             st.error(f"Invalid sequence: {error}")
             st.info("Please enter a valid protein/peptide sequence using single-letter amino acid code (A, C, D, E, F, G, H, I, K, L, M, N, P, Q, R, S, T, V, W, Y)")
     
-    # Protein-Ligand Compatibility section
+    # Protein-Ligand Compatibility section — DISABLED
+    # This panel was backed by an untrained network (random fixed-seed weights,
+    # never fit on any dataset). Its output was noise dressed as a prediction, so
+    # the panel is disabled and the module removed, rather than shown with a
+    # fabricated score.
     st.markdown("---")
     st.markdown("### 🔬 Protein-Ligand Compatibility Testing")
-    st.markdown("Test binding compatibility between a protein target and a small molecule ligand")
-    
-    with st.expander("ℹ️ **What is Protein-Ligand Compatibility?**"):
-        st.markdown("""
-        ### Understanding Protein-Ligand Binding
-        
-        **Protein-Ligand Compatibility** predicts how well a small molecule drug might bind to a protein target. Think of proteins as locks and drugs as keys!
-        
-        ### How It Works
-        
-        Our neural network combines:
-        1. **Protein Features** (24 features):
-           - Sequence length
-           - Amino acid composition (20 amino acids)
-           - Charge distribution (positive, negative, neutral)
-           - Hydrophobicity (GRAVY score)
-        
-        2. **Ligand Features** (2078 features):
-           - Molecular descriptors (MW, LogP, etc.)
-           - Morgan fingerprints (structural patterns)
-        
-        3. **Neural Network** (2102 → 512 → 256 → 128 → 64 → 1):
-           - Predicts binding probability (0-100%)
-           - Outputs compatibility level (High/Moderate/Low)
-        
-        ### Example Use Cases
-        - **Drug Discovery**: Test if a compound might bind to a disease target
-        - **Target Validation**: Screen multiple ligands against a protein
-        - **Lead Optimization**: Compare binding predictions for structural analogs
-        
-        ### How to Use
-        1. **Enter protein sequence** (FASTA or plain amino acid sequence)
-        2. **Enter ligand SMILES** (small molecule structure)
-        3. **Click "Test Compatibility"**
-        4. **Review binding score** and compatibility assessment
-        
-        **Example Pair**: BCR-ABL protein + Imatinib (kinase inhibitor)
-        """)
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("#### Protein Target")
-        protein_seq_compat = st.text_area(
-            "Protein Sequence (FASTA or plain)",
-            value="MDRWWLARLLLQRVRPGPDSDGPGSSCSAPVDSLQPAENSISRGDWKRKRSLVDQRGL",
-            height=100,
-            help="Enter the target protein sequence"
-        )
-    
-    with col2:
-        st.markdown("#### Small Molecule Ligand")
-        ligand_smiles_compat = st.text_input(
-            "Ligand SMILES",
-            value="CN1CCN(CC1)CC(=O)Nc2ccc3c(c2)c(ncn3)c4ccc(c(c4)F)Cl",
-            help="Enter the small molecule SMILES (e.g., Imatinib)"
-        )
-    
-    if st.button("Test Compatibility", type="primary"):
-        is_protein_valid, clean_prot_seq, prot_error = protein_analyzer.validate_fasta(protein_seq_compat.strip())
-        is_ligand_valid, canonical_ligand = mol_processor.validate_smiles(ligand_smiles_compat)
-        
-        if is_protein_valid and is_ligand_valid:
-            ligand_mol = mol_processor.smiles_to_mol(canonical_ligand)
-            compat_result = protein_ligand_scorer.predict_binding_compatibility(clean_prot_seq, ligand_mol)
-            
-            st.markdown("### Binding Compatibility Results")
-            
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                st.metric("Binding Score", f"{compat_result['binding_score']}/100")
-                st.metric("Probability", compat_result['percentage'])
-            
-            with col2:
-                st.metric("Compatibility", compat_result['compatibility'])
-                if compat_result['compatibility'] == 'High':
-                    st.markdown('<div class="risk-pill safe-zone">High Compatibility</div>', unsafe_allow_html=True)
-                elif compat_result['compatibility'] == 'Moderate':
-                    st.markdown('<div class="risk-pill caution-zone">Moderate Compatibility</div>', unsafe_allow_html=True)
-                else:
-                    st.markdown('<div class="risk-pill critical-zone">Low Compatibility</div>', unsafe_allow_html=True)
-            
-            with col3:
-                st.metric("Protein Length", f"{compat_result['protein_length']} AA")
-                st.metric("Ligand MW", f"{compat_result['ligand_mw']} Da")
-            
-            st.info(f"**Recommendation**: {compat_result['recommendation']}")
-            st.caption(f"Prediction Method: {compat_result['confidence']}")
-            
-            st.markdown("### Interpretation")
-            st.write("""
-            **Binding Score Interpretation**:
-            - **70-100**: High predicted binding - strong candidate for further study
-            - **40-69**: Moderate predicted binding - consider for optimization
-            - **0-39**: Low predicted binding - may require significant modification
-            
-            **Note**: This is a computational prediction. Experimental validation (binding assays, crystallography, etc.) is required for definitive confirmation.
-            """)
-        
-        elif not is_protein_valid:
-            st.error(f"Invalid protein sequence: {prot_error}")
-        elif not is_ligand_valid:
-            st.error("Invalid ligand SMILES string")
+    st.warning("""
+    **Temporarily disabled.** This panel previously reported a "binding score" from a
+    neural network that was never trained (random, fixed-seed weights) — its output was
+    not a meaningful prediction. It's disabled until a version trained on real binding
+    data (e.g. PDBbind/BindingDB) is available. No numbers are shown here to avoid
+    presenting an untrained model's output as a real assessment.
+    """)
 
 
 # =============================================================================
@@ -1484,93 +1368,76 @@ elif page == "Drug-Likeness Deck":
 elif page == "Explainability Canvas":
     st.markdown('<div class="sub-header">Explainability Canvas</div>', unsafe_allow_html=True)
     
-    with st.expander("ℹ️ **Understanding AI Predictions - Why Did the AI Say That?**"):
+    with st.expander("ℹ️ **Understanding This Assessment - Why the Score Says That**"):
         st.markdown("""
         ### What is Explainability?
-        **Explainability** shows you WHY the AI made its prediction. It's like asking the AI to show its work, like in math class!
-        
-        ### Three AI Models Working Together
-        
-        **1. Random Forest** 🌲
-        - *Think of it as*: A committee of decision trees voting
-        - *How it works*: Makes many "if-then" rules and votes on the answer
-        - *Strength*: Good at finding patterns
-        
-        **2. XGBoost** 🚀
-        - *Think of it as*: A smarter, faster Random Forest
-        - *How it works*: Learns from mistakes and improves iteratively
-        - *Strength*: Very accurate predictions
-        
-        **3. Ensemble** 🎯
-        - *What it is*: Combines Random Forest + XGBoost predictions
-        - *Why it's better*: Two opinions are better than one!
-        - *Final answer*: Average of both models
-        
-        ### Feature Importance - What Matters Most?
-        
-        The charts show which molecular properties the AI uses to make decisions:
-        
-        - **High importance** (top of chart): AI relies heavily on this property
-        - **Low importance** (bottom): AI barely uses this property
-        
-        **Common important features**:
-        - Molecular Weight
-        - LogP (fat-loving vs water-loving)
-        - Number of rings
-        - Hydrogen bond donors/acceptors
-        
+        **Explainability** shows you WHY a molecule scores the way it does — not a black box,
+        but rules you can check by hand.
+
+        ### Rule-Based, Not a Trained Classifier
+
+        This page evaluates drug-likeness using established **formulas**, not a machine-learning
+        model trained on data:
+
+        - **Lipinski's Rule of 5** — molecular weight, LogP, H-bond donors/acceptors
+        - **Veber Rules** — rotatable bonds, topological polar surface area (TPSA)
+        - **QED** (Quantitative Estimate of Drug-likeness) — a weighted composite of 8
+          physicochemical properties, published by Bickerton et al. (2012)
+        - **Synthetic Accessibility** — a fragment-complexity estimate
+
+        Each of these is a fixed, published formula applied directly to the molecule's RDKit
+        descriptors — every number here traces to a documented equation, not a fitted model.
+
         ### How to Use
         1. **Enter your molecule's SMILES**
-        2. **Click "Run ML Prediction"**
-        3. **See predictions from 3 models**
-        4. **Review feature importance chart** (what the AI looked at)
-        5. **Understand the confidence level**
-        
-        ### Understanding Confidence
-        - **90-100%**: AI is very sure
-        - **70-90%**: AI is confident
-        - **50-70%**: AI is somewhat sure
-        - **<50%**: AI is guessing
-        
-        **Why this matters**: You can trust high-confidence predictions more than low-confidence ones!
+        2. **Click "Run Drug-Likeness Analysis"**
+        3. **Review each rule's pass/fail and the overall score**
+
+        **Why this matters**: Because these are formulas, not learned models, there is no
+        "confidence" or feature-importance chart to show — the calculation itself *is* the
+        explanation.
         """)
-    
+
     smiles_input = st.text_input("Enter SMILES String", "CC(C)Cc1ccc(cc1)C(C)C(=O)O")
-    
-    if st.button("Run ML Prediction", type="primary"):
+
+    if st.button("Run Drug-Likeness Analysis", type="primary"):
         is_valid, canonical_smiles = mol_processor.validate_smiles(smiles_input)
-        
+
         if is_valid:
             mol = mol_processor.smiles_to_mol(canonical_smiles)
-            descriptors = mol_processor.calculate_molecular_descriptors(mol)
-            
-            # ML models trained on 30 features
-            prediction = ml_predictor.predict_with_ensemble(descriptors[:30])
-            
-            st.markdown("### Ensemble Prediction Results")
-            
+
+            # Rule-based drug-likeness (QED, Lipinski Ro5, Veber) — not a trained classifier
+            analysis = drug_likeness.comprehensive_analysis(mol)
+
+            st.markdown("### Rule-Based Drug-Likeness Results")
+            st.caption("Lipinski, Veber, QED, Synthetic Accessibility — published formulas, not a trained model")
+
             col1, col2, col3 = st.columns(3)
-            col1.metric("Random Forest", f"{prediction['Random Forest Probability']}%")
-            col2.metric("XGBoost", f"{prediction['XGBoost Probability']}%")
-            col3.metric("Ensemble", f"{prediction['Ensemble Probability']}%")
-            
-            st.markdown(f"**Final Prediction:** {prediction['Prediction']} (Confidence: {prediction['Confidence']}%)")
-            
-            st.markdown("### Feature Importance Analysis")
-            
-            importance_df = ml_predictor.get_feature_importance()
-            
-            if not importance_df.empty:
-                fig = visualizer.create_feature_importance_plot(importance_df)
-                if fig:
-                    st.plotly_chart(fig, use_container_width=True)
-                
-                st.dataframe(importance_df, use_container_width=True, hide_index=True)
-            
+            col1.metric("Lipinski Ro5", "Pass" if analysis['Lipinski'].get('Passes') else "Fail",
+                        f"{analysis['Lipinski'].get('Violations', '?')} violations")
+            col2.metric("Veber", "Pass" if analysis['Veber'].get('Passes') else "Fail")
+            col3.metric("QED Score", analysis['QED'].get('QED Score', 'n/a'), analysis['QED'].get('Category', ''))
+
+            st.markdown(f"**Overall Score:** {analysis['Overall Score']} — {analysis['Recommendation']}")
+
+            st.markdown("### Rule Breakdown")
+            colA, colB = st.columns(2)
+            with colA:
+                st.markdown("#### Lipinski's Rule of 5")
+                st.write(analysis['Lipinski'])
+                st.markdown("#### QED")
+                st.write(analysis['QED'])
+            with colB:
+                st.markdown("#### Veber Rules")
+                st.write(analysis['Veber'])
+                st.markdown("#### Synthetic Accessibility")
+                st.write(analysis['Synthetic Accessibility'])
+
             st.info("""
-            **Model Training**: Models trained on synthetic pharmaceutical dataset with molecular descriptors.
-            Cross-validation ensures robustness. Feature importance reveals which molecular properties
-            most influence drug-likeness predictions.
+            **Method**: Rule-based (structural formulas applied to RDKit-computed descriptors) —
+            not a trained classifier, so there is no cross-validation or feature-importance chart.
+            Lipinski/Veber/QED are the same industry-standard rules used elsewhere in this app's
+            Drug-Likeness Deck.
             """)
         else:
             st.error("Invalid SMILES string")
@@ -2290,34 +2157,37 @@ elif page == "About":
     
     - **Molecular Property Prediction**: ADME/PK, toxicity, drug-likeness
     - **Target Class Prediction**: Kinase, GPCR, ion channel, enzyme inhibitors
-    - **ML Models**: Random Forest, XGBoost, Neural Networks with explainability
+    - **ADMET Prediction**: XGBoost (7 endpoints, held-out validated — see
+      `models/saved_models/admet_models_manifest.json`)
+    - **Rule-Based Scoring**: ADME/PK heuristics, structural-alert toxicity screening,
+      target-class heuristics, drug-likeness (Lipinski, Veber, QED)
     - **Knowledge Graph**: Drug-target-disease relationships
     - **Batch Screening**: High-throughput lead prioritization
     - **FastAPI Backend**: REST API for pharmaceutical predictions
-    
+
     #### Technologies Used
-    
-    - **ML/AI**: scikit-learn, XGBoost, SHAP
+
+    - **ML/AI**: XGBoost (7 ADMET endpoints trained on public TDC data, scaffold splits)
     - **Cheminformatics**: RDKit, molecular descriptors, fingerprints
     - **Visualization**: Plotly, Matplotlib, Seaborn
     - **Backend**: FastAPI, Uvicorn
     - **Frontend**: Streamlit
     - **Data**: NetworkX (knowledge graphs), UMAP (clustering)
-    
+
     #### Industry Standard Workflows
-    
+
     This platform demonstrates workflows and techniques used in pharmaceutical discovery:
-    
+
     1. **ADME/PK Focus**: Critical for small molecule drug development pipelines
     2. **Kinase Inhibitors**: Important target class in oncology research
-    3. **Multi-model Approach**: Standard practice for robust predictions
-    4. **Explainability**: Required for regulatory submissions
-    5. **Knowledge Graphs**: Used for target identification and validation
-    
+    3. **Held-Out Validation**: Every ADMET model's score is a single held-out TDC test
+       evaluation — no synthetic data, no fabricated metrics
+    4. **Knowledge Graphs**: Used for target identification and validation
+
     #### References & Industry Practices
-    
-    - Random Forest & XGBoost: Standard models in pharmaceutical QSAR
-    - SHAP values: Explainable AI for regulatory compliance
+
+    - XGBoost: Standard gradient-boosted model for pharmaceutical QSAR
+    - Therapeutics Data Commons (TDC): Public benchmark datasets with scaffold splits
     - Lipinski/Veber rules: Industry-standard drug-likeness filters
     - hERG prediction: Critical safety assessment
     - CYP450 profiling: Standard ADME analysis

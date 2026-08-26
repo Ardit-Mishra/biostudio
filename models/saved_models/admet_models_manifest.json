@@ -1,0 +1,219 @@
+{
+  "DILI": {
+    "tdc_name": "DILI",
+    "app_label": "Hepatotoxicity (DILI)",
+    "admet_class": "Toxicity",
+    "task": "classification",
+    "official_metric": "AUROC",
+    "test_score": 0.9252173913043479,
+    "threshold": 0.39999999999999997,
+    "n_train": 379,
+    "n_test": 96,
+    "positives_frac": 0.49076517150395776,
+    "split": "TDC scaffold (default, seed 1)",
+    "feature_spec": {
+      "fingerprint": "ECFP4/Morgan radius=2 nBits=2048",
+      "descriptors": [
+        "MolWt",
+        "MolLogP",
+        "TPSA",
+        "NumHDonors",
+        "NumHAcceptors",
+        "NumRotatableBonds",
+        "NumAromaticRings",
+        "FractionCSP3",
+        "HeavyAtomCount",
+        "NumHeteroatoms"
+      ],
+      "n_features": 2058
+    },
+    "model_file": "DILI_xgb.json",
+    "source": "Therapeutics Data Commons (TDC)"
+  },
+  "hERG": {
+    "tdc_name": "hERG",
+    "app_label": "Cardiotoxicity (hERG)",
+    "admet_class": "Toxicity",
+    "task": "classification",
+    "official_metric": "AUROC",
+    "test_score": 0.8089837997054492,
+    "threshold": 0.35,
+    "n_train": 523,
+    "n_test": 132,
+    "positives_frac": 0.6768642447418738,
+    "split": "TDC scaffold (default, seed 1)",
+    "feature_spec": {
+      "fingerprint": "ECFP4/Morgan radius=2 nBits=2048",
+      "descriptors": [
+        "MolWt",
+        "MolLogP",
+        "TPSA",
+        "NumHDonors",
+        "NumHAcceptors",
+        "NumRotatableBonds",
+        "NumAromaticRings",
+        "FractionCSP3",
+        "HeavyAtomCount",
+        "NumHeteroatoms"
+      ],
+      "n_features": 2058
+    },
+    "model_file": "hERG_xgb.json",
+    "source": "Therapeutics Data Commons (TDC)"
+  },
+  "AMES": {
+    "tdc_name": "AMES",
+    "app_label": "Mutagenicity (Ames)",
+    "admet_class": "Toxicity",
+    "task": "classification",
+    "official_metric": "AUROC",
+    "test_score": 0.845305371164503,
+    "threshold": 0.49999999999999994,
+    "n_train": 5821,
+    "n_test": 1457,
+    "positives_frac": 0.533241711046212,
+    "split": "TDC scaffold (default, seed 1)",
+    "feature_spec": {
+      "fingerprint": "ECFP4/Morgan radius=2 nBits=2048",
+      "descriptors": [
+        "MolWt",
+        "MolLogP",
+        "TPSA",
+        "NumHDonors",
+        "NumHAcceptors",
+        "NumRotatableBonds",
+        "NumAromaticRings",
+        "FractionCSP3",
+        "HeavyAtomCount",
+        "NumHeteroatoms"
+      ],
+      "n_features": 2058
+    },
+    "model_file": "AMES_xgb.json",
+    "source": "Therapeutics Data Commons (TDC)"
+  },
+  "BBB_Martins": {
+    "tdc_name": "BBB_Martins",
+    "app_label": "Blood-Brain Barrier",
+    "admet_class": "Distribution",
+    "task": "classification",
+    "official_metric": "AUROC",
+    "test_score": 0.9053705440900564,
+    "threshold": 0.44999999999999996,
+    "n_train": 1624,
+    "n_test": 406,
+    "positives_frac": 0.7530788177339901,
+    "split": "TDC scaffold (default, seed 1)",
+    "feature_spec": {
+      "fingerprint": "ECFP4/Morgan radius=2 nBits=2048",
+      "descriptors": [
+        "MolWt",
+        "MolLogP",
+        "TPSA",
+        "NumHDonors",
+        "NumHAcceptors",
+        "NumRotatableBonds",
+        "NumAromaticRings",
+        "FractionCSP3",
+        "HeavyAtomCount",
+        "NumHeteroatoms"
+      ],
+      "n_features": 2058
+    },
+    "model_file": "BBB_Martins_xgb.json",
+    "source": "Therapeutics Data Commons (TDC)"
+  },
+  "Pgp_Broccatelli": {
+    "tdc_name": "Pgp_Broccatelli",
+    "app_label": "P-glycoprotein Inhibition",
+    "admet_class": "Absorption",
+    "task": "classification",
+    "official_metric": "AUROC",
+    "test_score": 0.9261530258597707,
+    "threshold": 0.39999999999999997,
+    "n_train": 973,
+    "n_test": 245,
+    "positives_frac": 0.5405960945529291,
+    "split": "TDC scaffold (default, seed 1)",
+    "feature_spec": {
+      "fingerprint": "ECFP4/Morgan radius=2 nBits=2048",
+      "descriptors": [
+        "MolWt",
+        "MolLogP",
+        "TPSA",
+        "NumHDonors",
+        "NumHAcceptors",
+        "NumRotatableBonds",
+        "NumAromaticRings",
+        "FractionCSP3",
+        "HeavyAtomCount",
+        "NumHeteroatoms"
+      ],
+      "n_features": 2058
+    },
+    "model_file": "Pgp_Broccatelli_xgb.json",
+    "source": "Therapeutics Data Commons (TDC)"
+  },
+  "CYP3A4_Veith": {
+    "tdc_name": "CYP3A4_Veith",
+    "app_label": "CYP3A4 Inhibition",
+    "admet_class": "Metabolism",
+    "task": "classification",
+    "official_metric": "AUPRC",
+    "test_score": 0.8690310105553087,
+    "threshold": 0.5499999999999999,
+    "n_train": 9861,
+    "n_test": 2467,
+    "positives_frac": 0.40847784200385356,
+    "split": "TDC scaffold (default, seed 1)",
+    "feature_spec": {
+      "fingerprint": "ECFP4/Morgan radius=2 nBits=2048",
+      "descriptors": [
+        "MolWt",
+        "MolLogP",
+        "TPSA",
+        "NumHDonors",
+        "NumHAcceptors",
+        "NumRotatableBonds",
+        "NumAromaticRings",
+        "FractionCSP3",
+        "HeavyAtomCount",
+        "NumHeteroatoms"
+      ],
+      "n_features": 2058
+    },
+    "model_file": "CYP3A4_Veith_xgb.json",
+    "source": "Therapeutics Data Commons (TDC)"
+  },
+  "Caco2_Wang": {
+    "tdc_name": "Caco2_Wang",
+    "app_label": "Caco-2 Permeability",
+    "admet_class": "Absorption",
+    "task": "regression",
+    "official_metric": "MAE",
+    "test_score": 0.3390668591790839,
+    "threshold": null,
+    "n_train": 728,
+    "n_test": 182,
+    "positives_frac": null,
+    "split": "TDC scaffold (default, seed 1)",
+    "feature_spec": {
+      "fingerprint": "ECFP4/Morgan radius=2 nBits=2048",
+      "descriptors": [
+        "MolWt",
+        "MolLogP",
+        "TPSA",
+        "NumHDonors",
+        "NumHAcceptors",
+        "NumRotatableBonds",
+        "NumAromaticRings",
+        "FractionCSP3",
+        "HeavyAtomCount",
+        "NumHeteroatoms"
+      ],
+      "n_features": 2058
+    },
+    "model_file": "Caco2_Wang_xgb.json",
+    "source": "Therapeutics Data Commons (TDC)"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "tdc_name": "BBB_Martins",
+  "app_label": "Blood-Brain Barrier",
+  "admet_class": "Distribution",
+  "task": "classification",
+  "official_metric": "AUROC",
+  "test_score": 0.9053705440900564,
+  "threshold": 0.44999999999999996,
+  "n_train": 1624,
+  "n_test": 406,
+  "positives_frac": 0.7530788177339901,
+  "split": "TDC scaffold (default, seed 1)",
+  "feature_spec": {
+    "fingerprint": "ECFP4/Morgan radius=2 nBits=2048",
+    "descriptors": [
+      "MolWt",
+      "MolLogP",
+      "TPSA",
+      "NumHDonors",
+      "NumHAcceptors",
+      "NumRotatableBonds",
+      "NumAromaticRings",
+      "FractionCSP3",
+      "HeavyAtomCount",
+      "NumHeteroatoms"
+    ],
+    "n_features": 2058
+  },
+  "model_file": "BBB_Martins_xgb.json",
+  "source": "Therapeutics Data Commons (TDC)"
+}

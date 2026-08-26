@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "If you use BioStudio in your research, please cite it as below."
 type: software
 title: "BioStudio: AI-Powered Molecular Intelligence Platform"
-abstract: "An open-source research platform demonstrating computational drug discovery workflows using cheminformatics, QSAR modeling, and machine learning. The platform provides educational implementations of pharmaceutical AI/ML techniques including ADME/PK prediction, neural network-based toxicity assessment, protein-ligand compatibility scoring, and biologic developability analysis."
+abstract: "An open-source research platform demonstrating computational drug discovery workflows using cheminformatics, QSAR modeling, and machine learning. The platform provides educational implementations of pharmaceutical techniques including gradient-boosted (XGBoost) ADMET prediction trained on public Therapeutics Data Commons datasets with scaffold splits and held-out test metrics, rule-based ADME/PK and drug-likeness analysis, and biologic developability analysis."
 authors:
   - family-names: "Mishra"
     given-names: "Ardit"
@@ -18,15 +18,16 @@ keywords:
   - cheminformatics
   - QSAR
   - machine-learning
-  - deep-learning
-  - ADME-prediction
+  - gradient-boosting
+  - XGBoost
+  - ADMET-prediction
   - toxicity-prediction
   - protein-analysis
   - pharmaceutical-AI
   - RDKit
   - computational-chemistry
   - bioinformatics
-  - neural-networks
+  - therapeutics-data-commons
 references:
   - type: article
     title: "Toxicity Prediction using Deep Learning"

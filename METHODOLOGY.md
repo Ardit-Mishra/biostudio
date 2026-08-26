@@ -32,10 +32,13 @@ This platform demonstrates **computational drug discovery workflows** using two 
    - Based on molecular descriptors and physicochemical properties
    - **Status**: Educational demonstrations, not production-ready
 
-3. **Machine Learning Models** (Demonstration):
-   - Random Forest, XGBoost, Neural Network ensemble
-   - Trained on synthetic pharmaceutical dataset
-   - **Status**: Proof-of-concept, requires real training data
+3. **ADMET Machine Learning Models** (real, held-out validated):
+   - Gradient-boosted trees (XGBoost) on ECFP4 fingerprints + RDKit descriptors
+   - Trained on public Therapeutics Data Commons datasets with Bemis-Murcko scaffold splits
+   - 7 endpoints served via `models/real_admet.py`; per-endpoint held-out test scores in
+     `models/saved_models/admet_models_manifest.json`
+   - **Status**: Live in the app. (A former synthetic-data ensemble in `models/ml_models.py`
+     is **deprecated and no longer imported** — it was never a real model.)
 
 ### Scientific Transparency
 
@@ -307,138 +310,56 @@ def predict_clearance(mol):
 
 ## Toxicity Profiling
 
-**⚠️ IMPORTANT**: Platform offers two toxicity prediction approaches:
-1. **Neural Network Predictor** (Deep Learning): Multi-layer perceptron using molecular descriptors + Morgan fingerprints
-2. **Heuristic Predictors** (Rule-Based): Structural alerts and descriptor thresholds for educational comparison
+**⚠️ IMPORTANT**: Platform offers two toxicity/ADMET prediction approaches:
+1. **Real ADMET Models** (Gradient-Boosted, XGBoost): Trained on curated Therapeutics Data Commons (TDC) datasets with held-out scaffold-split test sets. Implemented in `models/real_admet.py`.
+2. **Heuristic Predictors** (Rule-Based): Structural alerts and descriptor thresholds for educational comparison. Implemented in `toxicity_predictors.py`, `adme_predictors.py`, and `utils/drug_likeness.py`.
 
-Both are trained on synthetic data for demonstration purposes. Production systems require training on validated toxicity datasets (Tox21, ToxCast, DILIrank).
+An earlier prototype module (`models/neural_toxicity.py`) also exists in the codebase but is untrained and unused — see below.
 
 ---
 
-### Neural Network Toxicity Predictor (Deep Learning)
+### Real ADMET Models (Gradient-Boosted, XGBoost)
 
-**Method**: Feed-forward neural network for multi-endpoint toxicity prediction [REFERENCES.md: TBD - Mayr et al. 2016, Xu et al. 2017]
+**Method**: Per-endpoint XGBoost classifiers/regressor, implemented in `models/real_admet.py` (class `RealADMETPredictor`), exposed to the app through `comprehensive_toxicity_profile(mol)`.
 
-**Architecture**:
-```
-Input Layer:    2,078 features (30 descriptors + 2,048 Morgan FP bits)
-Hidden Layer 1: 512 neurons (ReLU activation)
-Hidden Layer 2: 256 neurons (ReLU activation)
-Hidden Layer 3: 128 neurons (ReLU activation)
-Output Layer:   4 neurons (Sigmoid activation - multi-label classification)
-```
+**Feature representation** (2,058 features per endpoint):
+- ECFP4 / Morgan fingerprint, radius=2, 2048 bits
+- 10 RDKit descriptors: MolWt, MolLogP, TPSA, NumHDonors, NumHAcceptors, NumRotatableBonds, NumAromaticRings, FractionCSP3, HeavyAtomCount, NumHeteroatoms
 
-**Feature Engineering**:
-```python
-def extract_molecular_features(mol):
-    # 30 RDKit descriptors
-    descriptors = [
-        MolWt, MolLogP, TPSA, NumHDonors, NumHAcceptors,
-        NumRotatableBonds, NumAromaticRings, NumAliphaticRings,
-        NumSaturatedRings, NumHeteroatoms, RingCount,
-        FractionCsp3, NumAromaticCarbocycles, NumAromaticHeterocycles,
-        # ... (30 total descriptors)
-        BalabanJ, BertzCT, Chi0, Chi1, HallKierAlpha,
-        Kappa1, Kappa2, Kappa3, LabuteASA,
-        PEOE_VSA1, SMR_VSA1, SlogP_VSA1
-    ]
-    
-    # Morgan fingerprints (ECFP4, radius=2, 2048 bits)
-    morgan_fp = GetMorganFingerprintAsBitVect(mol, radius=2, nBits=2048)
-    
-    # Concatenate: [30 descriptors] + [2048 FP bits] = 2078 features
-    return np.concatenate([descriptors, morgan_fp])
-```
+**Training data & split**: Each endpoint is trained on its corresponding Therapeutics Data Commons (TDC) benchmark dataset, using TDC's default scaffold split (seed 1), which groups structurally similar molecules together so the held-out test set contains scaffolds not seen during training.
 
-**Toxicity Endpoints**:
-1. **Hepatotoxicity** (Drug-Induced Liver Injury - DILI)
-2. **Cardiotoxicity** (hERG channel inhibition)
-3. **Mutagenicity** (Ames test prediction)
-4. **Carcinogenicity** (Cancer risk assessment)
+**Endpoints and held-out test performance** (source of truth: `models/saved_models/admet_models_manifest.json` — the only legitimate metrics in this codebase):
 
-**Training Protocol** (Current - Synthetic):
-- **Dataset**: Synthetic pharmaceutical dataset (1,000 compounds)
-- **Loss Function**: Binary cross-entropy (multi-label)
-- **Optimizer**: Adam (learning rate = 0.001)
-- **Regularization**: None (demonstration model)
-- **Validation**: Not performed (educational demonstration)
+| Endpoint | ADMET Class | App Label | Metric | Test Score | n_train | n_test |
+|---|---|---|---|---|---|---|
+| DILI | Toxicity | Hepatotoxicity (DILI) | AUROC | 0.925 | 379 | 96 |
+| hERG | Toxicity | Cardiotoxicity (hERG) | AUROC | 0.809 | 523 | 132 |
+| AMES | Toxicity | Mutagenicity (Ames) | AUROC | 0.845 | 5,821 | 1,457 |
+| BBB_Martins | Distribution | Blood-Brain Barrier | AUROC | 0.905 | 1,624 | 406 |
+| Pgp_Broccatelli | Absorption | P-glycoprotein Inhibition | AUROC | 0.926 | 973 | 245 |
+| CYP3A4_Veith | Metabolism | CYP3A4 Inhibition | AUPRC | 0.869 | 9,861 | 2,467 |
+| Caco2_Wang | Absorption | Caco-2 Permeability | MAE | 0.339 | 728 | 182 |
 
-**Output**:
-```python
-{
-    'Hepatotoxicity': {
-        'probability': 0.342,
-        'percentage': '34.2%',
-        'risk_level': 'Low',
-        'confidence': 'Neural Network'
-    },
-    'Cardiotoxicity (hERG)': {
-        'probability': 0.689,
-        'percentage': '68.9%',
-        'risk_level': 'Moderate',
-        'confidence': 'Neural Network'
-    },
-    # ... (4 endpoints total)
-}
-```
+Each row is a separately trained, saved model (e.g. `DILI_xgb.json`) in `models/saved_models/`, evaluated on its own held-out TDC scaffold-split test set (never seen during training). Model files, split details, and full feature specs live in `admet_models_manifest.json` alongside each `*_meta.json`.
 
-**Scientific Basis**:
-- **Morgan Fingerprints (ECFP)**: Capture local chemical environments up to radius=2 bonds
-- **Multi-task Learning**: Single network predicts all 4 endpoints simultaneously
-- **Descriptor Normalization**: Min-max scaling for numerical stability
-- **Heuristic Adjustments**: Post-processing rules based on known toxicophores (interim solution)
+**Scope note**: These 7 endpoints span multiple ADMET classes — toxicity (DILI, hERG, AMES), distribution (BBB_Martins), absorption (Pgp_Broccatelli, Caco2_Wang), and metabolism (CYP3A4_Veith) — but are all surfaced together through `comprehensive_toxicity_profile(mol)`, which is the drop-in replacement for the earlier fabricated toxicity output described below. There is no trained or validated model for carcinogenicity anywhere in this codebase; where the app shows a carcinogenicity value, it comes from the rule-based heuristic documented under "Heuristic Toxicity Predictors" below, not from a trained model.
 
-**Validation Status**: ⚠️ Demonstration model (synthetic training data)
+**Validation Status**: ✅ Real, held-out-validated models with reported test-set metrics.
 
-**Production Recommendations**:
-1. **Replace Training Data**:
-   - **Hepatotoxicity**: DILIrank dataset (1,036 drugs with DILI annotations)
-   - **Cardiotoxicity**: ChEMBL hERG IC50 data (~5,000 compounds)
-   - **Mutagenicity**: Hansen benchmark (6,512 Ames-tested compounds)
-   - **Carcinogenicity**: CPDB + NTP datasets (~1,500 compounds)
+---
 
-2. **Architecture Improvements**:
-   - Add dropout layers (0.3-0.5) for regularization
-   - Implement early stopping with validation monitoring
-   - Use batch normalization for training stability
-   - Consider graph neural networks (GCN, GAT) for better performance
+### Untrained Placeholder Network (Not Used for Predictions)
 
-3. **Model Validation**:
-   - 5-fold cross-validation on training data
-   - External test set (20% holdout) for unbiased evaluation
-   - Applicability domain analysis (chemical space coverage)
-   - Uncertainty quantification (Monte Carlo dropout, ensembles)
+`models/neural_toxicity.py` defines the shape of a feed-forward network (2,078-feature input, three hidden layers, 4-neuron sigmoid output) that was intended for multi-endpoint toxicity prediction.
 
-4. **State-of-the-Art Baselines**:
-   - **DeepTox** (Mayr et al. 2016): Winner of Tox21 challenge, AUC 0.86-0.92
-   - **hERG-GNN** (Cai et al. 2020): Graph neural network, AUC 0.96
-   - **DILIPredictor** (Chen et al. 2016): Random Forest + structural alerts, AUC 0.76
+**This module's weights are randomly initialized (`np.random.randn()*0.01`) and never trained; its outputs are not meaningful and it is not used to generate the toxicity predictions shown in the app.** There is no `.fit()` call or training loop for this network anywhere in the codebase — not even on synthetic data.
 
-**Current Limitations**:
-- ❌ Not trained on real toxicity data (synthetic dataset only)
-- ❌ No validation metrics (accuracy, precision, recall, AUC)
-- ❌ No applicability domain checks
-- ❌ Heuristic post-processing reduces model purity
-- ✅ Demonstrates proper neural network architecture for toxicity prediction
-- ✅ Feature engineering follows industry best practices
+- ❌ Not trained — weights are random noise left over from initialization
+- ❌ No training loop, dataset, loss function, or optimizer ever runs for this module
+- ❌ No validation metrics exist for it, because nothing was trained to validate
+- ⚠️ Layer shapes are defined but weights are randomly initialized and never trained — do not treat any output from this module as a prediction
 
-**Next Steps for Production**:
-```python
-# 1. Data collection
-train_data = load_dili_rank()  # Hepatotoxicity
-herg_data = load_chembl_herg()  # Cardiotoxicity
-ames_data = load_hansen_ames()  # Mutagenicity
-
-# 2. Feature extraction
-X_train = extract_features(train_data)
-y_train = train_data[['hepato', 'cardio', 'mutagen', 'carcino']]
-
-# 3. Model training
-model.fit(X_train, y_train, epochs=100, batch_size=32, validation_split=0.2)
-
-# 4. Evaluation
-test_metrics = evaluate(model, X_test, y_test)  # AUC, accuracy, precision, recall
-```
+This module is retained in the codebase as an unused placeholder. It should be removed or explicitly gated off before any production use.
 
 ---
 
@@ -685,54 +606,37 @@ def predict_enzyme_inhibitor(mol):
 
 ---
 
-## Machine Learning Models
+## Machine Learning Models (ADMET)
 
 ### 1. Model Architecture
 
-**Ensemble Approach**:
+**Per-endpoint gradient-boosted trees** (`models/real_admet.py`, served in the app):
 ```python
-class MultiModelPredictor:
-    def __init__(self):
-        self.rf_model = RandomForestClassifier(n_estimators=100)
-        self.xgb_model = XGBClassifier(n_estimators=100)
-        self.nn_model = MLPClassifier(hidden_layers=(64, 32))
-        
-    def predict(self, mol):
-        # Ensemble: average probabilities
-        rf_prob = self.rf_model.predict_proba(features)[0][1]
-        xgb_prob = self.xgb_model.predict_proba(features)[0][1]
-        nn_prob = self.nn_model.predict_proba(features)[0][1]
-        
-        ensemble_prob = (rf_prob + xgb_prob + nn_prob) / 3
+# One XGBoost model per ADMET endpoint, loaded via the native Booster API.
+import xgboost as xgb
+booster = xgb.Booster()
+booster.load_model("models/saved_models/hERG_xgb.json")
+prob = booster.predict(xgb.DMatrix(features))   # binary:logistic -> probability
 ```
 
+- **Features**: ECFP4/Morgan fingerprint (2048 bits, radius 2) + 10 RDKit physicochemical
+  descriptors (MolWt, MolLogP, TPSA, HBD, HBA, rotatable bonds, aromatic rings, FractionCSP3,
+  heavy atoms, heteroatoms).
+- **Data / split**: public Therapeutics Data Commons (TDC) datasets, Bemis-Murcko **scaffold**
+  split (train+valid vs. held-out test), official TDC metric per endpoint.
+- **7 endpoints**: DILI, hERG, AMES, BBB_Martins, Pgp_Broccatelli, CYP3A4_Veith, Caco2_Wang.
+
 **Scientific Basis**:
-- Random Forest: Svetnik et al. (2003) [REFERENCES.md: 28]
 - XGBoost: Chen & Guestrin (2016) [REFERENCES.md: 30]
-- Ensemble improves robustness
+- Scaffold splitting to avoid analog leakage (Bemis & Murcko, 1996)
 
-**Training Data**: ⚠️ Currently trained on **synthetic data**
+**Reported performance**: real, single held-out evaluation per endpoint — see
+`models/saved_models/admet_models_manifest.json` (e.g. DILI AUROC 0.925, hERG 0.809, AMES 0.845,
+BBB 0.905, Pgp 0.926, CYP3A4 AUPRC 0.869, Caco-2 MAE 0.339). No synthetic training data.
 
-**Production Recommendation**:
-- Train on real pharmaceutical datasets (ChEMBL, proprietary)
-- Implement proper validation (5-fold CV, external test set)
-- Follow OECD QSAR validation principles [REFERENCES.md: 44]
-
----
-
-### 2. Feature Importance
-
-Uses SHAP (SHapley Additive exPlanations) for interpretability [REFERENCES.md: 34]
-
-```python
-import shap
-explainer = shap.TreeExplainer(model)
-shap_values = explainer.shap_values(features)
-```
-
-**Scientific Basis**:
-- Game-theoretic approach to feature attribution
-- Critical for regulatory submission and trust
+> **Deprecated:** an earlier `MultiModelPredictor` ensemble (`models/ml_models.py`) was trained on a
+> self-generated synthetic dataset and is **no longer imported by the app**. Its reported "accuracy"
+> was circular and meaningless; it has been replaced by the real models above.
 
 ---
 
@@ -745,9 +649,10 @@ shap_values = explainer.shap_values(features)
    - Not validated against experimental data
    - High false positive/negative rates expected
 
-2. **Training Data**:
-   - ML models trained on synthetic data
-   - Not representative of real pharmaceutical space
+2. **Dataset size / coverage**:
+   - Some ADMET endpoints have small public datasets (e.g. DILI test n=96), so held-out
+     scores carry real variance
+   - Trained only on the public TDC chemical space; extrapolation beyond it is unvalidated
 
 3. **Applicability Domain**:
    - No checks for out-of-domain predictions
@@ -830,13 +735,14 @@ For production QSAR models, follow these standards [REFERENCES.md: 44,46]:
 
 This platform demonstrates **computational drug discovery workflows** with scientific rigor in documentation and methodology. However, users must understand:
 
-- ✅ **Drug-likeness methods** (Lipinski, Veber, QED, SA) are production-ready
-- ⚠️ **ADME/PK predictions** use heuristics, not validated QSAR
-- ⚠️ **Toxicity predictions** use structural alerts, not trained models
-- ⚠️ **Target predictions** use descriptor thresholds, not ligand-based models
-- ⚠️ **ML models** trained on synthetic data, not real pharmaceutical data
+- ✅ **Drug-likeness methods** (Lipinski, Veber, QED, SA) are rule-based and production-ready
+- ✅ **ADMET models** (DILI, hERG, AMES, BBB, Pgp, CYP3A4, Caco-2) are real gradient-boosted
+  (XGBoost) models trained on public TDC data with scaffold splits and held-out test metrics
+- ⚠️ **ADME/PK panel** and **target predictions** remain rule-based heuristics (descriptor
+  thresholds), not trained QSAR
+- ⚠️ Some ADMET datasets are small (e.g. DILI test n=96), so held-out scores carry real variance
 
-For production use, **all heuristic functions must be replaced with validated QSAR models** trained on curated experimental data following OECD principles.
+The rule-based heuristic panels above could be upgraded to validated QSAR models trained on larger curated experimental datasets following OECD principles.
 
 ---
 

@@ -32,7 +32,10 @@ from rdkit.Chem import Descriptors, Crippen, Lipinski
 # Main class for ADME/PK predictions
 # Uses molecular descriptors to estimate pharmacokinetic properties
 class ADMEPredictor:
-    
+    """Rule-based / heuristic ADME predictor (not ML). All scores below are
+    computed from explicit formulas over RDKit descriptors (LogP, TPSA, MW,
+    etc.), not from a trained model."""
+
     # Constructor initializes models dictionary and loads models
     def __init__(self):
         # Dictionary to store trained ML models (for future use)

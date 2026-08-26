@@ -1,0 +1,31 @@
+{
+  "tdc_name": "Pgp_Broccatelli",
+  "app_label": "P-glycoprotein Inhibition",
+  "admet_class": "Absorption",
+  "task": "classification",
+  "official_metric": "AUROC",
+  "test_score": 0.9261530258597707,
+  "threshold": 0.39999999999999997,
+  "n_train": 973,
+  "n_test": 245,
+  "positives_frac": 0.5405960945529291,
+  "split": "TDC scaffold (default, seed 1)",
+  "feature_spec": {
+    "fingerprint": "ECFP4/Morgan radius=2 nBits=2048",
+    "descriptors": [
+      "MolWt",
+      "MolLogP",
+      "TPSA",
+      "NumHDonors",
+      "NumHAcceptors",
+      "NumRotatableBonds",
+      "NumAromaticRings",
+      "FractionCSP3",
+      "HeavyAtomCount",
+      "NumHeteroatoms"
+    ],
+    "n_features": 2058
+  },
+  "model_file": "Pgp_Broccatelli_xgb.json",
+  "source": "Therapeutics Data Commons (TDC)"
+}

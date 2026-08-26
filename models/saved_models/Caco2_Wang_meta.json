@@ -1,0 +1,31 @@
+{
+  "tdc_name": "Caco2_Wang",
+  "app_label": "Caco-2 Permeability",
+  "admet_class": "Absorption",
+  "task": "regression",
+  "official_metric": "MAE",
+  "test_score": 0.3390668591790839,
+  "threshold": null,
+  "n_train": 728,
+  "n_test": 182,
+  "positives_frac": null,
+  "split": "TDC scaffold (default, seed 1)",
+  "feature_spec": {
+    "fingerprint": "ECFP4/Morgan radius=2 nBits=2048",
+    "descriptors": [
+      "MolWt",
+      "MolLogP",
+      "TPSA",
+      "NumHDonors",
+      "NumHAcceptors",
+      "NumRotatableBonds",
+      "NumAromaticRings",
+      "FractionCSP3",
+      "HeavyAtomCount",
+      "NumHeteroatoms"
+    ],
+    "n_features": 2058
+  },
+  "model_file": "Caco2_Wang_xgb.json",
+  "source": "Therapeutics Data Commons (TDC)"
+}

@@ -757,9 +757,8 @@ class MolecularFeatureExtractor:
     
     Total: 2078 features
     
-    Used by:
-    - NeuralToxicityPredictor (models/neural_toxicity.py)
-    - ProteinLigandCompatibilityScorer (models/protein_ligand_compatibility.py)
+    (General-purpose feature extractor. Its former demo callers were removed in the
+    honesty rebuild; retained as a utility.)
     """
     
     # Extract comprehensive molecular feature vector

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.0] - 2026-08-25
+
+### Added
+- **Real ADMET Models**: replaced fabricated `neural_toxicity.py` and `ml_models.py` with 7 gradient-boosted (XGBoost) models trained on real TDC (Therapeutics Data Commons) datasets — DILI, hERG, AMES, BBB_Martins, Pgp_Broccatelli, CYP3A4_Veith, Caco2_Wang. Each trained on a TDC scaffold split (seed 1) with held-out test metrics recorded in `models/saved_models/admet_models_manifest.json`. Served by `models/real_admet.py` (`RealADMETPredictor.comprehensive_toxicity_profile()`), now wired into `app.py` in place of the legacy demonstration models.
+
+### Deprecated
+- `models/neural_toxicity.py`: discovered to have **never been trained** — weights are set once via `np.random.randn() * 0.01` at initialization and no optimizer/`.fit()` is ever run. All prior "trained on synthetic data" and DeepTox-methodology framing for this module was inaccurate; see the CORRECTION entry under v1.0.0 below.
+- `models/ml_models.py`: Random Forest/XGBoost ensemble trained entirely on `create_synthetic_dataset()`, a programmatically fabricated dataset with no relationship to real pharmaceutical measurements. Legacy accuracy/AUC figures are not meaningful; see the note under v0.9.0 below.
+
+---
+
 ## [1.2.0] - 2025-11-16
 
 ### Added
@@ -29,11 +40,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.0] - 2025-11-15
 
 ### Added
-- **Protein-Ligand Compatibility Scorer**: Neural network-based binding prediction
-  - 5-layer architecture: 2102 → 512 → 256 → 128 → 64 → 1
+- **Protein-Ligand Compatibility Scorer** (demo scaffold — **later disabled**, see [Unreleased])
+  - Implemented a 5-layer network scaffold (2102 → 512 → 256 → 128 → 64 → 1), but its weights
+    were random and **never trained on any dataset**, so it produced no meaningful predictions
   - Combines 24 protein biophysical features + 2078 ligand features
-  - Outputs binding probability (0-100%) with compatibility categories
-  - Referenced methods: Ragoza et al. (2017), Jiménez et al. (2018)
+  - Disabled in a later release rather than presenting untrained output as a real score
+  - Referenced methods (for the intended approach): Ragoza et al. (2017), Jiménez et al. (2018)
 
 - **Enhanced Protein Analysis**:
   - FASTA header parsing improvements with `_clean_protein_sequence()` helper
@@ -55,7 +67,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Features: 30 RDKit descriptors + 2048 Morgan fingerprint bits (ECFP4)
   - Endpoints: Hepatotoxicity, Cardiotoxicity (hERG), Mutagenicity, Carcinogenicity
   - Side-by-side comparison with heuristic toxicity predictions
-  - Methodology based on DeepTox architecture (Mayr et al. 2016)
+  - ~~Methodology based on DeepTox architecture (Mayr et al. 2016)~~ — **see CORRECTION below**
+
+> **CORRECTION (2026)**: This module's weights were **never trained** — they are set once via `np.random.randn() * 0.01` at initialization, and no optimizer or `.fit()` is ever run. The "DeepTox architecture" attribution above was inaccurate; this module implements none of that methodology. It is deprecated as of v1.3.0 in favor of the real, held-out-validated XGBoost ADMET models — see the v1.3.0 entry above.
 
 - **Biologic & Protein Analysis Suite**:
   - FASTA format validation and sequence processing
@@ -105,6 +119,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - XGBoost gradient boosting
   - Simple feedforward neural network
   - Feature importance visualization with SHAP
+  - (trained entirely on programmatically fabricated synthetic data, not real pharmaceutical measurements; deprecated as of v1.3.0 — see the real ADMET models entry above)
 
 - **Knowledge Graph Explorer**:
   - Drug-target-disease relationships
@@ -254,7 +269,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [ ] Expanded knowledge graph with ChEMBL integration
 
 ### v2.0.0 (Future)
-- [ ] Validated QSAR models replacing heuristics
+- [x] ~~Validated QSAR models replacing heuristics~~ — **Completed for 7 endpoints in v1.3.0** (DILI, hERG, AMES, BBB_Martins, Pgp_Broccatelli, CYP3A4_Veith, Caco2_Wang); see `models/saved_models/admet_models_manifest.json`
+- [ ] Validated models for remaining heuristic-only endpoints (kinase/GPCR/ion-channel target-class predictions, LogP heuristic, carcinogenicity)
 - [ ] Multi-task learning for joint predictions
 - [ ] Cloud deployment (Docker, AWS/GCP)
 - [ ] Regulatory export (SDTM format)

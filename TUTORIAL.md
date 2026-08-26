@@ -58,7 +58,7 @@ The sidebar contains 10 main pages organized by functionality:
 4. **ADME/PK Prediction** - Pharmacokinetic properties
 5. **Toxicity Profiling** - Safety assessment
 6. **Target Class Prediction** - Potential biological targets
-7. **ML Model Predictions** - Ensemble machine learning
+7. **ADMET Model Predictions** - 7 real XGBoost models (TDC, held-out validated)
 8. **Knowledge Graph Explorer** - Drug-target-disease relationships
 9. **Batch Screening** - High-throughput analysis
 10. **Case Study** - Example workflow with kinase inhibitors
@@ -294,11 +294,13 @@ Expected Profile:
 - **Assessment**: Based on structural alerts
 - **Note**: Most uncertain endpoint, requires long-term studies
 
-**Neural Network vs. Heuristic**:
+**Real ADMET Models vs. Heuristic**:
 
-The platform provides **two approaches** side-by-side:
-1. **Heuristic**: Rule-based structural alerts (fast, interpretable)
-2. **Neural Network**: Deep learning model (demonstration, trained on synthetic data)
+The platform provides **two approaches** side-by-side for the endpoints with real coverage:
+1. **Heuristic**: Rule-based structural alerts (fast, interpretable, all endpoints)
+2. **Real XGBoost (gradient-boosted) models**: held-out-validated on TDC scaffold splits, served by `models/real_admet.py` (`RealADMETPredictor.comprehensive_toxicity_profile()`) — DILI (hepatotoxicity) AUROC 0.925 (threshold 0.40), hERG AUROC 0.809 (threshold 0.35), AMES (mutagenicity) AUROC 0.845 (threshold 0.50). Carcinogenicity has no real model — heuristic only.
+
+There was previously a "Neural Network (demonstration, trained on synthetic data)" third option here. That module (`models/neural_toxicity.py`) was never actually trained — its weights are frozen random values (`np.random.randn`), with no optimizer or `.fit()` ever run — so it has been removed from this comparison. It is deprecated legacy code, not a working model.
 
 **Example Toxicity Profile**:
 
@@ -365,29 +367,31 @@ Expected:
 
 ---
 
-### 7. ML Model Predictions
+### 7. Real ADMET Model Predictions
 
-**Purpose**: Ensemble machine learning predictions
+**Purpose**: Held-out-validated ADMET/toxicity predictions from real gradient-boosted (XGBoost) models
 
 **Input**: SMILES string
 
-**Models Used**:
-1. **Random Forest** (100 trees)
-2. **XGBoost** (gradient boosting)
-3. **Neural Network** (3 hidden layers)
+**Model**: `RealADMETPredictor` (`models/real_admet.py`) — 7 independently trained XGBoost models, one per endpoint, each on a TDC scaffold split (seed 1). Features: ECFP4/Morgan fingerprint (2048 bits) + 10 RDKit descriptors (2,058 total).
 
-**Output**:
-- **Ensemble Prediction**: Average across models
-- **Confidence**: Agreement between models
-- **Individual Model Results**: Transparency
-- **Feature Importance**: Which molecular properties drive predictions
+**Endpoints & held-out test performance** (from `models/saved_models/admet_models_manifest.json`):
 
-**Interpretation**:
-- **High Confidence** (models agree): More reliable prediction
-- **Low Confidence** (models disagree): Uncertain region, experimental validation recommended
-- **Feature Importance**: Understand which properties matter most
+| Endpoint | Metric | Test Score | Threshold |
+|---|---|---|---|
+| DILI (hepatotoxicity) | AUROC | 0.925 | 0.40 |
+| hERG (cardiotoxicity) | AUROC | 0.809 | 0.35 |
+| AMES (mutagenicity) | AUROC | 0.845 | 0.50 |
+| BBB_Martins (blood-brain barrier) | AUROC | 0.905 | 0.45 |
+| Pgp_Broccatelli (P-gp inhibition) | AUROC | 0.926 | 0.40 |
+| CYP3A4_Veith (CYP3A4 inhibition) | AUPRC | 0.869 | 0.55 |
+| Caco2_Wang (permeability) | MAE | 0.339 | n/a (regression) |
 
-**Note**: These models are trained on **synthetic data** for demonstration purposes. For production use, retrain on real pharmaceutical datasets.
+**Output**: Per-endpoint probability (classification) or predicted value (Caco2_Wang, regression), with the endpoint's threshold applied to produce a risk category.
+
+**Interpretation**: A score's reliability is bounded by its endpoint's real held-out test metric above — e.g. hERG (AUROC 0.809) is meaningfully less reliable than DILI or Pgp_Broccatelli (AUROC 0.92+). These are real test-set scores, not training-set numbers, but they still don't replace experimental assays.
+
+**Note**: This replaces an earlier "ensemble" page that combined Random Forest, XGBoost, and a "Neural Network" trained on `create_synthetic_dataset()` — a fabricated dataset. That module (`models/ml_models.py`) is deprecated and no longer wired into the app; its historical "85-90% accuracy" figures were computed on fake data and were never meaningful.
 
 ---
 

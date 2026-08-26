@@ -32,7 +32,7 @@ This platform demonstrates:
 
 - Pharmaceutical data science workflows and methodologies
 - Proficiency with industry-standard cheminformatics tools (RDKit)
-- Implementation of ML models used in drug discovery (Random Forest, XGBoost, Neural Networks)
+- Implementation of ML models used in drug discovery (rule-based scoring functions + held-out-validated XGBoost ADMET models)
 - ADME/PK, toxicity prediction, and target class identification methods
 - Interactive applications for pharmaceutical AI/ML exploration
 - **Complete documentation and scientific citations for all methods**
@@ -51,14 +51,11 @@ This platform demonstrates:
 ### Small Molecule Analysis
 
 - **Molecular Processing**: SMILES validation, descriptor calculation, Morgan fingerprint generation
-- **ADME/PK Prediction**: LogP, Caco-2 permeability, BBB penetration, CYP450 metabolism, clearance *(heuristic)*
-- **Toxicity Profiling - Dual System**:
-  - 🧠 **Neural Network**: Deep learning with 2078 features (30 descriptors + 2048 Morgan FP bits)
-  - 📋 **Heuristic**: Structural alerts for hepatotoxicity, hERG, mutagenicity, carcinogenicity
-  - 🔬 **Comparison Mode**: Side-by-side evaluation for educational insights
-- **Target Class Prediction**: Kinase, GPCR, ion channel, enzyme inhibitor likelihood *(heuristic)*
+- **ADME/PK Prediction**: LogP, Caco-2 permeability, BBB penetration, CYP450 metabolism, clearance *(rule-based)*
+- **Toxicity Profiling**: Gradient-boosted (XGBoost) models trained and held-out-validated on Therapeutics Data Commons data — Hepatotoxicity/DILI (AUROC 0.93), Cardiotoxicity/hERG (AUROC 0.81), Mutagenicity/Ames (AUROC 0.85). See [`models/saved_models/admet_models_manifest.json`](models/saved_models/admet_models_manifest.json) for exact test-set scores and split. Structural-alert heuristics remain available as a separate, clearly labeled rule-based cross-check.
+- **Target Class Prediction**: Kinase, GPCR, ion channel, enzyme inhibitor likelihood *(rule-based)*
 - **Drug-Likeness Scoring**: Lipinski Rule of 5, Veber descriptors, QED, Synthetic Accessibility
-- **Multi-Model ML**: Random Forest, XGBoost, Neural Network ensemble predictions
+- **Real ADMET Models**: XGBoost models trained on curated Therapeutics Data Commons datasets and evaluated on a held-out scaffold split (see [manifest](models/saved_models/admet_models_manifest.json) for per-endpoint AUROC/AUPRC/MAE) — covering DILI, hERG, AMES, BBB, P-gp, CYP3A4, and Caco-2 permeability.
 - **Model Explainability**: Feature importance visualization for transparency
 
 ### Biologic & Protein Analysis **[NEW]**
@@ -87,7 +84,7 @@ This platform demonstrates pharmaceutical industry best practices:
 
 1. **ADME/PK Focus**: Critical for small-molecule drug development
 2. **Biologic Developability**: Solubility, aggregation, stability assessment (emerging importance)
-3. **Deep Learning Toxicity**: Multi-endpoint neural network following DeepTox architecture
+3. **Gradient-Boosted Toxicity Models**: XGBoost classifiers trained and scaffold-split validated on TDC toxicity endpoints (DILI, hERG, AMES)
 4. **Kinase Inhibitor Analysis**: Important target class in oncology research
 5. **Multi-Modal Support**: Both small molecules (SMILES) and biologics (FASTA)
 6. **Knowledge Graphs**: Drug-target-disease relationship mapping
@@ -136,11 +133,13 @@ The platform uses a modular architecture for scalability and maintainability:
 │   └── input_detector.py           # Intelligent SMILES/FASTA detection
 │
 ├── models/                         # Prediction models
-│   ├── adme_predictors.py          # ADME/PK predictions (heuristic)
-│   ├── toxicity_predictors.py      # Heuristic toxicity models
-│   ├── neural_toxicity.py          # Deep learning toxicity predictor **[NEW]**
-│   ├── target_predictors.py        # Target class prediction
-│   └── ml_models.py                # Random Forest, XGBoost, ensemble
+│   ├── real_admet.py               # RealADMETPredictor: XGBoost ADMET models (7 endpoints, held-out validated, see saved_models/admet_models_manifest.json)
+│   ├── saved_models/                # Trained model files + admet_models_manifest.json (source of truth for all reported metrics)
+│   ├── adme_predictors.py          # ADME/PK predictions (rule-based)
+│   ├── toxicity_predictors.py      # Rule-based toxicity models
+│   ├── neural_toxicity.py          # Legacy/demo only, untrained — not used for real predictions
+│   ├── target_predictors.py        # Target class prediction (rule-based)
+│   └── ml_models.py                # Legacy/demo only, trained on synthetic data — not used for real predictions
 │
 ├── utils/                          # Utility modules
 │   ├── molecular_utils.py          # SMILES processing, descriptors, fingerprints
@@ -170,7 +169,7 @@ The platform uses a modular architecture for scalability and maintainability:
 2. **Scalability**: New models can be added to `/models` without affecting existing code
 3. **Documentation**: Every module has comprehensive docstrings and scientific references
 4. **Educational**: Code designed for learning with clear explanations
-5. **Dual System**: Heuristic + Neural Network approaches for educational comparison
+5. **Honest Labeling**: Rule-based heuristics and held-out-validated XGBoost ADMET models are clearly distinguished throughout the app
 
 ---
 
@@ -280,24 +279,24 @@ All code includes:
 
 ### 4. Toxicity Prediction
 
-#### Neural Network Toxicity Predictor (`models/neural_toxicity.py`) **[NEW]**
+#### Real ADMET Toxicity Models (`models/real_admet.py`)
 
-- **Architecture**: Feed-forward neural network (2078 → 512 → 256 → 128 → 4)
-- **Features**: 30 RDKit descriptors + 2048 Morgan fingerprint bits (ECFP4, radius=2)
-- **Endpoints**: Hepatotoxicity, Cardiotoxicity (hERG), Mutagenicity (Ames), Carcinogenicity
-- **Training**: Synthetic data for demonstration (production requires Tox21, ToxCast, DILIrank)
-- **Output**: Probability scores (0-100%) with risk level classification
+- **Models**: Gradient-boosted (XGBoost) classifiers, one per endpoint
+- **Features**: 10 RDKit descriptors + 2048-bit Morgan/ECFP4 fingerprint (2,058 features)
+- **Endpoints**: Hepatotoxicity (DILI, AUROC 0.93), Cardiotoxicity (hERG, AUROC 0.81), Mutagenicity (Ames, AUROC 0.85)
+- **Training**: Therapeutics Data Commons (TDC) curated datasets, scaffold split (seed 1)
+- **Validation**: Metrics are held-out test-set scores — see [`models/saved_models/admet_models_manifest.json`](models/saved_models/admet_models_manifest.json) for exact numbers, thresholds, and train/test sizes
+- **Output**: Calibrated probability scores with risk level classification
+- **Reproduce**: full provenance and a one-command retrain in [`models/saved_models/README.md`](models/saved_models/README.md); training script is [`models/train_admet.py`](models/train_admet.py)
 
-**Methodology**: Follows DeepTox architecture (Mayr et al. 2016), winner of Tox21 Data Challenge
-
-#### Heuristic Toxicity Predictor (`models/toxicity_predictors.py`)
+#### Heuristic Toxicity Predictor (`models/toxicity_predictors.py`) — rule-based
 
 - **Hepatotoxicity**: Liver toxicity structural alerts¹⁰
 - **hERG Inhibition**: Cardiotoxicity screening¹¹,¹²
 - **Ames Mutagenicity**: Genetic toxicity prediction¹³
 - **Carcinogenicity**: Long-term cancer risk¹⁴
 
-**Platform Feature**: Side-by-side comparison of neural network vs heuristic predictions for educational insights
+**Note**: `models/neural_toxicity.py` (untrained, random-weight demo) and the ensemble in `models/ml_models.py` (trained on synthetic data) are legacy/demo code, not used for real predictions, and are not represented as ML results anywhere in the app.
 
 ### 5. Target Class Prediction (`models/target_predictors.py`)
 
@@ -306,13 +305,11 @@ All code includes:
 - **Ion Channel Blockers**: Ion channel interaction prediction
 - **Enzyme Inhibitors**: General enzyme inhibition potential
 
-### 6. Machine Learning Models (`models/ml_models.py`)
+### 6. Machine Learning Models
 
-- **Random Forest**: Ensemble decision trees for classification¹⁵
-- **XGBoost**: Gradient boosted trees for robust predictions¹⁶
-- **Neural Networks**: Simple feedforward architecture
-- **Ensemble Predictions**: Combining multiple models
+- **Production models** (`models/real_admet.py`): XGBoost, trained on real TDC data, held-out validated — see [manifest](models/saved_models/admet_models_manifest.json) for scores¹⁶
 - **Feature Importance**: SHAP values for interpretability¹⁷
+- **Legacy/demo code** (`models/ml_models.py`): Random Forest/XGBoost trained on synthetic (non-pharmaceutical) data for architecture demonstration only¹⁵ — not used for real predictions and not shown to users as validated results
 
 ### 7. Knowledge Graph (`utils/knowledge_graph.py`)
 
@@ -391,10 +388,24 @@ All methods implemented in this platform are based on peer-reviewed research:
 - Synthetic accessibility scoring⁵
 
 ### QSAR Methodologies
-- Graph Neural Networks for toxicity (AUC 0.96)¹²
 - Random Forest for ADME prediction¹⁵
-- XGBoost for robust multi-task learning¹⁶
+- XGBoost for robust multi-task learning¹⁶ (used in this platform's ADMET models)
 - SHAP for model interpretability¹⁷
+- *(For reference, published state-of-the-art hERG models using Graph Neural Networks report AUC 0.96¹² — not implemented in this platform.)*
+
+### This Platform's Held-Out Test Scores
+
+| Endpoint | Metric | Score |
+|---|---|---|
+| Hepatotoxicity (DILI) | AUROC | 0.93 |
+| Cardiotoxicity (hERG) | AUROC | 0.81 |
+| Mutagenicity (Ames) | AUROC | 0.85 |
+| Blood-Brain Barrier | AUROC | 0.91 |
+| P-glycoprotein Inhibition | AUROC | 0.93 |
+| CYP3A4 Inhibition | AUPRC | 0.87 |
+| Caco-2 Permeability | MAE | 0.34 |
+
+Full metrics, split methodology, and feature specs: [`models/saved_models/admet_models_manifest.json`](models/saved_models/admet_models_manifest.json) (the only legitimate source for these numbers).
 
 ### Literature References
 

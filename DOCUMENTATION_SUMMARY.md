@@ -52,7 +52,7 @@
 ### Scientific Rigor
 - ✅ 50+ peer-reviewed references in REFERENCES.md
 - ✅ Complete methodology documentation in METHODOLOGY.md
-- ✅ Honest disclosure of heuristic vs validated models
+- ✅ Honest disclosure of rule-based vs held-out-validated XGBoost ADMET models (README/METHODOLOGY corrected to remove untrained-neural-network and synthetic-data-as-ML claims; real metrics sourced from models/saved_models/admet_models_manifest.json)
 - ✅ Clear limitations and disclaimers
 - ✅ Reproducibility focus
 
@@ -119,5 +119,6 @@ This repository is now publication-ready with:
 - Community standards
 - Reproducibility
 - Developer-friendly resources
+- [x] All ML claims trace to models/saved_models/*_meta.json (admet_models_manifest.json); no untrained/fake-data model is described as functional
 
 Status: ✅ READY FOR PUBLICATION

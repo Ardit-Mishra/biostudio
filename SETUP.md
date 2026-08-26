@@ -263,7 +263,9 @@ else:
 "
 ```
 
-### Step 4: Test Molecular Feature Extraction
+### Step 4: Test Molecular Feature Extraction (legacy extractor)
+
+> Note: this checks the feature extractor used by the deprecated legacy modules (`neural_toxicity.py`, `ml_models.py`) only — it does **not** test the real ADMET models. See Step 5 below for that.
 
 ```bash
 python -c "
@@ -273,7 +275,34 @@ from rdkit import Chem
 mol = Chem.MolFromSmiles('CC(=O)Oc1ccccc1C(=O)O')  # Aspirin
 features = MolecularFeatureExtractor.extract_features(mol)
 print(f'✓ Feature extraction: {len(features)} features')
-print(f'✓ Expected: 2078 features (30 descriptors + 2048 FP bits)')
+print(f'✓ Expected: 2078 features (30 descriptors + 2048 FP bits) — legacy extractor only')
+"
+```
+
+### Step 5: Test Real ADMET Models (RealADMETPredictor)
+
+This verifies the platform's only legitimate ML: 7 held-out-validated XGBoost models loaded from `models/saved_models/`.
+
+```bash
+python -c "
+import json, os
+from models.real_admet import RealADMETPredictor
+from rdkit import Chem
+
+# Confirm every manifest entry's model file exists
+manifest_path = 'models/saved_models/admet_models_manifest.json'
+with open(manifest_path) as f:
+    manifest = json.load(f)
+for endpoint, meta in manifest.items():
+    model_path = os.path.join('models/saved_models', meta['model_file'])
+    status = 'OK' if os.path.exists(model_path) else 'MISSING'
+    print(f'{endpoint}: {meta[\"model_file\"]} -> {status}')
+
+# Confirm the predictor loads and runs on all 7 endpoints
+predictor = RealADMETPredictor()
+mol = Chem.MolFromSmiles('CC(=O)Oc1ccccc1C(=O)O')  # Aspirin
+profile = predictor.comprehensive_toxicity_profile(mol)
+print(f'✓ RealADMETPredictor loaded, {len(profile)} endpoint predictions returned')
 "
 ```
 

@@ -1,0 +1,23 @@
+# BioStudio runtime dependencies (mirrors pyproject.toml [project.dependencies]).
+# Install:  pip install -r requirements.txt   (or: uv pip install -r requirements.txt)
+# NumPy is pinned <2.0 for RDKit wheel compatibility.
+biopython>=1.86
+fastapi>=0.121.2
+joblib>=1.5.2
+matplotlib>=3.10.7
+networkx>=3.5
+numpy>=1.24,<2.0
+pandas>=2.3.3
+pillow>=12.0.0
+plotly>=6.4.0
+pydantic>=2.12.4
+pyvis>=0.3.2
+rdkit>=2025.9.1
+requests>=2.32.5
+scikit-learn>=1.7.2
+scipy>=1.16.3
+seaborn>=0.13.2
+streamlit>=1.51.0
+umap-learn>=0.5.9.post2
+uvicorn>=0.38.0
+xgboost>=3.1.1

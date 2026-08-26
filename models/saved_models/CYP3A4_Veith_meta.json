@@ -1,0 +1,31 @@
+{
+  "tdc_name": "CYP3A4_Veith",
+  "app_label": "CYP3A4 Inhibition",
+  "admet_class": "Metabolism",
+  "task": "classification",
+  "official_metric": "AUPRC",
+  "test_score": 0.8690310105553087,
+  "threshold": 0.5499999999999999,
+  "n_train": 9861,
+  "n_test": 2467,
+  "positives_frac": 0.40847784200385356,
+  "split": "TDC scaffold (default, seed 1)",
+  "feature_spec": {
+    "fingerprint": "ECFP4/Morgan radius=2 nBits=2048",
+    "descriptors": [
+      "MolWt",
+      "MolLogP",
+      "TPSA",
+      "NumHDonors",
+      "NumHAcceptors",
+      "NumRotatableBonds",
+      "NumAromaticRings",
+      "FractionCSP3",
+      "HeavyAtomCount",
+      "NumHeteroatoms"
+    ],
+    "n_features": 2058
+  },
+  "model_file": "CYP3A4_Veith_xgb.json",
+  "source": "Therapeutics Data Commons (TDC)"
+}
