@@ -332,13 +332,13 @@ An earlier prototype module (`models/neural_toxicity.py`) also exists in the cod
 
 | Endpoint | ADMET Class | App Label | Metric | Test Score | n_train | n_test |
 |---|---|---|---|---|---|---|
-| DILI | Toxicity | Hepatotoxicity (DILI) | AUROC | 0.925 | 379 | 96 |
-| hERG | Toxicity | Cardiotoxicity (hERG) | AUROC | 0.809 | 523 | 132 |
-| AMES | Toxicity | Mutagenicity (Ames) | AUROC | 0.845 | 5,821 | 1,457 |
+| DILI | Toxicity | Hepatotoxicity (DILI) | AUROC | 0.849 | 379 | 96 |
+| hERG | Toxicity | Cardiotoxicity (hERG) | AUROC | 0.778 | 523 | 132 |
+| AMES | Toxicity | Mutagenicity (Ames) | AUROC | 0.847 | 5,821 | 1,457 |
 | BBB_Martins | Distribution | Blood-Brain Barrier | AUROC | 0.905 | 1,624 | 406 |
-| Pgp_Broccatelli | Absorption | P-glycoprotein Inhibition | AUROC | 0.926 | 973 | 245 |
-| CYP3A4_Veith | Metabolism | CYP3A4 Inhibition | AUPRC | 0.869 | 9,861 | 2,467 |
-| Caco2_Wang | Absorption | Caco-2 Permeability | MAE | 0.339 | 728 | 182 |
+| Pgp_Broccatelli | Absorption | P-glycoprotein Inhibition | AUROC | 0.908 | 973 | 245 |
+| CYP3A4_Veith | Metabolism | CYP3A4 Inhibition | AUPRC | 0.868 | 9,861 | 2,467 |
+| Caco2_Wang | Absorption | Caco-2 Permeability | MAE | 0.286 | 728 | 182 |
 
 Each row is a separately trained, saved model (e.g. `DILI_xgb.json`) in `models/saved_models/`, evaluated on its own held-out TDC scaffold-split test set (never seen during training). Model files, split details, and full feature specs live in `admet_models_manifest.json` alongside each `*_meta.json`.
 
@@ -631,8 +631,8 @@ prob = booster.predict(xgb.DMatrix(features))   # binary:logistic -> probability
 - Scaffold splitting to avoid analog leakage (Bemis & Murcko, 1996)
 
 **Reported performance**: real, single held-out evaluation per endpoint — see
-`models/saved_models/admet_models_manifest.json` (e.g. DILI AUROC 0.925, hERG 0.809, AMES 0.845,
-BBB 0.905, Pgp 0.926, CYP3A4 AUPRC 0.869, Caco-2 MAE 0.339). No synthetic training data.
+`models/saved_models/admet_models_manifest.json` (e.g. DILI AUROC 0.849, hERG 0.778, AMES 0.847,
+BBB 0.905, Pgp 0.908, CYP3A4 AUPRC 0.868, Caco-2 MAE 0.286). No synthetic training data.
 
 > **Deprecated:** an earlier `MultiModelPredictor` ensemble (`models/ml_models.py`) was trained on a
 > self-generated synthetic dataset and is **no longer imported by the app**. Its reported "accuracy"

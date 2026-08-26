@@ -4,7 +4,7 @@
   "admet_class": "Absorption",
   "task": "regression",
   "official_metric": "MAE",
-  "test_score": 0.3390668591790839,
+  "test_score": 0.2856933638602457,
   "threshold": null,
   "n_train": 728,
   "n_test": 182,
@@ -13,18 +13,23 @@
   "feature_spec": {
     "fingerprint": "ECFP4/Morgan radius=2 nBits=2048",
     "descriptors": [
-      "MolWt",
-      "MolLogP",
-      "TPSA",
-      "NumHDonors",
-      "NumHAcceptors",
+      "TPSA_x100",
+      "LipinskiHBD",
+      "LipinskiHBA",
       "NumRotatableBonds",
       "NumAromaticRings",
-      "FractionCSP3",
+      "NumAliphaticRings",
+      "NumRings",
       "HeavyAtomCount",
-      "NumHeteroatoms"
+      "NumHeteroatoms",
+      "NumAmideBonds",
+      "NumAromaticHeterocycles",
+      "NumSaturatedRings",
+      "NumAtomStereoCenters"
     ],
-    "n_features": 2058
+    "n_features": 2061,
+    "browser_exact": true,
+    "note": "All features are exactly reproducible by RDKit.js (WASM); verified 0/350 mismatches."
   },
   "model_file": "Caco2_Wang_xgb.json",
   "source": "Therapeutics Data Commons (TDC)"

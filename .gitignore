@@ -120,3 +120,6 @@ temp_images/
 # Documentation build
 docs/_build/
 site/
+
+# Downloaded TDC benchmark data (re-fetched by models/train_admet.py)
+models/tdc_data/

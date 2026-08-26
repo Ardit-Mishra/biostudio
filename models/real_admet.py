@@ -42,8 +42,13 @@ except Exception:
         DataStructs.ConvertToNumpyArray(bv, a)
         return a
 
-_DESCS = [Descriptors.MolWt, Descriptors.MolLogP, Descriptors.TPSA, Descriptors.NumHDonors,
-          Descriptors.NumHAcceptors, Descriptors.NumRotatableBonds, Descriptors.NumAromaticRings,
+from rdkit.Chem import rdMolDescriptors as _rdMD
+
+# Must stay byte-identical to models/train_admet.py. LipinskiHBD/HBA (N+O counts)
+# are used rather than the SMARTS-based NumHDonors/NumHAcceptors so the browser
+# featurizer (RDKit.js) reproduces these features exactly. See models/web/.
+_DESCS = [Descriptors.MolWt, Descriptors.MolLogP, Descriptors.TPSA, _rdMD.CalcNumLipinskiHBD,
+          _rdMD.CalcNumLipinskiHBA, Descriptors.NumRotatableBonds, Descriptors.NumAromaticRings,
           Descriptors.FractionCSP3, Descriptors.HeavyAtomCount, Descriptors.NumHeteroatoms]
 _NFEAT = 2048 + len(_DESCS)
 

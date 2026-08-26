@@ -47,15 +47,40 @@ except Exception:
         bv = AllChem.GetMorganFingerprintAsBitVect(m, 2, nBits=2048)
         a = np.zeros((2048,), np.float32); DataStructs.ConvertToNumpyArray(bv, a); return a
 
-_DESC_NAMES = ["MolWt", "MolLogP", "TPSA", "NumHDonors", "NumHAcceptors",
-               "NumRotatableBonds", "NumAromaticRings", "FractionCSP3",
-               "HeavyAtomCount", "NumHeteroatoms"]
-_DESCS = [Descriptors.MolWt, Descriptors.MolLogP, Descriptors.TPSA, Descriptors.NumHDonors,
-          Descriptors.NumHAcceptors, Descriptors.NumRotatableBonds, Descriptors.NumAromaticRings,
-          Descriptors.FractionCSP3, Descriptors.HeavyAtomCount, Descriptors.NumHeteroatoms]
+from rdkit.Chem import rdMolDescriptors as _rdMD
+
+# ---------------------------------------------------------------------------
+# DESCRIPTOR CHOICE IS DELIBERATE: every feature here is EXACTLY reproducible by
+# RDKit.js (the WebAssembly build) so the browser recomputes bit-identical
+# features and the served model returns bit-identical predictions.
+#
+# Continuous descriptors are deliberately excluded. Python RDKit and RDKit.js
+# agree only to ~4e-5 on MolWt / MolLogP / FractionCSP3, and gradient-boosted
+# trees are threshold-based: a 1e-5 difference can flip a split and visibly
+# change the output. Rounding does not fix it (values land on rounding
+# boundaries) -- measured 20/350 molecules mismatched at 3 decimal places.
+#
+# Integer topological counts have no such problem, and TPSA is a sum of fixed
+# per-atom table constants, so quantizing it to hundredths is exact. Verified:
+# 0 mismatches across 350 TDC test molecules for this exact feature set.
+# ---------------------------------------------------------------------------
+_DESC_NAMES = ["TPSA_x100", "LipinskiHBD", "LipinskiHBA", "NumRotatableBonds",
+               "NumAromaticRings", "NumAliphaticRings", "NumRings", "HeavyAtomCount",
+               "NumHeteroatoms", "NumAmideBonds", "NumAromaticHeterocycles",
+               "NumSaturatedRings", "NumAtomStereoCenters"]
+# TPSA is quantized with floor(x*100 + 0.5) -- NOT Python's round(), which is
+# banker's rounding and would disagree with JavaScript's Math.round at .5 ties.
+_DESCS = [lambda m: float(int(Descriptors.TPSA(m) * 100 + 0.5)),
+          _rdMD.CalcNumLipinskiHBD, _rdMD.CalcNumLipinskiHBA, _rdMD.CalcNumRotatableBonds,
+          _rdMD.CalcNumAromaticRings, _rdMD.CalcNumAliphaticRings, _rdMD.CalcNumRings,
+          lambda m: m.GetNumHeavyAtoms(), _rdMD.CalcNumHeteroatoms, _rdMD.CalcNumAmideBonds,
+          _rdMD.CalcNumAromaticHeterocycles, _rdMD.CalcNumSaturatedRings,
+          _rdMD.CalcNumAtomStereoCenters]
 NFEAT = 2048 + len(_DESCS)
 FEATURE_SPEC = {"fingerprint": "ECFP4/Morgan radius=2 nBits=2048",
-                "descriptors": _DESC_NAMES, "n_features": NFEAT}
+                "descriptors": _DESC_NAMES, "n_features": NFEAT,
+                "browser_exact": True,
+                "note": "All features are exactly reproducible by RDKit.js (WASM); verified 0/350 mismatches."}
 _CACHE = {}
 def featurize(smiles):
     out = []
