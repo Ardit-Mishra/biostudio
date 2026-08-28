@@ -97,6 +97,11 @@ from features.input_detector import InputDetector
 # Import example molecule data (peptides and proteins)
 from data.example_molecules import get_all_peptide_names, get_all_protein_names, get_peptide, get_protein
 
+# Import the shared design-system glyph set (generated — see design-system/icons.json).
+# icon() returns a bare <svg> string, section_header() a full heading block, inline()
+# a glyph+text run for chips/legends. All three return HTML for st.markdown(..., unsafe_allow_html=True).
+from utils.icons import icon, section_header, inline
+
 # =============================================================================
 # STREAMLIT PAGE CONFIGURATION
 # =============================================================================
@@ -104,7 +109,7 @@ from data.example_molecules import get_all_peptide_names, get_all_protein_names,
 # Must be called first before any other Streamlit commands
 st.set_page_config(
     # Browser tab title
-    page_title="Ardit BioStudio | AI-Powered Molecular Intelligence",
+    page_title="Ardit BioStudio — ADMET property prediction",
     # Browser tab icon (DNA emoji)
     page_icon="🧬",
     # Use wide layout to maximize screen space
@@ -120,112 +125,252 @@ st.set_page_config(
 # This overrides Streamlit's default styling for a professional pharma look
 st.markdown("""
 <style>
-  /* Import Inter font from Google Fonts for modern typography */
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+  /* ---------------------------------------------------------------------
+     "Laboratory Instrument" — shared with GenomeSight and PeptideMHC.
 
-  /* CSS Variables for consistent color scheme */
+     Replaces a neon cyan/pink scheme on near-black that carried a grid
+     background, glowing text shadows, gradient buttons and a scale-on-hover.
+     That reads as a sci-fi console; this app reports ADMET properties with
+     stated held-out scores, and should look like the instrument it is.
+
+     Accent (blue) marks measurement and interaction. Risk is carried by a
+     SEPARATE semantic scale (safe / caution / critical) so a property being
+     dangerous is never confused with a control being active.
+     --------------------------------------------------------------------- */
+  @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
   :root {
-    --bg-main: #00010a;         /* Dark background color */
-    --bg-grid: rgba(0, 255, 200, 0.05);  /* Subtle grid pattern overlay */
-    --text-main: #dffdfc;       /* Main text color (off-white) */
-    --text-dim: #8bc4c2;        /* Dimmed text color for secondary content */
-    --accent-cyan: #00f8c5;     /* Primary accent color (cyan/teal) */
-    --accent-pink: #ff7ddf;     /* Secondary accent color (pink) */
-    --accent-yellow: #ffe36e;   /* Warning/caution color (yellow) */
+    --bg-main: #11161D;        /* cool slate, not pure black */
+    --bg-panel: #171E27;
+    --text-main: #E7ECF3;
+    --text-dim: #8D9AAA;
+    --border: #232C36;
+    --accent: #6E9BFF;         /* AlphaFold high-confidence pLDDT blue */
+    --safe: #5FBF8F;
+    --caution: #D9A44F;
+    --critical: #E06C75;
+    --font-ui: 'Bricolage Grotesque', 'Helvetica Neue', Arial, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, Consolas, Menlo, monospace;
   }
 
-  /* Main app container styling with grid background pattern */
+  /* Flat ground. The 40px grid overlay was decoration with no referent. */
   .stApp {
     background: var(--bg-main);
     color: var(--text-main);
-    /* Layered backgrounds: solid color + horizontal lines + vertical lines */
-    background-image:
-      linear-gradient(var(--bg-main), var(--bg-main)),
-      linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px),
-      linear-gradient(var(--bg-grid) 1px, transparent 1px);
-    /* Grid cell size of 40x40 pixels */
-    background-size: 100%, 40px 40px, 40px 40px;
   }
 
-  /* Sidebar styling - dark with cyan border */
+  /* Streamlit sets its own face on inner elements, so a rule on .stApp alone
+     loses to it. Claim the UI face broadly, then hand the data back to mono. */
+  html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stSidebar"],
+  h1, h2, h3, h4, h5, h6, p, div, span, label, button, input, select, textarea {
+    font-family: var(--font-ui) !important;
+  }
+
+  code, pre, .stCode, [data-testid="stDataFrame"],
+  [data-testid="stMetricValue"], [data-testid="stMetricLabel"], .risk-pill {
+    font-family: var(--font-mono) !important;
+  }
+
   [data-testid="stSidebar"] {
-    background: #00010a;
-    border-right: 1px solid #00c9a4;
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border);
   }
-
-  /* Make all sidebar text use the main text color */
   [data-testid="stSidebar"] * { color: var(--text-main); }
 
-  /* Main header styling with glowing effect */
+  /* Left-aligned and unlit. A glowing centred title is a poster, not a tool. */
+  /* Streamlit's own h1 rule sets ~44px and wins on specificity, hence the
+     !important — without it the "restrained header" silently stays huge. */
   .main-header {
-    font-size: 2.7rem;
-    font-weight: 700;
-    text-align: center;
-    font-family: 'Inter';
-    color: var(--accent-cyan);
-    /* Cyan glow effect */
-    text-shadow: 0 0 12px rgba(0,248,197,0.7);
+    font-family: var(--font-ui) !important;
+    font-size: 1.6rem !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.02em;
+    color: var(--text-main);
+    text-align: left;
+    padding: 0 !important;
   }
 
-  /* Subtitle styling - dimmed and centered */
   .subtitle {
     color: var(--text-dim);
-    text-align: center;
+    text-align: left;
+    font-size: 0.95rem;
   }
 
-  /* Card styling for metric displays */
+  /* Hairline panel. Elevation is a border, not a 25px coloured glow. */
   .metric-card {
-    background: rgba(0,0,0,0.35);
-    border: 1px solid #00c9a4;
-    border-radius: 12px;
-    padding: 1.5rem;
-    box-shadow: 0 0 25px rgba(0,255,200,0.15);
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1.15rem 1.25rem;
   }
 
-  /* Success message box styling */
-  .success-box { background: rgba(0,255,200,0.1); border-left: 4px solid var(--accent-cyan); }
-  /* Danger/error message box styling */
-  .danger-box { background: rgba(255,125,223,0.13); border-left: 4px solid var(--accent-pink); }
+  /* Every measured number is monospace and tabular so columns of results
+     line up and digits do not shift width as values change. */
+  [data-testid="stMetricValue"] {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+  [data-testid="stMetricLabel"] {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
 
-  /* Pill-shaped labels for risk levels */
+  /* Callouts: a 2px rail, matching the caveat treatment in PeptideMHC. */
+  .success-box {
+    background: rgba(95,191,143,0.10);
+    border-left: 2px solid var(--safe);
+    padding: 0.75rem 1rem;
+    border-radius: 0 6px 6px 0;
+  }
+  .danger-box {
+    background: rgba(224,108,117,0.10);
+    border-left: 2px solid var(--critical);
+    padding: 0.75rem 1rem;
+    border-radius: 0 6px 6px 0;
+  }
+
+  /* Risk pills read as status, not as brand colour. */
   .risk-pill {
-    padding: 0.2rem 0.7rem;
-    border-radius: 999px;
-    font-size: 0.75rem;
-    font-weight: 600;
+    font-family: var(--font-mono);
+    padding: 0.15rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border: 1px solid currentColor;
   }
+  .safe-zone     { color: var(--safe); }
+  .caution-zone  { color: var(--caution); }
+  .critical-zone { color: var(--critical); }
 
-  /* Green pill for safe/low risk */
-  .safe-zone { background: rgba(0,255,200,0.2); color: var(--accent-cyan); }
-  /* Yellow pill for moderate risk */
-  .caution-zone { background: rgba(255,227,110,0.2); color: var(--accent-yellow); }
-  /* Pink pill for high risk */
-  .critical-zone { background: rgba(255,125,223,0.2); color: var(--accent-pink); }
-
-  /* Primary button styling with gradient and glow */
+  /* Flat control. Was a cyan->pink gradient pill with a 18px glow that grew
+     6% on hover; a button on an instrument does not inflate when approached. */
   .stButton > button {
-    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-pink));
-    border-radius: 999px;
-    color: #00010a;
-    padding: 0.65rem 1.3rem;
-    font-weight: 700;
-    border: none;
-    box-shadow: 0 0 18px rgba(0,248,197,0.6);
+    background: var(--accent);
+    color: #11161D;
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    padding: 0.5rem 1.1rem;
+    font-family: var(--font-ui);
+    font-weight: 600;
+    box-shadow: none;
+    transition: filter .15s ease, border-color .15s ease;
+  }
+  .stButton > button:hover {
+    filter: brightness(1.08);
+    transform: none;
+  }
+  .stButton > button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
   }
 
-  /* Button hover effect with scale and pink glow */
-  .stButton > button:hover {
-    transform: scale(1.06);
-    box-shadow: 0 0 35px rgba(255,125,223,0.7);
+  /* Streamlit paints st.info/success/warning as a full accent-tinted block with
+     accent-coloured body text, so a single long callout turned a whole screen
+     blue and drowned the numbers it sat next to. Alerts are now a neutral panel
+     with one 2px status rail — the same treatment as a stated limitation — so
+     the accent stays reserved for measurement and interaction. */
+  [data-testid="stAlert"] {
+    background: var(--bg-panel) !important;
+    border: 1px solid var(--border) !important;
+    border-left: 2px solid var(--accent) !important;
+    border-radius: 0 6px 6px 0 !important;
+    color: var(--text-main) !important;
+    box-shadow: none !important;
+  }
+  [data-testid="stAlert"] * { color: var(--text-main) !important; }
+  [data-testid="stAlert"] a { color: var(--accent) !important; }
+  [data-testid="stAlertContentSuccess"] { border-left-color: var(--safe) !important; }
+  [data-testid="stAlertContentWarning"] { border-left-color: var(--caution) !important; }
+  [data-testid="stAlertContentError"]   { border-left-color: var(--critical) !important; }
+
+  /* Prose is read, not scanned: cap the measure so long callouts do not run the
+     full width of a 1440px screen. */
+  [data-testid="stAlert"] p, [data-testid="stCaptionContainer"] p {
+    max-width: 78ch;
+  }
+
+  /* SMILES, formulae and identifiers are read character by character. */
+  code, .stCode, [data-testid="stDataFrame"] {
+    font-family: var(--font-mono);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+  }
+
+  /* Custom icon nav (replaces st.radio, which cannot render HTML options).
+     Each row is an icon column + a real st.button — flatten the button back to
+     a left-aligned list row instead of the pill treatment used for action
+     buttons elsewhere, and vertically centre the icon against the label.
+     Scoped to the sidebar's own horizontal-block/button wrappers (real
+     Streamlit containers) rather than a hand-written div, since an
+     st.markdown("<div>") does not actually wrap sibling widgets in the DOM. */
+  [data-testid="stSidebar"] [data-testid="stHorizontalBlock"] {
+    align-items: center;
+    margin-bottom: 0.15rem;
+  }
+  [data-testid="stSidebar"] .stButton > button[kind="secondary"] {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-dim);
+    font-weight: 500;
+    padding: 0.4rem 0.6rem;
+    text-align: left;
+    justify-content: flex-start;
+    box-shadow: none;
+  }
+  [data-testid="stSidebar"] .stButton > button[kind="secondary"]:hover {
+    background: rgba(110,155,255,0.08);
+    color: var(--text-main);
+    border-color: var(--border);
+    filter: none;
+  }
+  [data-testid="stSidebar"] .stButton > button[kind="primary"] {
+    background: rgba(110,155,255,0.14);
+    color: var(--text-main);
+    border: 1px solid var(--accent);
+    box-shadow: none;
+    font-weight: 600;
+    padding: 0.4rem 0.6rem;
+    text-align: left;
+    justify-content: flex-start;
+  }
+  [data-testid="stSidebar"] .stButton > button[kind="primary"]:hover {
+    filter: none;
+    background: rgba(110,155,255,0.2);
   }
 </style>
-
 """, unsafe_allow_html=True)
 
 
 # =============================================================================
 # MODEL INITIALIZATION WITH CACHING
 # =============================================================================
+@st.cache_data
+def _admet_endpoint_names() -> list:
+    """
+    Endpoint names read from the manifest the app actually serves.
+
+    The sidebar used to hardcode "8"; the manifest holds seven. Deriving the
+    count means the UI cannot drift from the shipped artifacts again.
+    """
+    import json
+    from models.real_admet import _default_model_dir
+
+    path = os.path.join(_default_model_dir(), "admet_models_manifest.json")
+    try:
+        with open(path, encoding="utf-8") as fh:
+            return list(json.load(fh).keys())
+    except (OSError, ValueError):
+        return []
+
+
 # Use @st.cache_resource to load models only once and reuse across sessions
 # This significantly improves performance by avoiding repeated initialization
 @st.cache_resource
@@ -290,15 +435,25 @@ st.markdown('<div class="main-header">Ardit BioStudio</div>', unsafe_allow_html=
 # Decorative gold underline (empty div for styling)
 st.markdown('<div class="gold-underline"></div>', unsafe_allow_html=True)
 # Subtitle describing the platform
-st.markdown('<div class="subtitle">AI-Powered Molecular Intelligence Platform</div>', unsafe_allow_html=True)
+st.markdown('<div class="subtitle">ADMET property prediction from molecular structure &middot; seven XGBoost models, scaffold-split, held-out scores shown per prediction</div>', unsafe_allow_html=True)
 
 # Important disclaimer about the educational nature of predictions
 # This is crucial for setting user expectations about prediction accuracy
-st.info("""
-**NOTE**: This is an educational/research platform demonstrating pharmaceutical data science workflows. 
-Current predictors use heuristic scoring functions based on RDKit molecular descriptors for demonstration purposes.  
-For production use, these should be replaced with validated, data-driven QSAR models trained on curated datasets.
-""")
+# This note contradicted the app. It said "current predictors use heuristic
+# scoring functions ... for demonstration purposes" while the table directly
+# beneath it correctly advertised seven held-out-validated XGBoost models — the
+# text was left over from before the real models shipped and now UNDERSOLD the
+# work while confusing which parts are trained and which are rule-based.
+# Both facts are true of different modules, so the note now separates them.
+st.caption(
+    "Research and educational use — not for clinical or regulatory decisions. "
+    "**ADMET endpoints are trained models**: XGBoost on ECFP4 fingerprints plus RDKit "
+    "descriptors, fit on Therapeutics Data Commons benchmarks under a Bemis–Murcko "
+    "scaffold split, each reported from a single held-out evaluation with its "
+    "benchmark's own metric. **Drug-likeness, structural-alert toxicity and target-class "
+    "modules are rule-based heuristics**, not trained models, and are labelled as such "
+    "where they appear."
+)
 
 # =============================================================================
 # SIDEBAR NAVIGATION
@@ -307,41 +462,95 @@ For production use, these should be replaced with validated, data-driven QSAR mo
 with st.sidebar:
     # Navigation header
     st.markdown("### BioStudio Navigation")
+
+    # Each module's nav row carries its domain glyph. st.radio cannot render HTML
+    # inside its options, so navigation is built from real st.button widgets — one
+    # per module, an icon column beside each — instead of fighting Streamlit's
+    # internal radio markup with brittle CSS. Selection lives in session_state and
+    # a rerun swaps the page, exactly like the radio group it replaces.
+    # `None` means no glyph in the 22-icon set genuinely marks this page's concept
+    # (Home is the app itself; About is platform info) — per the design system's
+    # own rule, no icon beats a wrong one.
+    NAV_ITEMS = [
+        ("Home", "benzene"),
+        ("Molecule Studio", "molecule"),
+        ("ADME Navigator", "membrane"),
+        ("Toxicity Radar", "hazard"),
+        ("Drug-Likeness Deck", "ruler"),
+        ("Target Prediction", "receptor"),
+        ("Protein & Biologic Studio", "peptide"),
+        ("Explainability Canvas", "calibration"),
+        ("Knowledge Graph", "graph"),
+        ("Lead Lab", "plate"),
+        ("Case Study", "flask"),
+        ("About", None),
+    ]
+
+    if "biostudio_page" not in st.session_state:
+        st.session_state.biostudio_page = "Home"
+
+    for _label, _glyph in NAV_ITEMS:
+        _active = st.session_state.biostudio_page == _label
+        _icon_col, _btn_col = st.columns([1, 6], gap="small")
+        with _icon_col:
+            if _glyph:
+                st.markdown(
+                    icon(_glyph, 17, "var(--accent)" if _active else "var(--text-dim)"),
+                    unsafe_allow_html=True,
+                )
+        with _btn_col:
+            if st.button(
+                _label,
+                key=f"nav_{_label}",
+                use_container_width=True,
+                type="primary" if _active else "secondary",
+            ):
+                st.session_state.biostudio_page = _label
+                st.rerun()
+    page = st.session_state.biostudio_page
+
+    # Visual separator
+    st.markdown("---")
     
-    # Radio buttons for page selection
-    # Each option corresponds to a different module
-    page = st.radio(
-        "Select Module",
-        ["Home", "Molecule Studio", "ADME Navigator", "Toxicity Radar", 
-         "Drug-Likeness Deck", "Target Prediction", "Protein & Biologic Studio", 
-         "Explainability Canvas", "Knowledge Graph", "Lead Lab", "Case Study", "About"],
-        label_visibility="collapsed"
+    # Facts about the shipped models, read from the manifest they are served
+    # from. This block previously showed "Models Deployed 8" (there are seven),
+    # "Predictions Today 0" (never tracked) and "Success Rate 95%" — a figure
+    # with no definition and no measurement behind it. A predictor does not have
+    # a success rate; it has a held-out score per endpoint, which is shown on
+    # each prediction card.
+    st.markdown("### Models")
+    _endpoints = _admet_endpoint_names()
+    st.metric("ADMET endpoints", str(len(_endpoints)) if _endpoints else "—")
+    st.markdown(
+        f"""<div style="font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.12em;
+                        text-transform: uppercase; color: var(--text-dim); margin-top: 0.75rem;">Split</div>
+            <div style="margin-top:.2rem">{inline('split', 'Bemis&ndash;Murcko scaffold', size=16)}</div>""",
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        "Each endpoint is one XGBoost model with a single held-out evaluation, "
+        "scored with the metric its benchmark specifies. Per-endpoint numbers "
+        "appear with each prediction."
     )
     
     # Visual separator
     st.markdown("---")
     
-    # Quick statistics section (placeholder values)
-    st.markdown("### Quick Stats")
-    st.metric("Models Deployed", "8")
-    st.metric("Predictions Today", "0")
-    st.metric("Success Rate", "95%")
-    
-    # Visual separator
-    st.markdown("---")
-    
-    # Platform capabilities summary
-    st.markdown("""
-    <small style="color: #5D6D7E;">
-    <strong>Platform Modules:</strong><br>
-    • Real-time ADME/PK prediction<br>
-    • Toxicity risk assessment<br>
-    • Drug-likeness scoring<br>
-    • Target class prediction<br>
-    • ML model explainability<br>
-    • Knowledge graph explorer<br>
-    </small>
-    """, unsafe_allow_html=True)
+    # Platform capabilities summary — each module paired with the glyph that
+    # marks it elsewhere in the app, so the sidebar doubles as a legend.
+    st.markdown(
+        '<div style="font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;'
+        'color:var(--text-dim);margin-bottom:.5rem">Platform Modules</div>'
+        '<div style="display:flex;flex-direction:column;gap:.5rem">'
+        + inline("membrane", "ADME/PK prediction")
+        + inline("hazard", "Toxicity risk assessment")
+        + inline("ruler", "Drug-likeness scoring")
+        + inline("receptor", "Target class prediction")
+        + inline("calibration", "Rule-based explainability")
+        + inline("graph", "Knowledge graph explorer")
+        + '</div>',
+        unsafe_allow_html=True,
+    )
 
 
 # =============================================================================
@@ -350,11 +559,11 @@ with st.sidebar:
 # Welcome page with platform overview and beginner's guide
 if page == "Home":
     # Section header
-    st.markdown('<div class="sub-header">Welcome to Ardit BioStudio</div>', 
+    st.markdown(section_header("benzene", "Welcome to Ardit BioStudio"),
                 unsafe_allow_html=True)
     
     # Expandable beginner's guide
-    with st.expander("🎓 **New to Drug Discovery? Start Here!**", expanded=False):
+    with st.expander("New to drug discovery? Start here", expanded=False):
         st.markdown("""
         ### What is Ardit BioStudio?
         
@@ -372,28 +581,28 @@ if page == "Home":
         
         ### Key Terms Explained (Beginner's Glossary)
         
-        **🧪 SMILES**: A simple text code that represents a molecule's structure
+        **SMILES**: A simple text code that represents a molecule's structure
         - Example: `CC(=O)Oc1ccccc1C(=O)O` = Aspirin
         - Think of it like: A ZIP code for molecules
         
-        **💊 ADME**: How a drug behaves in your body
+        **ADME**: How a drug behaves in your body
         - **A**bsorption - Does it get into your bloodstream?
         - **D**istribution - Where does it go in your body?
         - **M**etabolism - How does your body break it down?
         - **E**xcretion - How does it leave your body?
         
-        **🎯 LogP**: How "fatty" vs "water-loving" a molecule is
+        **LogP**: How "fatty" vs "water-loving" a molecule is
         - **Positive LogP** (like 3): Fatty, can cross cell membranes easily
         - **Negative LogP** (like -1): Water-loving, stays in blood
         - **Sweet spot**: 0-3 for most drugs
         
-        **⚠️ Toxicity**: Potential for harm
+        **Toxicity**: Potential for harm
         - **hERG**: Heart rhythm issues
         - **Hepatotoxicity**: Liver damage
         - **Mutagenicity**: DNA damage
         - **Carcinogenicity**: Cancer risk
         
-        **📊 QED Score** (0-1): Overall "drug-likeness"
+        **QED Score** (0-1): Overall "drug-likeness"
         - **0.7-1.0**: Excellent drug candidate
         - **0.5-0.7**: Good, needs optimization
         - **< 0.5**: Needs significant improvement
@@ -409,25 +618,38 @@ if page == "Home":
         **No chemistry knowledge needed!** Each tool explains what it does and what the results mean.
         """)
     
-    # Platform capabilities section
-    st.markdown('<div class="sub-header">Platform Capabilities</div>', unsafe_allow_html=True)
-    
-    # Create DataFrame with module capabilities
-    capabilities = pd.DataFrame({
-        'Module': ['ADME/PK', 'ADMET Models', 'Toxicity (rule-based)', 'Drug-likeness', 'Target Prediction', 'Knowledge Graph'],
-        'Capabilities': [
-            'LogP, Caco-2, BBB, CYP450, Clearance',
-            'Gradient-boosted (XGBoost), 7 endpoints — held-out validated',
-            'Hepatotox, hERG, Ames, Carcinogenicity (structural alerts)',
-            'Lipinski, Veber, QED, SA Score',
-            'Kinase, GPCR, Ion Channel, Enzyme',
-            'Drug-Target-Disease Relationships'
-        ],
-        'Status': ['Active'] * 6
-    })
+    # Platform capabilities section — a glyph-led grid rather than a plain
+    # table, so each module's icon does double duty as a legend for the
+    # sidebar nav and every other page carrying that same glyph.
+    st.markdown(section_header("split", "Platform Capabilities"), unsafe_allow_html=True)
 
-    # Display capabilities table
-    st.dataframe(capabilities, use_container_width=True, hide_index=True)
+    _capability_rows = [
+        ("membrane", "ADME/PK", "LogP, Caco-2, BBB, CYP450, Clearance", "Heuristic"),
+        ("split", "ADMET Models", "XGBoost, 7 endpoints — held-out validated on TDC", "Trained"),
+        ("hazard", "Toxicity", "Hepatotox, hERG, Ames, Carcinogenicity (structural alerts)", "Heuristic"),
+        ("ruler", "Drug-likeness", "Lipinski, Veber, QED, SA Score", "Heuristic"),
+        ("receptor", "Target Prediction", "Kinase, GPCR, Ion Channel, Enzyme", "Heuristic"),
+        ("graph", "Knowledge Graph", "Drug-Target-Disease Relationships", "Reference data"),
+    ]
+    _cap_cols = st.columns(3, gap="medium")
+    for _i, (_glyph, _mod, _cap, _kind) in enumerate(_capability_rows):
+        _pill_class = "safe-zone" if _kind == "Trained" else "caution-zone" if _kind == "Heuristic" else "safe-zone"
+        with _cap_cols[_i % 3]:
+            st.markdown(
+                f'<div style="border:1px solid var(--border);border-radius:6px;'
+                f'padding:.9rem 1rem;margin-bottom:1rem;min-height:9.5rem">'
+                f'<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem">'
+                f'{icon(_glyph, 19, "var(--accent)")}'
+                f'<span style="font-weight:600;color:var(--text-main)">{_mod}</span></div>'
+                f'<div style="font-size:.82rem;color:var(--text-dim);margin-bottom:.6rem">{_cap}</div>'
+                f'<span class="risk-pill {_pill_class}">{_kind}</span>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+    st.caption(
+        "“Trained” = fit on labelled data with a held-out score. “Heuristic” = a fixed "
+        "formula or structural-alert rule, not learned from data. See About for the full breakdown."
+    )
 
     # Industry alignment section
     st.markdown('<div class="sub-header">Industry Alignment</div>', unsafe_allow_html=True)
@@ -450,10 +672,13 @@ if page == "Home":
 # Basic molecular property analysis - the starting point for new molecules
 elif page == "Molecule Studio":
     # Section header
-    st.markdown('<div class="sub-header">Molecule Studio</div>', unsafe_allow_html=True)
+    st.markdown(
+        section_header("molecule", "Molecule Studio", "Structure input, 2D rendering and a quick drug-likeness read"),
+        unsafe_allow_html=True,
+    )
     
     # Help expander explaining what the module does
-    with st.expander("ℹ️ **What does Molecule Studio do?**"):
+    with st.expander("**What does Molecule Studio do?**"):
         st.markdown("""
         ### Purpose
         **Molecule Studio** lets you analyze the basic properties of any molecule. It's like getting a molecule's ID card with all its important characteristics.
@@ -496,7 +721,13 @@ elif page == "Molecule Studio":
         - **Caffeine**: `CN1C=NC2=C1C(=O)N(C(=O)N2C)C`
         - **Ibuprofen**: `CC(C)Cc1ccc(cc1)C(C)C(=O)O` (pre-filled)
         """)
-    
+
+    st.markdown(
+        inline("ruler", "Validating a structure returns its 2D rendering, MW/LogP/TPSA table, "
+                         "and Lipinski/Veber/QED pass-fail in one pass."),
+        unsafe_allow_html=True,
+    )
+
     # Input method selection (currently only SMILES implemented)
     input_method = st.radio("Input Method", ["SMILES String", "Draw Structure (Coming Soon)", "Upload File"], horizontal=True)
     
@@ -566,17 +797,20 @@ elif page == "Molecule Studio":
 # Predicts Absorption, Distribution, Metabolism, Excretion properties
 elif page == "ADME Navigator":
     # Section header
-    st.markdown('<div class="sub-header">ADME Navigator</div>', unsafe_allow_html=True)
+    st.markdown(
+        section_header("membrane", "ADME Navigator", "Absorption, distribution, metabolism and excretion, from one structure"),
+        unsafe_allow_html=True,
+    )
     
     # Help expander with detailed ADME explanation
-    with st.expander("ℹ️ **Understanding ADME - What Happens to a Drug in Your Body**"):
+    with st.expander("**Understanding ADME - What Happens to a Drug in Your Body**"):
         st.markdown("""
         ### What is ADME?
         **ADME** predicts what happens to a drug after you take it. Think of it as tracking the drug's journey through your body.
         
         ### The Four Stages
         
-        **A - Absorption** 🍴
+        **A - Absorption**
         - *What it means*: Can the drug get from your stomach into your blood?
         - *Tool used*: **Caco-2 Permeability**
           - Measures how well a drug crosses intestinal walls
@@ -584,14 +818,14 @@ elif page == "ADME Navigator":
           - **Moderate (2-8)**: Average absorption
           - **Low (<2)**: Poor absorption
         
-        **D - Distribution** 🧠
+        **D - Distribution**
         - *What it means*: Where does the drug go in your body?
         - *Tool used*: **BBB Penetration** (Blood-Brain Barrier)
           - Can it reach your brain?
           - **Yes**: Good for brain diseases (but may cause side effects)
           - **No**: Won't affect the brain (good for most drugs)
         
-        **M - Metabolism** 🔥
+        **M - Metabolism**
         - *What it means*: How does your liver break down the drug?
         - *Tool used*: **CYP450 Enzymes**
           - Liver enzymes that modify drugs
@@ -600,7 +834,7 @@ elif page == "ADME Navigator":
           - **CYP2C9**: Common pathway
           - *Why it matters*: Drug interactions happen here
         
-        **E - Excretion** 🚽
+        **E - Excretion**
         - *What it means*: How fast does the drug leave your body?
         - *Tool used*: **Clearance Rate**
           - **High clearance**: Short-acting (need frequent doses)
@@ -612,9 +846,9 @@ elif page == "ADME Navigator":
         2. **Click "Run ADME/PK Analysis"**
         3. **Review each tab** (LogP, Caco-2, BBB, CYP450, Clearance)
         4. **Check the color indicators**: 
-           - 🟢 Green = Good
-           - 🟡 Yellow = Moderate/Caution
-           - 🔴 Red = Poor/Risk
+           - Green = Good
+           - Yellow = Moderate/Caution
+           - Red = Poor/Risk
         
         ### What Makes a Good Drug?
         - **High absorption** (Caco-2 > 8)
@@ -626,8 +860,7 @@ elif page == "ADME Navigator":
         """)
     
     # Disclaimer about heuristic predictions
-    st.info("""
-    **Note:** ADME/PK predictions use heuristic scoring functions based on molecular descriptors (LogP, TPSA, molecular weight, etc.).  
+    st.info("""**Note:** ADME/PK predictions use heuristic scoring functions based on molecular descriptors (LogP, TPSA, molecular weight, etc.).  
     For production use, replace with validated QSAR models trained on experimental ADME data.
     """)
     
@@ -647,38 +880,43 @@ elif page == "ADME Navigator":
             # Create tabs for each ADME property
             tab1, tab2, tab3, tab4, tab5 = st.tabs(["LogP", "Caco-2 Permeability", "BBB Penetration", "CYP450 Metabolism", "Clearance"])
             
-            # Tab 1: LogP (lipophilicity)
+            # Tab 1: LogP (lipophilicity) — governs membrane crossing
             with tab1:
+                st.markdown(inline("membrane", "Permeability endpoint — lipophilicity"), unsafe_allow_html=True)
                 data = adme_profile['LogP']
                 st.markdown(f"**LogP:** {data['LogP']}")
                 st.markdown(f"**Category:** {data['Category']}")
                 st.info(data['Interpretation'])
-            
+
             # Tab 2: Caco-2 permeability (absorption)
             with tab2:
+                st.markdown(inline("membrane", "Permeability endpoint — intestinal absorption"), unsafe_allow_html=True)
                 data = adme_profile['Caco-2 Permeability']
                 st.markdown(f"**Caco-2 Score:** {data['Caco-2 Score']}")
                 st.markdown(f"**Category:** {data['Category']}")
                 st.info(data['Interpretation'])
-            
+
             # Tab 3: BBB penetration (distribution)
             with tab3:
+                st.markdown(inline("membrane", "Permeability endpoint — blood-brain barrier"), unsafe_allow_html=True)
                 data = adme_profile['BBB Penetration']
                 st.markdown(f"**BBB Score:** {data['BBB Score']}")
                 st.markdown(f"**Probability:** {data['Probability']}")
                 st.info(data['Recommendation'])
-            
+
             # Tab 4: CYP450 metabolism
             with tab4:
+                st.markdown(inline("metabolism", "Metabolic endpoint — CYP450 biotransformation"), unsafe_allow_html=True)
                 data = adme_profile['CYP450 Metabolism']
                 st.markdown(f"**Primary Metabolizer:** {data['Primary Metabolizer']}")
                 st.write(f"- CYP3A4: {data['CYP3A4 Substrate Probability']}")
                 st.write(f"- CYP2D6: {data['CYP2D6 Substrate Probability']}")
                 st.write(f"- CYP2C9: {data['CYP2C9 Substrate Probability']}")
                 st.warning(data['Interpretation'])
-            
+
             # Tab 5: Clearance (excretion)
             with tab5:
+                st.markdown(inline("metabolism", "Metabolic endpoint — clearance and half-life"), unsafe_allow_html=True)
                 data = adme_profile['Clearance']
                 st.markdown(f"**Clearance Score:** {data['Clearance Score']}")
                 st.markdown(f"**Category:** {data['Category']}")
@@ -694,17 +932,20 @@ elif page == "ADME Navigator":
 # Safety assessment for hepatotoxicity, hERG, mutagenicity, carcinogenicity
 elif page == "Toxicity Radar":
     # Section header
-    st.markdown('<div class="sub-header">Toxicity Radar</div>', unsafe_allow_html=True)
+    st.markdown(
+        section_header("hazard", "Toxicity Radar", "Hepatotoxicity, cardiotoxicity, mutagenicity and carcinogenicity risk"),
+        unsafe_allow_html=True,
+    )
     
     # Help expander with toxicity explanation
-    with st.expander("ℹ️ **Understanding Toxicity - Safety Screening Explained**"):
+    with st.expander("**Understanding Toxicity - Safety Screening Explained**"):
         st.markdown("""
         ### Why Check Toxicity?
         Before a drug can be used, we need to make sure it's safe. **Toxicity Radar** predicts potential side effects and safety concerns.
         
         ### Four Main Safety Checks
         
-        **1. Hepatotoxicity (Liver Damage)** 🫀
+        **1. Hepatotoxicity (Liver Damage)**
         - *What it is*: Can the drug harm your liver?
         - *Why it matters*: Your liver processes all drugs - damage here is serious
         - *Risk Levels*:
@@ -712,7 +953,7 @@ elif page == "Toxicity Radar":
           - **30-70%**: Moderate risk (Needs monitoring)
           - **70-100%**: High risk (Concerning)
         
-        **2. Cardiotoxicity - hERG Inhibition (Heart Problems)** ❤️
+        **2. Cardiotoxicity - hERG Inhibition (Heart Problems)**
         - *What it is*: Can the drug cause irregular heartbeat?
         - *hERG channel*: Electrical pathway in your heart
         - *Measured as IC50* (lower = more dangerous):
@@ -720,14 +961,14 @@ elif page == "Toxicity Radar":
           - **1-10 μM**: Moderate risk (caution)
           - **<1 μM**: High risk (dangerous)
         
-        **3. Mutagenicity - Ames Test (DNA Damage)** 🧬
+        **3. Mutagenicity - Ames Test (DNA Damage)**
         - *What it is*: Can the drug damage your DNA?
         - *Why it matters*: DNA damage can lead to mutations
         - *Result*:
           - **Negative**: Safe (no DNA damage expected)
           - **Positive**: Risky (may cause mutations)
         
-        **4. Carcinogenicity (Cancer Risk)** ☢️
+        **4. Carcinogenicity (Cancer Risk)**
         - *What it is*: Long-term cancer risk
         - *Risk Score*:
           - **0-30%**: Low risk
@@ -739,9 +980,9 @@ elif page == "Toxicity Radar":
         2. **Click "Run Toxicity Analysis"**
         3. **Review all four toxicity types**
         4. **Check the color-coded risk levels**:
-           - 🟢 Green = Safe/Low Risk
-           - 🟡 Yellow = Moderate/Caution
-           - 🔴 Red = High Risk/Dangerous
+           - Green = Safe/Low Risk
+           - Yellow = Moderate/Caution
+           - Red = High Risk/Dangerous
         
         ### What's Acceptable?
         - **All Low Risk**: Great candidate!
@@ -752,8 +993,7 @@ elif page == "Toxicity Radar":
         """)
     
     # Prediction system info
-    st.info("""
-    **ADMET toxicity models.** This platform offers two independent toxicity assessments:
+    st.info("""**ADMET toxicity models.** This platform offers two independent toxicity assessments:
     real **gradient-boosted models (XGBoost)** trained on public Therapeutics Data Commons (TDC)
     datasets with scaffold splits — each endpoint shows its held-out test score (AUROC) — and a
     **Heuristic** (rule-based) screen using structural alerts and descriptor thresholds.
@@ -816,7 +1056,7 @@ elif page == "Toxicity Radar":
 
             # Heuristic predictions
             elif prediction_method == "Heuristic (Rule-Based)":
-                st.markdown("### 📋 Heuristic Toxicity Predictions")
+                st.markdown("### Heuristic Toxicity Predictions")
                 st.caption("Structural alerts + descriptor thresholds")
                 
                 # Get heuristic predictions
@@ -866,7 +1106,7 @@ elif page == "Toxicity Radar":
             
             # Side-by-side comparison
             else:
-                st.markdown("### 🔬 Side-by-Side Comparison")
+                st.markdown("### Side-by-Side Comparison")
                 st.caption("XGBoost (gradient-boosted) vs Heuristic Methods")
 
                 # Get both prediction types
@@ -890,7 +1130,7 @@ elif page == "Toxicity Radar":
                             st.caption(f"Risk: {admet_data['risk_level']} · {admet_data['confidence']}")
 
                     with col2:
-                        st.markdown("**📋 Heuristic**")
+                        st.markdown("**Heuristic**")
                         heur_data = tox_profile[endpoint]
                         if endpoint == 'Hepatotoxicity':
                             st.metric("Risk", heur_data['Hepatotoxicity Risk'])
@@ -915,33 +1155,36 @@ elif page == "Toxicity Radar":
 # =============================================================================
 # Predicts likely biological target class (kinase, GPCR, ion channel, enzyme)
 elif page == "Target Prediction":
-    st.markdown('<div class="sub-header">Target Class Prediction</div>', unsafe_allow_html=True)
+    st.markdown(
+        section_header("receptor", "Target Class Prediction", "Kinase, GPCR, ion channel and enzyme likelihood — heuristic scoring"),
+        unsafe_allow_html=True,
+    )
     
-    with st.expander("ℹ️ **What Targets Does Your Molecule Hit?**"):
+    with st.expander("**What Targets Does Your Molecule Hit?**"):
         st.markdown("""
         ### Understanding Biological Targets
         **Targets** are proteins in your body that drugs interact with. Think of them as locks, and drugs as keys.
         
         ### Four Major Target Types
         
-        **1. Kinase Inhibitors** 🎯
+        **1. Kinase Inhibitors**
         - *What they are*: Proteins that control cell growth and division
         - *Disease focus*: Cancer (most cancer drugs are kinase inhibitors)
         - *Examples*: Imatinib (leukemia), Gefitinib (lung cancer)
         
-        **2. GPCR Ligands** 📡
+        **2. GPCR Ligands**
         - *Full name*: G-Protein Coupled Receptors
         - *What they are*: Cell surface proteins that receive signals
         - *Disease focus*: Heart disease, asthma, allergies, pain
         - *Examples*: Beta-blockers (heart), antihistamines (allergies)
         - *Fun fact*: ~30% of all drugs target GPCRs!
         
-        **3. Ion Channel Modulators** ⚡
+        **3. Ion Channel Modulators**
         - *What they are*: Proteins that control electrical signals in cells
         - *Disease focus*: Epilepsy, pain, heart arrhythmias
         - *Examples*: Local anesthetics, anti-epilepsy drugs
         
-        **4. Enzyme Inhibitors** 🔬
+        **4. Enzyme Inhibitors**
         - *What they are*: Proteins that speed up chemical reactions
         - *Disease focus*: Infections, inflammation, metabolic diseases
         - *Examples*: Aspirin (pain enzyme), statins (cholesterol enzyme)
@@ -961,8 +1204,7 @@ elif page == "Target Prediction":
         **Note**: These are AI predictions for education. Real drugs need lab testing to confirm targets!
         """)
     
-    st.info("""
-    **Note:** Target class predictions use heuristic scoring based on physicochemical properties typical of each target class.  
+    st.info("""**Note:** Target class predictions use heuristic scoring based on physicochemical properties typical of each target class.  
     For production use, replace with validated bioactivity models trained on ChEMBL or similar databases.
     """)
     
@@ -1014,9 +1256,12 @@ elif page == "Target Prediction":
 # =============================================================================
 # Analysis of proteins, peptides, and biologics (not small molecules)
 elif page == "Protein & Biologic Studio":
-    st.markdown('<div class="sub-header">Protein & Biologic Studio</div>', unsafe_allow_html=True)
+    st.markdown(
+        section_header("peptide", "Protein & Biologic Studio", "Sequence-based developability: solubility, aggregation risk, stability"),
+        unsafe_allow_html=True,
+    )
     
-    with st.expander("ℹ️ **Analyzing Proteins, Peptides & Biologics**"):
+    with st.expander("**Analyzing Proteins, Peptides & Biologics**"):
         st.markdown("""
         ### What are Biologics?
         **Biologics** are large-molecule drugs made from living cells, including:
@@ -1028,11 +1273,11 @@ elif page == "Protein & Biologic Studio":
         
         ### What Can You Analyze?
         
-        **1. Peptides (5-60 amino acids)** 💊
+        **1. Peptides (5-60 amino acids)**
         - Examples: Insulin fragments, Semaglutide, Octreotide
         - Used for: Diabetes, hormones, cancer
         
-        **2. Proteins (>60 amino acids)** 🧬
+        **2. Proteins (>60 amino acids)**
         - Examples: Antibodies, interferons, growth factors
         - Used for: Cancer, autoimmune diseases, blood disorders
         
@@ -1040,17 +1285,17 @@ elif page == "Protein & Biologic Studio":
         
         This tool predicts how "manufacturable" and stable your biologic is:
         
-        **Solubility** 💧
+        **Solubility**
         - Can it dissolve in solution?
         - **High**: Easy to formulate
         - **Low**: Difficult manufacturing
         
-        **Aggregation Risk** 🔗
+        **Aggregation Risk**
         - Will it clump together?
         - **Low**: Stable formulation
         - **High**: Shelf-life problems
         
-        **Stability** 🌡️
+        **Stability**
         - Will it degrade quickly?
         - **Stable** (index < 40): Good shelf life
         - **Unstable** (index > 40): Needs cold storage
@@ -1077,8 +1322,7 @@ elif page == "Protein & Biologic Studio":
         **Note**: These are computational predictions for educational purposes. Real biologics need extensive lab testing!
         """)
     
-    st.info("""
-    **Educational Tool**: Biologic developability predictions use sequence-based algorithms (hydrophobicity, charge distribution, composition analysis).  
+    st.info("""**Educational Tool**: Biologic developability predictions use sequence-based algorithms (hydrophobicity, charge distribution, composition analysis).  
     For production use, replace with lab-validated assays and protein engineering tools.
     """)
     
@@ -1196,7 +1440,7 @@ elif page == "Protein & Biologic Studio":
                 else:
                     st.caption("Negative GRAVY = hydrophilic")
             
-            with st.expander("📋 View Full Amino Acid Composition"):
+            with st.expander("View Full Amino Acid Composition"):
                 comp_df = pd.DataFrame([
                     {'Amino Acid': aa, 'Percentage': f"{perc:.2f}%"}
                     for aa, perc in sorted(comp['composition'].items(), key=lambda x: x[1], reverse=True)
@@ -1214,9 +1458,8 @@ elif page == "Protein & Biologic Studio":
     # the panel is disabled and the module removed, rather than shown with a
     # fabricated score.
     st.markdown("---")
-    st.markdown("### 🔬 Protein-Ligand Compatibility Testing")
-    st.warning("""
-    **Temporarily disabled.** This panel previously reported a "binding score" from a
+    st.markdown("### Protein-Ligand Compatibility Testing")
+    st.warning("""**Temporarily disabled.** This panel previously reported a "binding score" from a
     neural network that was never trained (random, fixed-seed weights) — its output was
     not a meaningful prediction. It's disabled until a version trained on real binding
     data (e.g. PDBbind/BindingDB) is available. No numbers are shown here to avoid
@@ -1229,16 +1472,19 @@ elif page == "Protein & Biologic Studio":
 # =============================================================================
 # Comprehensive drug-likeness assessment (Lipinski, Veber, QED, SA)
 elif page == "Drug-Likeness Deck":
-    st.markdown('<div class="sub-header">Drug-Likeness Deck</div>', unsafe_allow_html=True)
+    st.markdown(
+        section_header("ruler", "Drug-Likeness Deck", "Lipinski, Veber, QED and synthetic accessibility — published formulas, not fitted models"),
+        unsafe_allow_html=True,
+    )
     
-    with st.expander("ℹ️ **Drug-Likeness Rules - Will This Molecule Make a Good Drug?**"):
+    with st.expander("**Drug-Likeness Rules - Will This Molecule Make a Good Drug?**"):
         st.markdown("""
         ### What is Drug-Likeness?
         **Drug-Likeness** measures how similar a molecule is to successful drugs. Think of it as a checklist developed from analyzing thousands of approved medicines.
         
         ### Four Industry-Standard Assessments
         
-        **1. Lipinski's Rule of 5** 📏
+        **1. Lipinski's Rule of 5**
         - *Created by*: Christopher Lipinski (Pfizer scientist, 1997)
         - *Purpose*: Predicts oral bioavailability (can you swallow it as a pill?)
         - *The 5 Rules*:
@@ -1246,10 +1492,10 @@ elif page == "Drug-Likeness Deck":
           - **LogP ≤ 5**: Not too fatty
           - **H-Bond Donors ≤ 5**: Not too sticky to water
           - **H-Bond Acceptors ≤ 10**: Not too many water connections
-        - *Passing*: ≤ 1 violation = Drug-like ✓
+        - *Passing*: ≤ 1 violation = Drug-like
         - *Failing*: ≥ 2 violations = Needs improvement
         
-        **2. Veber Rules** 📐
+        **2. Veber Rules**
         - *Created by*: Daniel Veber (SmithKline Beecham, 2002)
         - *Purpose*: Predicts good absorption
         - *The 2 Rules*:
@@ -1257,7 +1503,7 @@ elif page == "Drug-Likeness Deck":
           - **TPSA ≤ 140 Ų**: Right amount of polarity
         - *Why it matters*: Flexible molecules don't absorb well
         
-        **3. QED Score (0-1)** ⭐
+        **3. QED Score (0-1)**
         - *Stands for*: Quantitative Estimate of Drug-likeness
         - *Think of it as*: A grade from 0-100%
         - *Scoring*:
@@ -1267,11 +1513,11 @@ elif page == "Drug-Likeness Deck":
           - **<0.3**: Poor (needs work)
         - *What it measures*: Overall "drug quality" combining all properties
         
-        **4. SA Score (1-10)** 🔬
+        **4. SA Score (1-10)**
         - *Stands for*: Synthetic Accessibility
         - *Purpose*: How hard is it to make this molecule in a lab?
         - *Scoring*:
-          - **1-3**: Easy to synthesize ✓
+          - **1-3**: Easy to synthesize
           - **4-6**: Moderate complexity
           - **7-10**: Very difficult/expensive
         - *Why it matters*: No point designing a drug you can't make!
@@ -1281,21 +1527,20 @@ elif page == "Drug-Likeness Deck":
         2. **Click "Assess Drug-Likeness"**
         3. **Review all four assessments**
         4. **Check the Risk Pills**:
-           - 🟢 **Safe Zone**: Passes criteria
-           - 🟡 **Caution Zone**: Some violations
-           - 🔴 **Critical Zone**: Major issues
+           - **Safe Zone**: Passes criteria
+           - **Caution Zone**: Some violations
+           - **Critical Zone**: Major issues
         
         ### What Makes a Great Drug Candidate?
-        - ✅ **Lipinski**: 0-1 violations
-        - ✅ **Veber**: Passes both rules
-        - ✅ **QED**: > 0.5 (preferably > 0.7)
-        - ✅ **SA Score**: < 6 (preferably < 4)
+        - **Lipinski**: 0-1 violations
+        - **Veber**: Passes both rules
+        - **QED**: > 0.5 (preferably > 0.7)
+        - **SA Score**: < 6 (preferably < 4)
         
         **Real Example**: Aspirin scores QED = 0.55, SA = 1.0 - Good drug!
         """)
     
-    st.info("""
-    **Comprehensive drug-likeness assessment** using validated pharmaceutical criteria: Lipinski Rule of 5, Veber rules, QED score, and Synthetic Accessibility.
+    st.info("""**Comprehensive drug-likeness assessment** using validated pharmaceutical criteria: Lipinski Rule of 5, Veber rules, QED score, and Synthetic Accessibility.
     """)
     
     smiles_input = st.text_input("Enter SMILES String", "CC(C)Cc1ccc(cc1)C(C)C(=O)O")
@@ -1366,9 +1611,12 @@ elif page == "Drug-Likeness Deck":
 # =============================================================================
 # ML model interpretability with feature importance
 elif page == "Explainability Canvas":
-    st.markdown('<div class="sub-header">Explainability Canvas</div>', unsafe_allow_html=True)
+    st.markdown(
+        section_header("calibration", "Explainability Canvas", "Why the score says that — traced back to the published formula, not a fitted model"),
+        unsafe_allow_html=True,
+    )
     
-    with st.expander("ℹ️ **Understanding This Assessment - Why the Score Says That**"):
+    with st.expander("**Understanding This Assessment - Why the Score Says That**"):
         st.markdown("""
         ### What is Explainability?
         **Explainability** shows you WHY a molecule scores the way it does — not a black box,
@@ -1433,8 +1681,7 @@ elif page == "Explainability Canvas":
                 st.markdown("#### Synthetic Accessibility")
                 st.write(analysis['Synthetic Accessibility'])
 
-            st.info("""
-            **Method**: Rule-based (structural formulas applied to RDKit-computed descriptors) —
+            st.info("""**Method**: Rule-based (structural formulas applied to RDKit-computed descriptors) —
             not a trained classifier, so there is no cross-validation or feature-importance chart.
             Lipinski/Veber/QED are the same industry-standard rules used elsewhere in this app's
             Drug-Likeness Deck.
@@ -1448,9 +1695,12 @@ elif page == "Explainability Canvas":
 # =============================================================================
 # Drug-target-disease relationship explorer with interactive visualization
 elif page == "Knowledge Graph":
-    st.markdown('<div class="sub-header">Biomedical Knowledge Graph Explorer</div>', unsafe_allow_html=True)
+    st.markdown(
+        section_header("graph", "Biomedical Knowledge Graph Explorer", "Drug-target-disease relationships across 70+ FDA-approved compounds"),
+        unsafe_allow_html=True,
+    )
     
-    with st.expander("ℹ️ **How Drugs, Targets, and Diseases Connect**"):
+    with st.expander("**How Drugs, Targets, and Diseases Connect**"):
         st.markdown("""
         ### What is a Knowledge Graph?
         A **Knowledge Graph** is like a map showing how drugs, proteins, and diseases are connected. Think of it as a relationship diagram!
@@ -1463,41 +1713,41 @@ elif page == "Knowledge Graph":
         
         ### What You Can Explore
         
-        **1. Interactive Visualization** 🎨
+        **1. Interactive Visualization**
         - See the entire network as a beautiful interactive graph
         - Color-coded nodes (Blue=Drugs, Green=Targets, Red=Diseases, Purple=Pathways)
         - Zoom, pan, and drag nodes to explore connections
         - Hover over nodes to see detailed information
         - Filter by node type to focus on specific relationships
         
-        **2. Drug Mechanism** 🔍
+        **2. Drug Mechanism**
         - Pick a drug (like Imatinib or Pembrolizumab)
         - See what proteins it targets
         - See what diseases it treats
         - Learn about biological pathways involved
         
-        **3. Target Information** 🎯
+        **3. Target Information**
         - Pick a protein target (like EGFR or PD-1)
         - See all drugs that hit this target
         - See diseases linked to this target
         
-        **4. Disease Insights** 🏥
+        **4. Disease Insights**
         - Select a disease (like Melanoma or Breast Cancer)
         - Find approved drugs for treatment
         - Discover associated protein targets
         - Identify involved biological pathways
         
-        **5. Drug Repurposing** 💡
+        **5. Drug Repurposing**
         - AI-powered predictions for new disease uses
         - Based on shared targets and network patterns
         - Discover potential new applications for existing drugs
         
-        **6. Network Analytics** 📊
+        **6. Network Analytics**
         - Find the most connected nodes (hubs)
         - Discover shortest paths between drugs and diseases
         - Measure node importance with centrality metrics
         
-        **7. Export & Share** 💾
+        **7. Export & Share**
         - Download graph data in multiple formats
         - JSON, CSV, or GraphML for analysis in other tools
         - Share findings with colleagues
@@ -1536,18 +1786,18 @@ elif page == "Knowledge Graph":
     
     # Tabbed interface for different features
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "🎨 Interactive Visualization",
-        "🔍 Query Graph", 
-        "💡 Drug Repurposing",
-        "📊 Network Analytics",
-        "💾 Export Data"
+        "Interactive Visualization",
+        "Query Graph", 
+        "Drug Repurposing",
+        "Network Analytics",
+        "Export Data"
     ])
     
     # Tab 1: Interactive PyVis visualization
     with tab1:
         st.markdown("### Interactive Network Visualization")
         
-        st.info("💡 **Tip**: The visualization may take a few seconds to load. Zoom, pan, and drag nodes to explore!")
+        st.info("**Tip**: The visualization may take a few seconds to load. Zoom, pan, and drag nodes to explore!")
         
         filter_options = st.multiselect(
             "Filter by Node Type",
@@ -1560,10 +1810,10 @@ elif page == "Knowledge Graph":
         
         with col_viz2:
             st.markdown("**Legend**")
-            st.markdown("🔵 **Drugs** (Blue)")
-            st.markdown("🟢 **Targets** (Green)")
-            st.markdown("🔴 **Diseases** (Red)")
-            st.markdown("🟣 **Pathways** (Purple)")
+            st.markdown("**Drugs** (Blue)")
+            st.markdown("**Targets** (Green)")
+            st.markdown("**Diseases** (Red)")
+            st.markdown("**Pathways** (Purple)")
             st.markdown("---")
             st.markdown("**Node Size** = Number of connections")
             st.markdown("**Hover** = See details")
@@ -1580,7 +1830,7 @@ elif page == "Knowledge Graph":
                             html_content = f.read()
                         
                         st.components.v1.html(html_content, height=700, scrolling=True)
-                        st.success("✅ Visualization loaded! Drag nodes to rearrange, scroll to zoom.")
+                        st.success("Visualization loaded! Drag nodes to rearrange, scroll to zoom.")
                     except Exception as e:
                         st.error(f"Error generating visualization: {str(e)}")
     
@@ -1606,17 +1856,17 @@ elif page == "Knowledge Graph":
                     
                     col_moa1, col_moa2 = st.columns(2)
                     with col_moa1:
-                        st.markdown("**🎯 Targets**")
+                        st.markdown("**Targets**")
                         for target in moa['Targets']:
                             st.markdown(f"- {target}")
                     
                     with col_moa2:
-                        st.markdown("**🏥 Indications**")
+                        st.markdown("**Indications**")
                         for indication in moa['Indications']:
                             st.markdown(f"- {indication}")
                     
                     if moa['Pathways']:
-                        st.markdown("**🔬 Biological Pathways**")
+                        st.markdown("**Biological Pathways**")
                         for pathway in moa['Pathways']:
                             st.markdown(f"- {pathway}")
                     else:
@@ -1637,7 +1887,7 @@ elif page == "Knowledge Graph":
                 
                 col_tgt1, col_tgt2 = st.columns(2)
                 with col_tgt1:
-                    st.markdown(f"**💊 Drugs Targeting {selected_target}** ({len(drugs)})")
+                    st.markdown(f"**Drugs Targeting {selected_target}** ({len(drugs)})")
                     if drugs:
                         for drug in drugs:
                             st.markdown(f"- {drug}")
@@ -1645,7 +1895,7 @@ elif page == "Knowledge Graph":
                         st.info("No drugs found")
                 
                 with col_tgt2:
-                    st.markdown(f"**🏥 Associated Diseases** ({len(diseases)})")
+                    st.markdown(f"**Associated Diseases** ({len(diseases)})")
                     if diseases:
                         for disease in diseases:
                             st.markdown(f"- {disease}")
@@ -1678,7 +1928,7 @@ elif page == "Knowledge Graph":
                                 st.markdown(f"- {target}")
                     
                     with col_dis3:
-                        st.markdown("**🔬 Pathways**")
+                        st.markdown("**Pathways**")
                         if disease_info['Involved_Pathways']:
                             for pathway in disease_info['Involved_Pathways']:
                                 st.markdown(f"- {pathway}")
@@ -1689,9 +1939,8 @@ elif page == "Knowledge Graph":
     
     # Tab 3: Drug Repurposing
     with tab3:
-        st.markdown("### 💡 Drug Repurposing Predictions")
-        st.info("""
-        **Drug repurposing** identifies new therapeutic uses for existing drugs. This AI-powered analysis uses 
+        st.markdown("### Drug Repurposing Predictions")
+        st.info("""**Drug repurposing** identifies new therapeutic uses for existing drugs. This AI-powered analysis uses 
         network patterns and shared targets to predict potential new indications.
         """)
         
@@ -1706,7 +1955,7 @@ elif page == "Knowledge Graph":
                 predictions = kg.predict_drug_repurposing(selected_drug_repo, top_n=num_predictions)
                 
                 if predictions:
-                    st.success(f"✅ Found {len(predictions)} potential repurposing opportunities!")
+                    st.success(f"Found {len(predictions)} potential repurposing opportunities!")
                     
                     current_uses = kg.get_drug_indications(selected_drug_repo)
                     st.markdown(f"**Current Approved Uses**: {', '.join(current_uses)}")
@@ -1717,7 +1966,7 @@ elif page == "Knowledge Graph":
                             col_repo1, col_repo2 = st.columns(2)
                             
                             with col_repo1:
-                                st.markdown(f"**🎯 Shared Targets ({pred['num_shared_targets']})**")
+                                st.markdown(f"**Shared Targets ({pred['num_shared_targets']})**")
                                 for target in pred['shared_targets']:
                                     st.markdown(f"- {target}")
                             
@@ -1725,13 +1974,13 @@ elif page == "Knowledge Graph":
                                 st.metric("Network Distance", f"{pred['path_length']} steps")
                                 st.metric("Repurposing Score", f"{pred['repurposing_score']:.1f}")
                             
-                            st.info(f"💡 **Rationale**: {selected_drug_repo} targets {', '.join(pred['shared_targets'])}, which are also involved in {pred['disease']}.")
+                            st.info(f"**Rationale**: {selected_drug_repo} targets {', '.join(pred['shared_targets'])}, which are also involved in {pred['disease']}.")
                 else:
                     st.warning("No repurposing opportunities found. This drug may have limited target overlap with other diseases.")
     
     # Tab 4: Network Analytics
     with tab4:
-        st.markdown("### 📊 Network Analytics")
+        st.markdown("### Network Analytics")
         
         analytics_type = st.selectbox(
             "Analysis Type",
@@ -1782,7 +2031,7 @@ elif page == "Knowledge Graph":
                     path = kg.find_shortest_path(source_node, target_node)
                     
                     if path:
-                        st.success(f"✅ Found path with {len(path)-1} steps!")
+                        st.success(f"Found path with {len(path)-1} steps!")
                         st.markdown(f"**Path**: {' → '.join(path)}")
                         st.metric("Path Length", len(path)-1)
                     else:
@@ -1825,7 +2074,7 @@ elif page == "Knowledge Graph":
     
     # Tab 5: Export Data
     with tab5:
-        st.markdown("### 💾 Export Knowledge Graph Data")
+        st.markdown("### Export Knowledge Graph Data")
         st.info("Download the knowledge graph in various formats for external analysis or sharing.")
         
         col_exp1, col_exp2, col_exp3 = st.columns(3)
@@ -1836,7 +2085,7 @@ elif page == "Knowledge Graph":
             if st.button("Export as JSON"):
                 json_data = kg.export_to_json()
                 st.download_button(
-                    label="📥 Download JSON",
+                    label="Download JSON",
                     data=json_data,
                     file_name="knowledge_graph.json",
                     mime="application/json"
@@ -1854,14 +2103,14 @@ elif page == "Knowledge Graph":
                 col_csv1, col_csv2 = st.columns(2)
                 with col_csv1:
                     st.download_button(
-                        label="📥 Nodes CSV",
+                        label="Nodes CSV",
                         data=nodes_csv,
                         file_name="kg_nodes.csv",
                         mime="text/csv"
                     )
                 with col_csv2:
                     st.download_button(
-                        label="📥 Edges CSV",
+                        label="Edges CSV",
                         data=edges_csv,
                         file_name="kg_edges.csv",
                         mime="text/csv"
@@ -1874,7 +2123,7 @@ elif page == "Knowledge Graph":
                 try:
                     graphml_data = kg.export_to_graphml()
                     st.download_button(
-                        label="📥 Download GraphML",
+                        label="Download GraphML",
                         data=graphml_data,
                         file_name="knowledge_graph.graphml",
                         mime="application/xml"
@@ -1888,9 +2137,12 @@ elif page == "Knowledge Graph":
 # =============================================================================
 # Batch screening and prioritization of multiple molecules
 elif page == "Lead Lab":
-    st.markdown('<div class="sub-header">Lead Lab — Batch Screening & Prioritization</div>', unsafe_allow_html=True)
+    st.markdown(
+        section_header("plate", "Lead Lab — Batch Screening & Prioritization", "Many molecules, one ranked pass — drug-likeness scored and sorted together"),
+        unsafe_allow_html=True,
+    )
     
-    with st.expander("ℹ️ **Screening Many Molecules at Once**"):
+    with st.expander("**Screening Many Molecules at Once**"):
         st.markdown("""
         ### What is Batch Screening?
         Instead of testing one molecule at a time, **Lead Lab** lets you analyze many molecules together and rank them from best to worst!
@@ -1998,8 +2250,64 @@ elif page == "Lead Lab":
     
     else:
         uploaded_file = st.file_uploader("Upload CSV (columns: name, smiles)", type=['csv'])
+        st.markdown(
+            inline("plate", "One row per molecule. A 'smiles' column is required; 'name' is optional."),
+            unsafe_allow_html=True,
+        )
+        # Previously this branch accepted a file and printed "CSV upload
+        # functionality ready" without reading it — a stub dressed as a
+        # working feature. It now runs the same Lipinski/QED scoring as the
+        # example-dataset path above, on whatever rows validate.
         if uploaded_file:
-            st.info("CSV upload functionality ready. Add your SMILES data!")
+            try:
+                upload_df = pd.read_csv(uploaded_file)
+            except Exception as e:
+                upload_df = None
+                st.error(f"Could not read this file as CSV: {e}")
+
+            if upload_df is not None:
+                if 'smiles' not in upload_df.columns:
+                    st.error("CSV must include a 'smiles' column (column names found: "
+                              f"{', '.join(upload_df.columns)}).")
+                else:
+                    results = []
+                    skipped = 0
+                    for _, row in upload_df.iterrows():
+                        raw_smiles = str(row['smiles'])
+                        has_name = 'name' in upload_df.columns and pd.notna(row.get('name'))
+                        raw_name = str(row['name']) if has_name else raw_smiles
+                        is_valid, canonical_smiles = mol_processor.validate_smiles(raw_smiles)
+                        if not is_valid:
+                            skipped += 1
+                            continue
+                        mol = mol_processor.smiles_to_mol(canonical_smiles)
+                        lipinski = drug_likeness.lipinski_rule_of_5(mol)
+                        qed = drug_likeness.qed_score(mol)
+                        results.append({
+                            'Name': raw_name,
+                            'SMILES': canonical_smiles,
+                            'MW': lipinski['Molecular Weight'],
+                            'LogP': lipinski['LogP'],
+                            'Lipinski Violations': lipinski['Violations'],
+                            'QED Score': qed['QED Score'],
+                            'Passes Lipinski': 'Yes' if lipinski['Passes'] else 'No'
+                        })
+
+                    if not results:
+                        st.warning("No valid SMILES were found in the uploaded file.")
+                    else:
+                        results_df = pd.DataFrame(results).sort_values('QED Score', ascending=False)
+                        st.markdown(f"### Batch Analysis Results — {len(results_df)} molecule(s)")
+                        if skipped:
+                            st.caption(f"{skipped} row(s) skipped — SMILES did not parse.")
+                        st.dataframe(results_df, use_container_width=True, hide_index=True)
+                        csv_out = results_df.to_csv(index=False)
+                        st.download_button(
+                            label="Download Results as CSV",
+                            data=csv_out,
+                            file_name="batch_screening_results.csv",
+                            mime="text/csv",
+                        )
 
 
 # =============================================================================
@@ -2007,10 +2315,12 @@ elif page == "Lead Lab":
 # =============================================================================
 # Demonstration of kinase inhibitor lead ranking workflow
 elif page == "Case Study":
-    st.markdown('<div class="sub-header">Case Study: Ranking Kinase Inhibitor Leads</div>', 
-                unsafe_allow_html=True)
+    st.markdown(
+        section_header("flask", "Case Study: Ranking Kinase Inhibitor Leads", "Five candidates, five criteria, one applied workflow"),
+        unsafe_allow_html=True,
+    )
     
-    with st.expander("ℹ️ **Real-World Example: Finding the Best Cancer Drug Candidate**"):
+    with st.expander("**Real-World Example: Finding the Best Cancer Drug Candidate**"):
         st.markdown("""
         ### What is a Case Study?
         A **Case Study** is a real-world example that shows you how all the tools work together in an actual drug discovery project!
@@ -2145,10 +2455,17 @@ elif page == "Case Study":
 # =============================================================================
 # Platform information and credits
 elif page == "About":
-    st.markdown('<div class="sub-header">About Ardit BioStudio</div>', unsafe_allow_html=True)
+    # No glyph in the 22-icon set marks "platform info" without stretching a
+    # concept past what it actually means (rule: no icon beats a wrong one) —
+    # this header matches section_header's typography without a glyph.
+    st.markdown(
+        '<div style="margin:2rem 0 .9rem 0"><span style="font-size:1.15rem;font-weight:600;'
+        'color:#E7ECF3;letter-spacing:-.01em">About Ardit BioStudio</span></div>',
+        unsafe_allow_html=True,
+    )
     
     st.markdown("""
-    ### Ardit BioStudio — AI-Powered Molecular Intelligence Platform
+    ### Ardit BioStudio — ADMET property prediction
     
     An open-source educational platform demonstrating computational drug discovery workflows using 
     cheminformatics, QSAR modeling, and machine learning techniques used in pharmaceutical research.
@@ -2210,7 +2527,7 @@ elif page == "About":
 # Display footer with credits and links
 st.markdown("""
 <div class="biostudio-footer">
-    <p>Created by <span class="gold-accent">Ardit</span> • <span class="gold-accent">Ardit BioStudio</span> • AI Molecular Intelligence • v1.0</p>
+    <p>Ardit BioStudio &middot; ADMET property prediction &middot; v1.0 &middot; Ardit Mishra</p>
     <p style="font-size: 0.85rem; margin-top: 0.5rem;">
         Built with RDKit • scikit-learn • XGBoost • Streamlit • FastAPI
     </p>
