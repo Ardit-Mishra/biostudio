@@ -795,7 +795,7 @@ elif page == "Molecule Studio":
                 col1, col2, col3, col4 = st.columns(4)
                 col1.metric("Lipinski Violations", lipinski['Violations'])
                 col2.metric("Veber Pass", "Pass" if veber['Passes'] else "Fail")
-                col3.metric("QED Score", qed)
+                col3.metric("QED Score", "unavailable" if qed is None else f"{qed:.3f}")
                 col4.metric("Overall", "Drug-like" if lipinski['Violations'] <= 1 and veber['Passes'] else "Review")
                 
             else:
@@ -1099,6 +1099,12 @@ elif page == "Toxicity Radar":
                         st.metric("Probability", data['percentage'])
                         st.metric("Risk Level", data['risk_level'])
                         st.caption(f"Model: {data['confidence']}")
+                        # A stated limitation belongs beside the number it
+                        # qualifies. These regressions were previously
+                        # disclosed only in repo markdown that this app never
+                        # opens, so nobody using the demo could see them.
+                        if data.get('caveat'):
+                            st.warning(data['caveat'])
 
                         # Color-coded risk pill
                         if data['risk_level'] in ('High', 'Positive'):
@@ -1185,6 +1191,8 @@ elif page == "Toxicity Radar":
                         else:
                             st.metric("Probability", admet_data['percentage'])
                             st.caption(f"Risk: {admet_data['risk_level']} · {admet_data['confidence']}")
+                            if admet_data.get('caveat'):
+                                st.warning(admet_data['caveat'])
 
                     with col2:
                         st.markdown("**Heuristic**")
@@ -1639,14 +1647,23 @@ elif page == "Drug-Likeness Deck":
             with col3:
                 st.markdown("#### QED Score")
                 qed = mol_processor.calculate_qed(mol)
-                st.metric("QED", f"{qed:.3f}")
-                
-                if qed >= 0.7:
-                    st.markdown('<div class="risk-pill safe-zone">Safe Zone — High Drug-Likeness</div>', unsafe_allow_html=True)
-                elif qed >= 0.4:
-                    st.markdown('<div class="risk-pill caution-zone">Caution Zone — Moderate</div>', unsafe_allow_html=True)
+                # A failed QED used to arrive here as 0.0 and fall straight
+                # through to the "Critical Zone - Low Drug-Likeness" branch,
+                # turning a crashed calculation into a verdict on the molecule.
+                if qed is None:
+                    st.metric("QED", "unavailable")
+                    st.warning(
+                        "QED could not be calculated for this structure. "
+                        "This is a calculation failure, not a low score."
+                    )
                 else:
-                    st.markdown('<div class="risk-pill critical-zone">Critical Zone — Low Drug-Likeness</div>', unsafe_allow_html=True)
+                    st.metric("QED", f"{qed:.3f}")
+                    if qed >= 0.7:
+                        st.markdown('<div class="risk-pill safe-zone">Safe Zone — High Drug-Likeness</div>', unsafe_allow_html=True)
+                    elif qed >= 0.4:
+                        st.markdown('<div class="risk-pill caution-zone">Caution Zone — Moderate</div>', unsafe_allow_html=True)
+                    else:
+                        st.markdown('<div class="risk-pill critical-zone">Critical Zone — Low Drug-Likeness</div>', unsafe_allow_html=True)
             
             with col4:
                 st.markdown("#### Synthetic Accessibility")

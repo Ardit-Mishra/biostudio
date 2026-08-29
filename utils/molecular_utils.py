@@ -68,6 +68,10 @@ from rdkit.Chem import rdMolDescriptors, rdmolops
 # Tuple: Tuple type hint (multiple return values)
 from typing import Optional, Dict, List, Tuple
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 # Import warnings module to suppress non-critical warnings
 import warnings
 # Ignore RDKit deprecation and stereochemistry warnings
@@ -135,9 +139,11 @@ class MolecularProcessor:
             # Canonical SMILES provides a unique string for each molecule
             # Different input SMILES for same molecule give same canonical output
             return True, Chem.MolToSmiles(mol)
-        except:
-            # Return False with error message if any exception occurred
-            return False, "Error parsing SMILES"
+        except Exception as exc:
+            # Was a bare `except:`, which also caught KeyboardInterrupt and
+            # SystemExit. The failure is surfaced to the caller either way, so
+            # this one was never silent — but naming the cause beats "Error".
+            return False, f"Error parsing SMILES: {type(exc).__name__}: {exc}"
     
     # Convert SMILES string to RDKit molecule object
     # This is the starting point for all property calculations
@@ -163,8 +169,10 @@ class MolecularProcessor:
         try:
             # Parse SMILES and return molecule object
             return Chem.MolFromSmiles(smiles)
-        except:
-            # Return None if parsing fails
+        except Exception as exc:
+            # None is an honest "no molecule" here — every caller checks it —
+            # but the reason was being discarded entirely.
+            logger.warning("MolFromSmiles failed for %r: %s", smiles, exc)
             return None
     
     # Calculate basic physicochemical properties of a molecule
@@ -437,7 +445,7 @@ class MolecularProcessor:
     # Calculate QED (Quantitative Estimate of Drug-likeness) score
     # Continuous score (0-1) instead of binary pass/fail
     @staticmethod
-    def calculate_qed(mol) -> float:
+    def calculate_qed(mol) -> Optional[float]:
         """
         Calculate Quantitative Estimate of Drug-likeness (QED) score.
         
@@ -482,17 +490,21 @@ class MolecularProcessor:
             QED is optimized for small molecule oral drugs. For biologics,
             peptides, or CNS drugs, consider alternative drug-likeness metrics.
         """
-        # Return 0 if molecule is None
+        # None means "could not be computed" and is NOT interchangeable with a
+        # score. Returning 0.0 on failure made a crash indistinguishable from a
+        # real QED of zero, and the UI renders low QED as "Critical Zone - Low
+        # Drug-Likeness" — so a broken calculation was presented to the user as
+        # a scientific verdict about their molecule. Callers must handle None.
         if mol is None:
-            return 0.0
-        
-        # Try to calculate QED score
+            return None
+
         try:
             # Use RDKit's QED implementation (Bickerton method)
             return round(QED.qed(mol), 3)
-        except:
-            # Return 0 if calculation fails
-            return 0.0
+        except Exception as exc:
+            # `except:` (bare) also swallowed KeyboardInterrupt and SystemExit.
+            logger.warning("QED calculation failed: %s: %s", type(exc).__name__, exc)
+            return None
     
     # Calculate Synthetic Accessibility (SA) score
     # Estimates how easy the molecule is to synthesize

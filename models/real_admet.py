@@ -14,8 +14,11 @@
 # =============================================================================
 import os
 import json
+import logging
 import numpy as np
 from typing import Dict, Optional, Union
+
+_log = logging.getLogger(__name__)
 
 from rdkit import Chem
 from rdkit.Chem import Descriptors
@@ -73,14 +76,35 @@ _TOX_MAP = {
 _POSITIVE_IS_RISK = {"DILI", "hERG", "AMES", "Carcinogens_Lagunin"}
 
 
+class FeaturizationError(RuntimeError):
+    """Descriptors could not be computed, so no prediction is possible."""
+
+
 def _featurize_one(mol) -> np.ndarray:
+    """Featurize one molecule, or raise.
+
+    This used to return an all-zero vector whenever RDKit threw. That zero
+    vector is a perfectly valid input as far as XGBoost is concerned: the
+    booster scored it and returned a confident-looking probability, which the
+    UI rendered exactly like a real prediction. A descriptor crash therefore
+    became a number a user could act on, with nothing anywhere to say the
+    molecule had never actually been featurized.
+
+    Raising is the whole point. The caller turns this into an explicit
+    "unavailable", and no model ever sees a fabricated input.
+    """
     if mol is None:
-        return np.zeros(_NFEAT, np.float32)
+        raise FeaturizationError("no molecule (SMILES did not parse)")
     try:
         d = np.array([f(mol) for f in _DESCS], np.float32)
         v = np.concatenate([_fp(mol), d])
-    except Exception:
-        v = np.zeros(_NFEAT, np.float32)
+    except Exception as exc:
+        raise FeaturizationError(
+            f"RDKit descriptor calculation failed: {type(exc).__name__}: {exc}"
+        ) from exc
+    # NaN/inf are still coerced: a descriptor legitimately returning inf (an
+    # undefined ratio on an odd fragment) is a value, not a crash. What is no
+    # longer tolerated is an exception silently becoming a whole zero vector.
     return np.nan_to_num(v, nan=0.0, posinf=0.0, neginf=0.0).reshape(1, -1)
 
 
@@ -150,6 +174,19 @@ class RealADMETPredictor:
             return "XGBoost (TDC)"
         return f"XGBoost - {metric} {score:.2f} (TDC held-out test)"
 
+    def caveat(self, name: str) -> Optional[str]:
+        """A stated limitation for this endpoint, or None.
+
+        Read from the model's own `*_meta.json` so the caveat travels with the
+        artifact. The regressions on AMES and Caco2_Wang were previously
+        disclosed only in repository markdown — README, METHODOLOGY, VALIDATION
+        — none of which app.py ever opens, so a visitor to the live demo saw a
+        confident number with no indication the endpoint had got worse. A
+        caveat that only exists in a file the product never reads has not been
+        communicated to anyone.
+        """
+        return self.meta.get(name, {}).get("caveat")
+
     def predict_endpoint(self, mol_or_smiles: Union[str, "Chem.Mol"],
                          tdc_name: str) -> Optional[dict]:
         """Return a real prediction for one endpoint, or None if unavailable."""
@@ -159,19 +196,29 @@ class RealADMETPredictor:
                if isinstance(mol_or_smiles, str) else mol_or_smiles)
         if mol is None:
             return None
-        X = _featurize_one(mol)
+        try:
+            X = _featurize_one(mol)
+        except FeaturizationError as exc:
+            # Returning None routes into the caller's existing "unavailable"
+            # path. Never fall through to _raw_predict here: a prediction made
+            # from a substitute feature vector is worse than no prediction,
+            # because it is indistinguishable from a real one.
+            _log.warning("featurization failed for %s: %s", tdc_name, exc)
+            return None
         m = self.meta.get(tdc_name, {})
         if m.get("task") == "regression":
             value = self._raw_predict(tdc_name, X)
             return {"task": "regression", "value": round(value, 3),
                     "metric": m.get("official_metric"), "test_score": m.get("test_score"),
-                    "provenance": self._provenance(tdc_name), "app_label": m.get("app_label")}
+                    "provenance": self._provenance(tdc_name), "caveat": self.caveat(tdc_name),
+                "app_label": m.get("app_label")}
         prob = self._raw_predict(tdc_name, X)  # binary:logistic booster -> probability
         thr = m.get("threshold") or 0.5
         return {"task": "classification", "probability": round(prob, 3),
                 "threshold": thr, "positive": prob >= thr,
                 "metric": m.get("official_metric"), "test_score": m.get("test_score"),
-                "provenance": self._provenance(tdc_name), "app_label": m.get("app_label")}
+                "provenance": self._provenance(tdc_name), "caveat": self.caveat(tdc_name),
+                "app_label": m.get("app_label")}
 
     def comprehensive_toxicity_profile(self, mol) -> Dict:
         """Drop-in replacement for NeuralToxicityPredictor.comprehensive_toxicity_profile.
@@ -197,6 +244,9 @@ class RealADMETPredictor:
                 "percentage": f"{round(p * 100, 1)}%",
                 "risk_level": risk,
                 "confidence": res["provenance"],
+                # Carried through so the UI can state a known limitation at the
+                # point the number is shown, rather than in a repo file.
+                "caveat": res.get("caveat"),
             }
         return profile
 

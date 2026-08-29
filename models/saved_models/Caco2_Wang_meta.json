@@ -41,5 +41,6 @@
   },
   "dataset_fingerprint_sha256_16": "bd0005246cb6f167",
   "train_time_s": 5.88,
-  "mlflow_run_id": "5f437f3a2ccf4332bc0ee9566432dca2"
+  "mlflow_run_id": "5f437f3a2ccf4332bc0ee9566432dca2",
+  "caveat": "REGRESSION vs the previously deployed model: MAE 0.286 -> 0.339. MAE is lower-is-better, so this endpoint got WORSE. Shipped anyway to keep all 7 endpoints on one training run rather than selecting per-endpoint winners on the test set."
 }

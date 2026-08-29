@@ -41,5 +41,6 @@
   },
   "dataset_fingerprint_sha256_16": "bd0005246cb6f167",
   "train_time_s": 11.25,
-  "mlflow_run_id": "6bffa9aa0ff04616b33258e8755f82c0"
+  "mlflow_run_id": "6bffa9aa0ff04616b33258e8755f82c0",
+  "caveat": "REGRESSION vs the previously deployed model: AUROC 0.847 -> 0.845 (slightly worse). Shipped anyway to keep all 7 endpoints on one training run rather than selecting per-endpoint winners on the test set."
 }
