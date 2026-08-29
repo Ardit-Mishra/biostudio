@@ -37,8 +37,11 @@ Scientific foundations and methodological references are documented in `METHODOL
 - Toxicity and ADMET prediction  
   - Heuristic structural alerts  
   - Real XGBoost models trained on Therapeutics Data Commons, scaffold-split and
-    scored once on held-out test data: DILI 0.849, hERG 0.778, Ames 0.847,
-    BBB 0.905, P-gp 0.908 AUROC; CYP3A4 0.868 AUPRC; Caco-2 0.286 MAE.
+    scored once on held-out test data: DILI 0.925, hERG 0.809, Ames 0.845,
+    BBB 0.905, P-gp 0.926 AUROC; CYP3A4 0.869 AUPRC; Caco-2 0.339 MAE.
+    Current numbers, known regressions, and reproduction steps live in
+    [`models/saved_models/README.md`](models/saved_models/README.md) — the single
+    source of truth for these scores, kept current there rather than duplicated here.
     Carcinogenicity has no model and reports as unavailable rather than guessing.  
 - Target class likelihood estimation (kinase, GPCR, ion channel, enzyme) — heuristic  
 - SHAP-based feature importance visualization  

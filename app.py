@@ -160,15 +160,26 @@ st.markdown("""
   }
 
   /* Streamlit sets its own face on inner elements, so a rule on .stApp alone
-     loses to it. Claim the UI face broadly, then hand the data back to mono. */
+     loses to it. Claim the UI face broadly, then hand the data back to mono.
+     stIconMaterial is excluded -- it's Streamlit's Material Symbols glyph
+     span (expander arrows, the sidebar collapse chevron, etc.); catching it
+     in the broad `span` selector above used to render those as literal
+     ligature text ("keyboard_arrow_right") instead of an icon. */
   html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stSidebar"],
-  h1, h2, h3, h4, h5, h6, p, div, span, label, button, input, select, textarea {
+  h1, h2, h3, h4, h5, h6, p, div, label, button, input, select, textarea,
+  span:not([data-testid="stIconMaterial"]) {
     font-family: var(--font-ui) !important;
   }
 
   code, pre, .stCode, [data-testid="stDataFrame"],
   [data-testid="stMetricValue"], [data-testid="stMetricLabel"], .risk-pill {
     font-family: var(--font-mono) !important;
+  }
+
+  /* Belt-and-suspenders: re-assert the icon font explicitly in case a more
+     specific Streamlit rule ever stops winning on its own. */
+  [data-testid="stIconMaterial"] {
+    font-family: "Material Symbols Rounded" !important;
   }
 
   [data-testid="stSidebar"] {

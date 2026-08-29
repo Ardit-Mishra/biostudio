@@ -23,6 +23,7 @@ sys.path.insert(0, ROOT)
 MODELDIR = os.path.join(ROOT, "models", "saved_models")
 MANIFEST_PATH = os.path.join(MODELDIR, "admet_models_manifest.json")
 MODEL_CARD_PATH = os.path.join(MODELDIR, "README.md")
+ROOT_README_PATH = os.path.join(ROOT, "README.md")
 
 ASPIRIN = "CC(=O)Oc1ccccc1C(=O)O"
 # Caffeine is a well-documented CNS-active molecule -- its central stimulant
@@ -162,4 +163,35 @@ class TestModelCardMatchesManifest:
             assert re.search(pattern, readme), (
                 f"{name}: model card does not show manifest test_score "
                 f"{meta['test_score']:.3f} for '{meta['app_label']}'"
+            )
+
+    # Short label each endpoint is known by in the top-level README's prose
+    # summary (README.md is not a table -- it's a one-line "DILI 0.925, hERG
+    # 0.809, ..." sentence aimed at a skimming recruiter, not the detailed
+    # model card). This is what caught the P0: the root README had drifted
+    # to the pre-swap numbers while the model card was updated.
+    ROOT_README_LABELS = {
+        "DILI": "DILI",
+        "hERG": "hERG",
+        "AMES": "Ames",
+        "BBB_Martins": "BBB",
+        "Pgp_Broccatelli": "P-gp",
+        "CYP3A4_Veith": "CYP3A4",
+        "Caco2_Wang": "Caco-2",
+    }
+
+    def test_root_readme_scores_match_manifest(self):
+        manifest = _manifest()
+        with open(ROOT_README_PATH, encoding="utf-8") as f:
+            root_readme = f.read()
+        # Collapse whitespace/newlines so a score wrapped across lines still matches.
+        flat = re.sub(r"\s+", " ", root_readme)
+        for name, meta in manifest.items():
+            short_label = self.ROOT_README_LABELS[name]
+            score_str = re.escape(f"{meta['test_score']:.3f}")
+            pattern = rf"{re.escape(short_label)}\s+{score_str}"
+            assert re.search(pattern, flat), (
+                f"{name}: top-level README.md does not show current manifest "
+                f"test_score {meta['test_score']:.3f} next to '{short_label}' "
+                f"-- it has likely drifted from models/saved_models/admet_models_manifest.json"
             )
