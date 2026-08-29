@@ -121,5 +121,5 @@ temp_images/
 docs/_build/
 site/
 
-# Downloaded TDC benchmark data (re-fetched by models/train_admet.py)
+# Downloaded TDC benchmark data (re-fetched by ml-training/biostudio/train_and_save_admet.py)
 models/tdc_data/

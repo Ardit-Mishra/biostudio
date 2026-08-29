@@ -41,6 +41,11 @@ tests/
 ├── __init__.py                # Package initialization
 ├── test_molecular_utils.py    # Molecular processing tests
 ├── test_drug_likeness.py      # Drug-likeness calculation tests
+├── test_admet_models.py       # Served ADMET model suite: artifact metadata
+│                               # validity, prediction schema, a known-molecule
+│                               # sanity check, models loading, model card vs
+│                               # manifest. This is what .github/workflows/ci.yml
+│                               # runs on every PR and push.
 └── README.md                  # This file
 ```
 
@@ -102,14 +107,19 @@ class TestClassName:
 
 ## Continuous Integration
 
-Tests should run automatically on:
-- Every pull request
-- Every commit to main branch
-- Before releases
+`.github/workflows/ci.yml` runs `test_admet_models.py` on every pull request and every push to the
+`ui/instrument-design-system` branch. `test_drug_likeness.py` and `test_molecular_utils.py` are
+**not** in that CI gate yet: they currently have 25 pre-existing failures (see Known Issues below)
+unrelated to the ADMET model suite, and gating CI on them today would make it red from the first
+run. Fixing those and adding them to CI is tracked as follow-up work, not silently skipped.
 
 ## Known Issues
 
-1. Some ML model tests require trained models (not included in tests)
+1. `test_drug_likeness.py` and `test_molecular_utils.py` currently have 25 failing tests (as of
+   2026-08-29) against `utils/drug_likeness.py` / `utils/molecular_utils.py` -- mostly `KeyError`s
+   for dict keys the tests expect (e.g. `num_aromatic_rings`, `molecular_weight`) that the current
+   implementation doesn't return under those names. Pre-existing, not touched by the ADMET model
+   work in this repo; not yet gated in CI (see above).
 2. Large molecule tests may be slow
 3. Some RDKit warnings are expected and can be ignored
 

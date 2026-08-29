@@ -28,7 +28,21 @@
       "n_features": 2058
     },
     "model_file": "DILI_xgb.json",
-    "source": "Therapeutics Data Commons (TDC)"
+    "source": "Therapeutics Data Commons (TDC)",
+    "git_sha": "92863134c31d-dirty",
+    "library_versions": {
+      "python": "3.11.15",
+      "xgboost": "3.2.0",
+      "scikit-learn": "1.9.0",
+      "rdkit": "2026.3.5",
+      "numpy": "1.26.4",
+      "pandas": "3.0.5",
+      "PyTDC": "0.4.1",
+      "mlflow": "3.15.2"
+    },
+    "dataset_fingerprint_sha256_16": "bd0005246cb6f167",
+    "train_time_s": 2.2,
+    "mlflow_run_id": "2c9caffc1863422a95ee567c7d7d648a"
   },
   "hERG": {
     "tdc_name": "hERG",
@@ -59,7 +73,21 @@
       "n_features": 2058
     },
     "model_file": "hERG_xgb.json",
-    "source": "Therapeutics Data Commons (TDC)"
+    "source": "Therapeutics Data Commons (TDC)",
+    "git_sha": "92863134c31d-dirty",
+    "library_versions": {
+      "python": "3.11.15",
+      "xgboost": "3.2.0",
+      "scikit-learn": "1.9.0",
+      "rdkit": "2026.3.5",
+      "numpy": "1.26.4",
+      "pandas": "3.0.5",
+      "PyTDC": "0.4.1",
+      "mlflow": "3.15.2"
+    },
+    "dataset_fingerprint_sha256_16": "bd0005246cb6f167",
+    "train_time_s": 2.68,
+    "mlflow_run_id": "97bc8e19937e4563a555016eda0ec753"
   },
   "AMES": {
     "tdc_name": "AMES",
@@ -90,7 +118,21 @@
       "n_features": 2058
     },
     "model_file": "AMES_xgb.json",
-    "source": "Therapeutics Data Commons (TDC)"
+    "source": "Therapeutics Data Commons (TDC)",
+    "git_sha": "92863134c31d-dirty",
+    "library_versions": {
+      "python": "3.11.15",
+      "xgboost": "3.2.0",
+      "scikit-learn": "1.9.0",
+      "rdkit": "2026.3.5",
+      "numpy": "1.26.4",
+      "pandas": "3.0.5",
+      "PyTDC": "0.4.1",
+      "mlflow": "3.15.2"
+    },
+    "dataset_fingerprint_sha256_16": "bd0005246cb6f167",
+    "train_time_s": 11.25,
+    "mlflow_run_id": "6bffa9aa0ff04616b33258e8755f82c0"
   },
   "BBB_Martins": {
     "tdc_name": "BBB_Martins",
@@ -121,7 +163,21 @@
       "n_features": 2058
     },
     "model_file": "BBB_Martins_xgb.json",
-    "source": "Therapeutics Data Commons (TDC)"
+    "source": "Therapeutics Data Commons (TDC)",
+    "git_sha": "92863134c31d-dirty",
+    "library_versions": {
+      "python": "3.11.15",
+      "xgboost": "3.2.0",
+      "scikit-learn": "1.9.0",
+      "rdkit": "2026.3.5",
+      "numpy": "1.26.4",
+      "pandas": "3.0.5",
+      "PyTDC": "0.4.1",
+      "mlflow": "3.15.2"
+    },
+    "dataset_fingerprint_sha256_16": "bd0005246cb6f167",
+    "train_time_s": 6.15,
+    "mlflow_run_id": "fb9d1530af734bbfa44e6607e69b6253"
   },
   "Pgp_Broccatelli": {
     "tdc_name": "Pgp_Broccatelli",
@@ -152,7 +208,21 @@
       "n_features": 2058
     },
     "model_file": "Pgp_Broccatelli_xgb.json",
-    "source": "Therapeutics Data Commons (TDC)"
+    "source": "Therapeutics Data Commons (TDC)",
+    "git_sha": "92863134c31d-dirty",
+    "library_versions": {
+      "python": "3.11.15",
+      "xgboost": "3.2.0",
+      "scikit-learn": "1.9.0",
+      "rdkit": "2026.3.5",
+      "numpy": "1.26.4",
+      "pandas": "3.0.5",
+      "PyTDC": "0.4.1",
+      "mlflow": "3.15.2"
+    },
+    "dataset_fingerprint_sha256_16": "bd0005246cb6f167",
+    "train_time_s": 7.28,
+    "mlflow_run_id": "4bddf0e6a6c7477c9a0ca05b34f541b1"
   },
   "CYP3A4_Veith": {
     "tdc_name": "CYP3A4_Veith",
@@ -183,7 +253,21 @@
       "n_features": 2058
     },
     "model_file": "CYP3A4_Veith_xgb.json",
-    "source": "Therapeutics Data Commons (TDC)"
+    "source": "Therapeutics Data Commons (TDC)",
+    "git_sha": "92863134c31d-dirty",
+    "library_versions": {
+      "python": "3.11.15",
+      "xgboost": "3.2.0",
+      "scikit-learn": "1.9.0",
+      "rdkit": "2026.3.5",
+      "numpy": "1.26.4",
+      "pandas": "3.0.5",
+      "PyTDC": "0.4.1",
+      "mlflow": "3.15.2"
+    },
+    "dataset_fingerprint_sha256_16": "bd0005246cb6f167",
+    "train_time_s": 26.33,
+    "mlflow_run_id": "421795861e114720bb9b584579522086"
   },
   "Caco2_Wang": {
     "tdc_name": "Caco2_Wang",
@@ -214,6 +298,20 @@
       "n_features": 2058
     },
     "model_file": "Caco2_Wang_xgb.json",
-    "source": "Therapeutics Data Commons (TDC)"
+    "source": "Therapeutics Data Commons (TDC)",
+    "git_sha": "92863134c31d-dirty",
+    "library_versions": {
+      "python": "3.11.15",
+      "xgboost": "3.2.0",
+      "scikit-learn": "1.9.0",
+      "rdkit": "2026.3.5",
+      "numpy": "1.26.4",
+      "pandas": "3.0.5",
+      "PyTDC": "0.4.1",
+      "mlflow": "3.15.2"
+    },
+    "dataset_fingerprint_sha256_16": "bd0005246cb6f167",
+    "train_time_s": 5.88,
+    "mlflow_run_id": "5f437f3a2ccf4332bc0ee9566432dca2"
   }
 }

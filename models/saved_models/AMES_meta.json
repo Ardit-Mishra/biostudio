@@ -27,5 +27,19 @@
     "n_features": 2058
   },
   "model_file": "AMES_xgb.json",
-  "source": "Therapeutics Data Commons (TDC)"
+  "source": "Therapeutics Data Commons (TDC)",
+  "git_sha": "92863134c31d-dirty",
+  "library_versions": {
+    "python": "3.11.15",
+    "xgboost": "3.2.0",
+    "scikit-learn": "1.9.0",
+    "rdkit": "2026.3.5",
+    "numpy": "1.26.4",
+    "pandas": "3.0.5",
+    "PyTDC": "0.4.1",
+    "mlflow": "3.15.2"
+  },
+  "dataset_fingerprint_sha256_16": "bd0005246cb6f167",
+  "train_time_s": 11.25,
+  "mlflow_run_id": "6bffa9aa0ff04616b33258e8755f82c0"
 }

@@ -31,7 +31,7 @@ data with a leakage-resistant split and evaluated once on a held-out test set.
 | Hepatotoxicity (DILI) | Toxicity | AUROC | 0.925 | 96 (small → higher variance) |
 | Cardiotoxicity (hERG) | Toxicity | AUROC | 0.809 | 132 |
 | Mutagenicity (Ames) | Toxicity | AUROC | 0.845 ⚠ | 1457 |
-| Blood–Brain Barrier | Distribution | AUROC | 0.905 | 406 |
+| Blood-Brain Barrier | Distribution | AUROC | 0.905 | 406 |
 | P-glycoprotein Inhibition | Absorption | AUROC | 0.926 | 245 |
 | CYP3A4 Inhibition | Metabolism | AUPRC | 0.869 | 2467 |
 | Caco-2 Permeability | Absorption | MAE ↓ | 0.339 ⚠ | 182 |
@@ -51,18 +51,29 @@ Two regressed and are disclosed rather than hidden:
 
 ## Reproduce
 
-From the repo root, with [`uv`](https://docs.astral.sh/uv/):
+The canonical training script lives in the separate `ml-training` repo, not here — this app repo
+only ships the trained artifacts. (An earlier, diverged copy briefly lived at
+`models/train_admet.py`; it used a different, since-superseded 13-descriptor feature spec and was
+removed 2026-08-29 so there is exactly one script that can produce these files, not two silently
+drifting apart.)
+
+From `ml-training/biostudio/`, with [`uv`](https://docs.astral.sh/uv/):
 
 ```bash
-uv run --python 3.11 --with "setuptools<81" --with "numpy<2" --with "rdkit>=2025.9.1" \
-       --with xgboost --with scikit-learn --with pandas --with PyTDC \
-       python models/train_admet.py
+uv run --python 3.11 --with "numpy<2" --with "rdkit>=2025.9.1" --with xgboost \
+       --with scikit-learn --with pandas --with PyTDC --with mlflow-skinny \
+       python train_and_save_admet.py
 ```
 
-`setuptools` must be pinned below 81: version 81 removed `pkg_resources`, which
-PyTDC still imports, so an unpinned install fails at import time.
+This re-downloads the TDC data, retrains every endpoint, rewrites the `*_xgb.json` / `*_meta.json`
+files there plus `admet_models_manifest.json`, and logs a full MLflow run per endpoint (git SHA,
+dataset fingerprint, split, seed, params, train time, the official metric, every relevant library's
+version) to a local sqlite store — see `ml-training/biostudio/mlflow.db` /
+`ml-training/_shared/mlflow_utils.py`. Training is CPU-only and finishes in well under a minute.
+Copy the refreshed `*_meta.json` + `admet_models_manifest.json` (and `*_xgb.json` if the numbers
+actually changed) into this directory to ship an update.
 
-This re-downloads the TDC data, retrains every endpoint, and rewrites the `*_xgb.json` / `*_meta.json`
-files here plus `admet_models_manifest.json`. Training is CPU-only and finishes in a few minutes.
-
-> Note: `setuptools` is required because some dependencies import `pkg_resources`.
+Verified 2026-08-29: re-running this script reproduced every one of the 7 shipped models
+**byte-for-byte identical** (`sha256sum` match on every `*_xgb.json`) and every held-out score to
+full floating-point precision — the `*_meta.json` files here now carry the git SHA, library
+versions, dataset fingerprint, and MLflow run ID from that verification run.
