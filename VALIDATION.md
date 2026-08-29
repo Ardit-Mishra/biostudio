@@ -51,17 +51,23 @@ Seven gradient-boosted (XGBoost) ADMET models, trained and held-out-tested on **
 
 | Endpoint | App Label | Metric | Test Score | Threshold | n_train / n_test |
 |---|---|---|---|---|---|
-| DILI | Hepatotoxicity (DILI) | AUROC | 0.849 | 0.50 | 379 / 96 |
-| hERG | Cardiotoxicity (hERG) | AUROC | 0.778 | 0.45 | 523 / 132 |
-| AMES | Mutagenicity (Ames) | AUROC | 0.847 | 0.50 | 5,821 / 1,457 |
-| BBB_Martins | Blood-Brain Barrier | AUROC | 0.905 | 0.50 | 1,624 / 406 |
-| Pgp_Broccatelli | P-glycoprotein Inhibition | AUROC | 0.908 | 0.45 | 973 / 245 |
-| CYP3A4_Veith | CYP3A4 Inhibition | AUPRC | 0.868 | 0.50 | 9,861 / 2,467 |
-| Caco2_Wang | Caco-2 Permeability | MAE | 0.286 | n/a (regression) | 728 / 182 |
+| DILI | Hepatotoxicity (DILI) | AUROC | 0.925 | 0.40 | 379 / 96 |
+| hERG | Cardiotoxicity (hERG) | AUROC | 0.809 | 0.35 | 523 / 132 |
+| AMES | Mutagenicity (Ames) | AUROC | 0.845 ⚠ | 0.50 | 5,821 / 1,457 |
+| BBB_Martins | Blood-Brain Barrier | AUROC | 0.905 | 0.45 | 1,624 / 406 |
+| Pgp_Broccatelli | P-glycoprotein Inhibition | AUROC | 0.926 | 0.40 | 973 / 245 |
+| CYP3A4_Veith | CYP3A4 Inhibition | AUPRC | 0.869 | 0.55 | 9,861 / 2,467 |
+| Caco2_Wang | Caco-2 Permeability | MAE | 0.339 ⚠ | n/a (regression) | 728 / 182 |
 
 **Features**: ECFP4/Morgan fingerprint (radius=2, 2048 bits) + 10 RDKit descriptors (MolWt, MolLogP, TPSA, NumHDonors, NumHAcceptors, NumRotatableBonds, NumAromaticRings, FractionCSP3, HeavyAtomCount, NumHeteroatoms) = 2,058 features.
 
 **Production Ready**: Yes, for screening/educational use — these are real held-out test metrics, not training-set numbers.
+
+**⚠ Two regressions vs. the prior model set (2026-08-29 batch retrain)**: AMES −0.0015 AUROC
+(0.847→0.845, within noise) and Caco2_Wang +0.053 MAE, i.e. **worse** (0.286→0.339 — MAE is
+lower-is-better). Shipped anyway for a consistent, single-script-trained batch across all seven
+endpoints; see `models/saved_models/README.md` for the full before/after and `models/real_admet.py`
+for a feature-mismatch serving bug this retrain also fixed.
 
 ### Category 1: Validated Industry Standards ✅
 
@@ -307,7 +313,7 @@ logp = Descriptors.MolLogP(mol)
 
 ### Hepatotoxicity
 
-**Status**: ⚠️ **Heuristic (Structural Alerts)** + ✅ **Real XGBoost (DILI, AUROC 0.849)** — legacy "Neural Network" module deprecated, never trained
+**Status**: ⚠️ **Heuristic (Structural Alerts)** + ✅ **Real XGBoost (DILI, AUROC 0.925)** — legacy "Neural Network" module deprecated, never trained
 
 #### Heuristic Approach
 
@@ -327,13 +333,13 @@ logp = Descriptors.MolLogP(mol)
 
 **Status**: ❌ **NOT TRAINED** — `models/neural_toxicity.py` sets weights via `np.random.randn() * 0.01` once at initialization and never runs an optimizer or `.fit()`. No learning ever occurred; "5-layer feedforward network" describes an untrained, frozen-random-weight architecture, not a working model.
 
-**Real alternative**: DILI (hepatotoxicity) now has a real, held-out-validated XGBoost model — AUROC 0.849 (threshold 0.50) on a TDC scaffold split, n_test=96. See Category 0 above and `models/real_admet.py`.
+**Real alternative**: DILI (hepatotoxicity) now has a real, held-out-validated XGBoost model — AUROC 0.925 (threshold 0.40) on a TDC scaffold split, n_test=96. See Category 0 above and `models/real_admet.py`.
 
 ---
 
 ### hERG Cardiotoxicity
 
-**Status**: ⚠️ **Heuristic** + ✅ **Real XGBoost (AUROC 0.778)** — legacy "Neural Network" module deprecated, never trained
+**Status**: ⚠️ **Heuristic** + ✅ **Real XGBoost (AUROC 0.809)** — legacy "Neural Network" module deprecated, never trained
 
 #### Heuristic Approach
 
@@ -353,13 +359,13 @@ logp = Descriptors.MolLogP(mol)
 
 **Status**: ❌ **NOT TRAINED** — fixed random weights (`np.random.randn`), no `fit`/backprop ever run. Module deprecated.
 
-**Real alternative**: Real, held-out-validated XGBoost model — hERG AUROC 0.778 (threshold 0.45) on a TDC scaffold split, n_test=132. See Category 0 above and `models/real_admet.py`.
+**Real alternative**: Real, held-out-validated XGBoost model — hERG AUROC 0.809 (threshold 0.35) on a TDC scaffold split, n_test=132. See Category 0 above and `models/real_admet.py`.
 
 ---
 
 ### Mutagenicity (Ames Test)
 
-**Status**: ⚠️ **Heuristic** + ✅ **Real XGBoost (AUROC 0.847)** — legacy "Neural Network" module deprecated, never trained
+**Status**: ⚠️ **Heuristic** + ✅ **Real XGBoost (AUROC 0.845, a ⚠ -0.0015 regression vs. the prior model — see Category 0)** — legacy "Neural Network" module deprecated, never trained
 
 #### Heuristic Approach
 
@@ -374,7 +380,7 @@ logp = Descriptors.MolLogP(mol)
 
 **Status**: ❌ **NOT TRAINED** — fixed random weights (`np.random.randn`), no `fit`/backprop ever run. Module deprecated.
 
-**Real alternative**: Real, held-out-validated XGBoost model — AMES AUROC 0.847 (threshold 0.50) on a TDC scaffold split, n_test=1,457. See Category 0 above and `models/real_admet.py`.
+**Real alternative**: Real, held-out-validated XGBoost model — AMES AUROC 0.845 (threshold 0.50) on a TDC scaffold split, n_test=1,457. See Category 0 above and `models/real_admet.py`.
 
 **References**:
 [5] Kazius et al. (2005). J Med Chem, 48(1):312-20. DOI: 10.1021/jm040835a

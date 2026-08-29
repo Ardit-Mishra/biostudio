@@ -5,8 +5,8 @@
     "admet_class": "Toxicity",
     "task": "classification",
     "official_metric": "AUROC",
-    "test_score": 0.848695652173913,
-    "threshold": 0.49999999999999994,
+    "test_score": 0.9252173913043479,
+    "threshold": 0.39999999999999997,
     "n_train": 379,
     "n_test": 96,
     "positives_frac": 0.49076517150395776,
@@ -14,23 +14,18 @@
     "feature_spec": {
       "fingerprint": "ECFP4/Morgan radius=2 nBits=2048",
       "descriptors": [
-        "TPSA_x100",
-        "LipinskiHBD",
-        "LipinskiHBA",
+        "MolWt",
+        "MolLogP",
+        "TPSA",
+        "NumHDonors",
+        "NumHAcceptors",
         "NumRotatableBonds",
         "NumAromaticRings",
-        "NumAliphaticRings",
-        "NumRings",
+        "FractionCSP3",
         "HeavyAtomCount",
-        "NumHeteroatoms",
-        "NumAmideBonds",
-        "NumAromaticHeterocycles",
-        "NumSaturatedRings",
-        "NumAtomStereoCenters"
+        "NumHeteroatoms"
       ],
-      "n_features": 2061,
-      "browser_exact": true,
-      "note": "All features are exactly reproducible by RDKit.js (WASM); verified 0/350 mismatches."
+      "n_features": 2058
     },
     "model_file": "DILI_xgb.json",
     "source": "Therapeutics Data Commons (TDC)"
@@ -41,8 +36,8 @@
     "admet_class": "Toxicity",
     "task": "classification",
     "official_metric": "AUROC",
-    "test_score": 0.7783505154639175,
-    "threshold": 0.44999999999999996,
+    "test_score": 0.8089837997054492,
+    "threshold": 0.35,
     "n_train": 523,
     "n_test": 132,
     "positives_frac": 0.6768642447418738,
@@ -50,23 +45,18 @@
     "feature_spec": {
       "fingerprint": "ECFP4/Morgan radius=2 nBits=2048",
       "descriptors": [
-        "TPSA_x100",
-        "LipinskiHBD",
-        "LipinskiHBA",
+        "MolWt",
+        "MolLogP",
+        "TPSA",
+        "NumHDonors",
+        "NumHAcceptors",
         "NumRotatableBonds",
         "NumAromaticRings",
-        "NumAliphaticRings",
-        "NumRings",
+        "FractionCSP3",
         "HeavyAtomCount",
-        "NumHeteroatoms",
-        "NumAmideBonds",
-        "NumAromaticHeterocycles",
-        "NumSaturatedRings",
-        "NumAtomStereoCenters"
+        "NumHeteroatoms"
       ],
-      "n_features": 2061,
-      "browser_exact": true,
-      "note": "All features are exactly reproducible by RDKit.js (WASM); verified 0/350 mismatches."
+      "n_features": 2058
     },
     "model_file": "hERG_xgb.json",
     "source": "Therapeutics Data Commons (TDC)"
@@ -77,7 +67,7 @@
     "admet_class": "Toxicity",
     "task": "classification",
     "official_metric": "AUROC",
-    "test_score": 0.8467955119544146,
+    "test_score": 0.845305371164503,
     "threshold": 0.49999999999999994,
     "n_train": 5821,
     "n_test": 1457,
@@ -86,23 +76,18 @@
     "feature_spec": {
       "fingerprint": "ECFP4/Morgan radius=2 nBits=2048",
       "descriptors": [
-        "TPSA_x100",
-        "LipinskiHBD",
-        "LipinskiHBA",
+        "MolWt",
+        "MolLogP",
+        "TPSA",
+        "NumHDonors",
+        "NumHAcceptors",
         "NumRotatableBonds",
         "NumAromaticRings",
-        "NumAliphaticRings",
-        "NumRings",
+        "FractionCSP3",
         "HeavyAtomCount",
-        "NumHeteroatoms",
-        "NumAmideBonds",
-        "NumAromaticHeterocycles",
-        "NumSaturatedRings",
-        "NumAtomStereoCenters"
+        "NumHeteroatoms"
       ],
-      "n_features": 2061,
-      "browser_exact": true,
-      "note": "All features are exactly reproducible by RDKit.js (WASM); verified 0/350 mismatches."
+      "n_features": 2058
     },
     "model_file": "AMES_xgb.json",
     "source": "Therapeutics Data Commons (TDC)"
@@ -113,8 +98,8 @@
     "admet_class": "Distribution",
     "task": "classification",
     "official_metric": "AUROC",
-    "test_score": 0.9050969355847404,
-    "threshold": 0.49999999999999994,
+    "test_score": 0.9053705440900564,
+    "threshold": 0.44999999999999996,
     "n_train": 1624,
     "n_test": 406,
     "positives_frac": 0.7530788177339901,
@@ -122,23 +107,18 @@
     "feature_spec": {
       "fingerprint": "ECFP4/Morgan radius=2 nBits=2048",
       "descriptors": [
-        "TPSA_x100",
-        "LipinskiHBD",
-        "LipinskiHBA",
+        "MolWt",
+        "MolLogP",
+        "TPSA",
+        "NumHDonors",
+        "NumHAcceptors",
         "NumRotatableBonds",
         "NumAromaticRings",
-        "NumAliphaticRings",
-        "NumRings",
+        "FractionCSP3",
         "HeavyAtomCount",
-        "NumHeteroatoms",
-        "NumAmideBonds",
-        "NumAromaticHeterocycles",
-        "NumSaturatedRings",
-        "NumAtomStereoCenters"
+        "NumHeteroatoms"
       ],
-      "n_features": 2061,
-      "browser_exact": true,
-      "note": "All features are exactly reproducible by RDKit.js (WASM); verified 0/350 mismatches."
+      "n_features": 2058
     },
     "model_file": "BBB_Martins_xgb.json",
     "source": "Therapeutics Data Commons (TDC)"
@@ -149,8 +129,8 @@
     "admet_class": "Absorption",
     "task": "classification",
     "official_metric": "AUROC",
-    "test_score": 0.907624633431085,
-    "threshold": 0.44999999999999996,
+    "test_score": 0.9261530258597707,
+    "threshold": 0.39999999999999997,
     "n_train": 973,
     "n_test": 245,
     "positives_frac": 0.5405960945529291,
@@ -158,23 +138,18 @@
     "feature_spec": {
       "fingerprint": "ECFP4/Morgan radius=2 nBits=2048",
       "descriptors": [
-        "TPSA_x100",
-        "LipinskiHBD",
-        "LipinskiHBA",
+        "MolWt",
+        "MolLogP",
+        "TPSA",
+        "NumHDonors",
+        "NumHAcceptors",
         "NumRotatableBonds",
         "NumAromaticRings",
-        "NumAliphaticRings",
-        "NumRings",
+        "FractionCSP3",
         "HeavyAtomCount",
-        "NumHeteroatoms",
-        "NumAmideBonds",
-        "NumAromaticHeterocycles",
-        "NumSaturatedRings",
-        "NumAtomStereoCenters"
+        "NumHeteroatoms"
       ],
-      "n_features": 2061,
-      "browser_exact": true,
-      "note": "All features are exactly reproducible by RDKit.js (WASM); verified 0/350 mismatches."
+      "n_features": 2058
     },
     "model_file": "Pgp_Broccatelli_xgb.json",
     "source": "Therapeutics Data Commons (TDC)"
@@ -185,8 +160,8 @@
     "admet_class": "Metabolism",
     "task": "classification",
     "official_metric": "AUPRC",
-    "test_score": 0.868362849436239,
-    "threshold": 0.49999999999999994,
+    "test_score": 0.8690310105553087,
+    "threshold": 0.5499999999999999,
     "n_train": 9861,
     "n_test": 2467,
     "positives_frac": 0.40847784200385356,
@@ -194,23 +169,18 @@
     "feature_spec": {
       "fingerprint": "ECFP4/Morgan radius=2 nBits=2048",
       "descriptors": [
-        "TPSA_x100",
-        "LipinskiHBD",
-        "LipinskiHBA",
+        "MolWt",
+        "MolLogP",
+        "TPSA",
+        "NumHDonors",
+        "NumHAcceptors",
         "NumRotatableBonds",
         "NumAromaticRings",
-        "NumAliphaticRings",
-        "NumRings",
+        "FractionCSP3",
         "HeavyAtomCount",
-        "NumHeteroatoms",
-        "NumAmideBonds",
-        "NumAromaticHeterocycles",
-        "NumSaturatedRings",
-        "NumAtomStereoCenters"
+        "NumHeteroatoms"
       ],
-      "n_features": 2061,
-      "browser_exact": true,
-      "note": "All features are exactly reproducible by RDKit.js (WASM); verified 0/350 mismatches."
+      "n_features": 2058
     },
     "model_file": "CYP3A4_Veith_xgb.json",
     "source": "Therapeutics Data Commons (TDC)"
@@ -221,7 +191,7 @@
     "admet_class": "Absorption",
     "task": "regression",
     "official_metric": "MAE",
-    "test_score": 0.2856933638602457,
+    "test_score": 0.3390668591790839,
     "threshold": null,
     "n_train": 728,
     "n_test": 182,
@@ -230,23 +200,18 @@
     "feature_spec": {
       "fingerprint": "ECFP4/Morgan radius=2 nBits=2048",
       "descriptors": [
-        "TPSA_x100",
-        "LipinskiHBD",
-        "LipinskiHBA",
+        "MolWt",
+        "MolLogP",
+        "TPSA",
+        "NumHDonors",
+        "NumHAcceptors",
         "NumRotatableBonds",
         "NumAromaticRings",
-        "NumAliphaticRings",
-        "NumRings",
+        "FractionCSP3",
         "HeavyAtomCount",
-        "NumHeteroatoms",
-        "NumAmideBonds",
-        "NumAromaticHeterocycles",
-        "NumSaturatedRings",
-        "NumAtomStereoCenters"
+        "NumHeteroatoms"
       ],
-      "n_features": 2061,
-      "browser_exact": true,
-      "note": "All features are exactly reproducible by RDKit.js (WASM); verified 0/350 mismatches."
+      "n_features": 2058
     },
     "model_file": "Caco2_Wang_xgb.json",
     "source": "Therapeutics Data Commons (TDC)"

@@ -28,16 +28,26 @@ data with a leakage-resistant split and evaluated once on a held-out test set.
 
 | Endpoint | ADMET class | Metric | Held-out test | n_test |
 |---|---|---|---|---|
-| Hepatotoxicity (DILI) | Toxicity | AUROC | 0.849 | 96 (small → higher variance) |
-| Cardiotoxicity (hERG) | Toxicity | AUROC | 0.778 | 132 |
-| Mutagenicity (Ames) | Toxicity | AUROC | 0.847 | 1457 |
+| Hepatotoxicity (DILI) | Toxicity | AUROC | 0.925 | 96 (small → higher variance) |
+| Cardiotoxicity (hERG) | Toxicity | AUROC | 0.809 | 132 |
+| Mutagenicity (Ames) | Toxicity | AUROC | 0.845 ⚠ | 1457 |
 | Blood–Brain Barrier | Distribution | AUROC | 0.905 | 406 |
-| P-glycoprotein Inhibition | Absorption | AUROC | 0.908 | 245 |
-| CYP3A4 Inhibition | Metabolism | AUPRC | 0.868 | 2467 |
-| Caco-2 Permeability | Absorption | MAE ↓ | 0.286 | 182 |
+| P-glycoprotein Inhibition | Absorption | AUROC | 0.926 | 245 |
+| CYP3A4 Inhibition | Metabolism | AUPRC | 0.869 | 2467 |
+| Caco-2 Permeability | Absorption | MAE ↓ | 0.339 ⚠ | 182 |
 
 These sit near published TDC leaderboard baselines. They are an honest classical-ML baseline, not a
 claim of state-of-the-art; small datasets (e.g. DILI) carry real variance.
+
+**⚠ Two honest regressions, shipped anyway.** These models were retrained as one consistent batch
+(same feature spec, same script) on 2026-08-29, replacing an earlier per-endpoint set. Five of seven
+endpoints improved (DILI +0.077, Pgp +0.019, hERG +0.031, CYP3A4 +0.001, BBB +0.0003 AUROC/AUPRC).
+Two regressed and are disclosed rather than hidden:
+- **AMES**: 0.847 → 0.845 AUROC (−0.0015, within noise for a 1,457-molecule test set).
+- **Caco-2 Permeability**: 0.286 → 0.339 MAE (**worse** — MAE is lower-is-better, so this is a real
+  +0.053 increase in mean absolute error, not an improvement). Shipped for consistency with the rest
+  of the batch and because the previous Caco-2 model's advertised 0.286 MAE was never actually what
+  the app served — see the serving-bug note in `models/real_admet.py`.
 
 ## Reproduce
 

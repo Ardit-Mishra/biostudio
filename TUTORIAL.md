@@ -298,7 +298,7 @@ Expected Profile:
 
 The platform provides **two approaches** side-by-side for the endpoints with real coverage:
 1. **Heuristic**: Rule-based structural alerts (fast, interpretable, all endpoints)
-2. **Real XGBoost (gradient-boosted) models**: held-out-validated on TDC scaffold splits, served by `models/real_admet.py` (`RealADMETPredictor.comprehensive_toxicity_profile()`) — DILI (hepatotoxicity) AUROC 0.849 (threshold 0.50), hERG AUROC 0.778 (threshold 0.45), AMES (mutagenicity) AUROC 0.847 (threshold 0.50). Carcinogenicity has no real model — heuristic only.
+2. **Real XGBoost (gradient-boosted) models**: held-out-validated on TDC scaffold splits, served by `models/real_admet.py` (`RealADMETPredictor.comprehensive_toxicity_profile()`) — DILI (hepatotoxicity) AUROC 0.925 (threshold 0.40), hERG AUROC 0.809 (threshold 0.35), AMES (mutagenicity) AUROC 0.845 (threshold 0.50, a ⚠ small regression vs. the prior model set). Carcinogenicity has no real model — heuristic only.
 
 There was previously a "Neural Network (demonstration, trained on synthetic data)" third option here. That module (`models/neural_toxicity.py`) was never actually trained — its weights are frozen random values (`np.random.randn`), with no optimizer or `.fit()` ever run — so it has been removed from this comparison. It is deprecated legacy code, not a working model.
 
@@ -379,17 +379,19 @@ Expected:
 
 | Endpoint | Metric | Test Score | Threshold |
 |---|---|---|---|
-| DILI (hepatotoxicity) | AUROC | 0.849 | 0.50 |
-| hERG (cardiotoxicity) | AUROC | 0.778 | 0.45 |
-| AMES (mutagenicity) | AUROC | 0.847 | 0.50 |
-| BBB_Martins (blood-brain barrier) | AUROC | 0.905 | 0.50 |
-| Pgp_Broccatelli (P-gp inhibition) | AUROC | 0.908 | 0.45 |
-| CYP3A4_Veith (CYP3A4 inhibition) | AUPRC | 0.868 | 0.50 |
-| Caco2_Wang (permeability) | MAE | 0.286 | n/a (regression) |
+| DILI (hepatotoxicity) | AUROC | 0.925 | 0.40 |
+| hERG (cardiotoxicity) | AUROC | 0.809 | 0.35 |
+| AMES (mutagenicity) | AUROC | 0.845 ⚠ | 0.50 |
+| BBB_Martins (blood-brain barrier) | AUROC | 0.905 | 0.45 |
+| Pgp_Broccatelli (P-gp inhibition) | AUROC | 0.926 | 0.40 |
+| CYP3A4_Veith (CYP3A4 inhibition) | AUPRC | 0.869 | 0.55 |
+| Caco2_Wang (permeability) | MAE | 0.339 ⚠ | n/a (regression) |
+
+⚠ AMES and Caco2_Wang regressed slightly vs. the prior model set (AMES −0.0015 AUROC; Caco2_Wang +0.053 MAE, which is worse since MAE is lower-is-better). Shipped anyway for a consistent, single-script-trained batch — see `models/saved_models/README.md`.
 
 **Output**: Per-endpoint probability (classification) or predicted value (Caco2_Wang, regression), with the endpoint's threshold applied to produce a risk category.
 
-**Interpretation**: A score's reliability is bounded by its endpoint's real held-out test metric above — e.g. hERG (AUROC 0.778) is meaningfully less reliable than DILI or Pgp_Broccatelli (AUROC 0.92+). These are real test-set scores, not training-set numbers, but they still don't replace experimental assays.
+**Interpretation**: A score's reliability is bounded by its endpoint's real held-out test metric above — e.g. hERG (AUROC 0.809) is meaningfully less reliable than DILI or Pgp_Broccatelli (AUROC 0.92+). These are real test-set scores, not training-set numbers, but they still don't replace experimental assays.
 
 **Note**: This replaces an earlier "ensemble" page that combined Random Forest, XGBoost, and a "Neural Network" trained on `create_synthetic_dataset()` — a fabricated dataset. That module (`models/ml_models.py`) is deprecated and no longer wired into the app; its historical "85-90% accuracy" figures were computed on fake data and were never meaningful.
 

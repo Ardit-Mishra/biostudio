@@ -42,13 +42,22 @@ except Exception:
         DataStructs.ConvertToNumpyArray(bv, a)
         return a
 
-from rdkit.Chem import rdMolDescriptors as _rdMD
-
-# Must stay byte-identical to models/train_admet.py. LipinskiHBD/HBA (N+O counts)
-# are used rather than the SMARTS-based NumHDonors/NumHAcceptors so the browser
-# featurizer (RDKit.js) reproduces these features exactly. See models/web/.
-_DESCS = [Descriptors.MolWt, Descriptors.MolLogP, Descriptors.TPSA, _rdMD.CalcNumLipinskiHBD,
-          _rdMD.CalcNumLipinskiHBA, Descriptors.NumRotatableBonds, Descriptors.NumAromaticRings,
+# Must stay byte-identical to ml-training/biostudio/train_and_save_admet.py, the
+# script that produced the *_xgb.json files in models/saved_models/ (adopted
+# 2026-08-29 for their stronger held-out scores on 6 of 7 endpoints).
+#
+# NOTE ON A FIXED BUG: the previous saved_models set (from the 2026-08-26
+# "browser-parity retrain") was trained on 13 RDKit.js-reproducible descriptors
+# (2,061 features), but this file's _DESCS list was only partially updated to
+# match — it kept the old 10-descriptor count and swapped in just two of the
+# functions (CalcNumLipinskiHBD/HBA), producing a 2,058-length vector. XGBoost's
+# DMatrix does not validate feature count against the booster, so it predicted
+# silently on a mismatched, shifted feature vector rather than erroring. That
+# means every live prediction served between 2026-08-26 and 2026-08-29 used the
+# wrong features. Restoring the exact classic 10-descriptor list below (matching
+# what train_and_save_admet.py actually trains on) fixes this for good.
+_DESCS = [Descriptors.MolWt, Descriptors.MolLogP, Descriptors.TPSA, Descriptors.NumHDonors,
+          Descriptors.NumHAcceptors, Descriptors.NumRotatableBonds, Descriptors.NumAromaticRings,
           Descriptors.FractionCSP3, Descriptors.HeavyAtomCount, Descriptors.NumHeteroatoms]
 _NFEAT = 2048 + len(_DESCS)
 

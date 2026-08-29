@@ -4,8 +4,8 @@
   "admet_class": "Absorption",
   "task": "classification",
   "official_metric": "AUROC",
-  "test_score": 0.907624633431085,
-  "threshold": 0.44999999999999996,
+  "test_score": 0.9261530258597707,
+  "threshold": 0.39999999999999997,
   "n_train": 973,
   "n_test": 245,
   "positives_frac": 0.5405960945529291,
@@ -13,23 +13,18 @@
   "feature_spec": {
     "fingerprint": "ECFP4/Morgan radius=2 nBits=2048",
     "descriptors": [
-      "TPSA_x100",
-      "LipinskiHBD",
-      "LipinskiHBA",
+      "MolWt",
+      "MolLogP",
+      "TPSA",
+      "NumHDonors",
+      "NumHAcceptors",
       "NumRotatableBonds",
       "NumAromaticRings",
-      "NumAliphaticRings",
-      "NumRings",
+      "FractionCSP3",
       "HeavyAtomCount",
-      "NumHeteroatoms",
-      "NumAmideBonds",
-      "NumAromaticHeterocycles",
-      "NumSaturatedRings",
-      "NumAtomStereoCenters"
+      "NumHeteroatoms"
     ],
-    "n_features": 2061,
-    "browser_exact": true,
-    "note": "All features are exactly reproducible by RDKit.js (WASM); verified 0/350 mismatches."
+    "n_features": 2058
   },
   "model_file": "Pgp_Broccatelli_xgb.json",
   "source": "Therapeutics Data Commons (TDC)"

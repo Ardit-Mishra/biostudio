@@ -567,17 +567,18 @@ if page == "Home":
         st.markdown("""
         ### What is Ardit BioStudio?
         
-        **Ardit BioStudio** is an educational platform that helps you analyze potential drug molecules using artificial intelligence and chemistry.
-        
-        **Think of it as:** A smart assistant that can tell you if a molecule would make a good medicine before you spend time and money making it in a lab.
-        
+        **Ardit BioStudio** is an educational platform that helps you analyze potential drug molecules using
+        a mix of real, held-out-validated machine-learning models and rule-based chemistry heuristics.
+
+        **Think of it as:** An assistant that can tell you if a molecule would make a good medicine before you spend time and money making it in a lab — and that tells you plainly which of its answers come from a trained model versus a formula.
+
         ### What Can You Do Here?
-        
+
         1. **Check if a molecule is drug-like** - Will it work as a medicine?
         2. **Predict absorption** - Can your body absorb it?
         3. **Assess safety** - Is it toxic?
         4. **Identify targets** - What does it interact with in the body?
-        5. **Understand predictions** - Why did the AI make this decision?
+        5. **Understand predictions** - Why does each tool give the result it does?
         
         ### Key Terms Explained (Beginner's Glossary)
         
@@ -860,8 +861,9 @@ elif page == "ADME Navigator":
         """)
     
     # Disclaimer about heuristic predictions
-    st.info("""**Note:** ADME/PK predictions use heuristic scoring functions based on molecular descriptors (LogP, TPSA, molecular weight, etc.).  
+    st.info("""**Note:** ADME/PK predictions use heuristic scoring functions based on molecular descriptors (LogP, TPSA, molecular weight, etc.), not trained models.
     For production use, replace with validated QSAR models trained on experimental ADME data.
+    Caco-2 Permeability and BBB Penetration also have real, held-out-validated XGBoost models — see **Toxicity Radar → XGBoost (Gradient-Boosted)** for that trained-model alternative on the same two endpoints.
     """)
     
     # SMILES input
@@ -995,10 +997,54 @@ elif page == "Toxicity Radar":
     # Prediction system info
     st.info("""**ADMET toxicity models.** This platform offers two independent toxicity assessments:
     real **gradient-boosted models (XGBoost)** trained on public Therapeutics Data Commons (TDC)
-    datasets with scaffold splits — each endpoint shows its held-out test score (AUROC) — and a
+    datasets with scaffold splits — each endpoint shows its held-out test score (AUROC, AUPRC or MAE, per endpoint) — and a
     **Heuristic** (rule-based) screen using structural alerts and descriptor thresholds.
     Educational tool — not a substitute for laboratory assays (Tox21, ToxCast, DILIrank).
     """)
+
+    with st.expander("**Model Selection Benchmark — why XGBoost, not a neural net or a chemical LLM**"):
+        st.markdown("""
+        Before settling on gradient-boosted trees (XGBoost) for the seven production ADMET endpoints,
+        four of them were also benchmarked against two deep-learning approaches on the *same* TDC
+        endpoints and the *same* scaffold split, to check whether a heavier model earns its cost on
+        this data rather than assuming it would.
+
+        **Compared**: XGBoost (production) vs. **ChemBERTa-77M-MLM** (a chemical language model,
+        LoRA fine-tuned) vs. **Chemprop D-MPNN** (a message-passing graph neural network). All three
+        trained CPU-only, $0 marginal cost, no GPU.
+
+        | Endpoint | XGBoost (single seed) | ChemBERTa LoRA (3-seed mean ± std) | Chemprop D-MPNN (3-seed mean ± std) |
+        |---|---|---|---|
+        | BBB_Martins | 0.905 | 0.882 ± 0.007 | 0.846 ± 0.025 |
+        | hERG | 0.809 | 0.783 ± 0.008 | 0.699 ± 0.003 |
+        | AMES | 0.845 | 0.816 ± 0.005 | 0.818 ± 0.013 |
+        | DILI | 0.925 | 0.873 ± 0.022 | 0.860 ± 0.036 |
+
+        All values are AUROC on TDC's default scaffold split. Source: `admet_models_manifest.json`
+        (XGBoost), `chemberta_results.json`, `chemprop_results.json` in `ml-training/biostudio/`.
+
+        **Result**: XGBoost scored highest on all four endpoints compared, and its inference is
+        near-instant on CPU — it's already what serves every prediction in this app. ChemBERTa
+        (a 77M-parameter transformer) and Chemprop (a trained graph neural network) both require
+        loading a neural network at inference time, meaningfully heavier for a $0, CPU-only,
+        per-request deployment, on top of scoring lower here.
+
+        **Honest caveats, not smoothed over**:
+        - The XGBoost column is a **single held-out evaluation** (scaffold seed 1, matching the
+          production models); the two deep-learning columns are a **mean ± std over 3 scaffold-split
+          seeds**. XGBoost has no reported variance here, so this isn't a perfectly like-for-like
+          comparison — a fair XGBoost error bar would need the same 3-seed treatment.
+        - This benchmark covers **4 of the 7** production endpoints (BBB_Martins, hERG, AMES, DILI).
+          Pgp_Broccatelli, CYP3A4_Veith and Caco2_Wang were not run through the deep-learning tiers.
+        - Exact training/inference wall-clock time wasn't instrumented in the training scripts, so
+          no specific seconds are claimed here — the cost comparison above is about model size and
+          serving complexity (a tree ensemble vs. a loaded neural network), not a timed benchmark.
+
+        The takeaway this supports: deep learning and a chemical language model were **evaluated**
+        on this project's own data, not assumed superior by default — and for these four endpoints,
+        classical gradient-boosted trees on fingerprint + descriptor features won on both accuracy
+        and serving cost.
+        """)
 
     # Prediction method selection
     prediction_method = st.radio(
@@ -1201,7 +1247,7 @@ elif page == "Target Prediction":
         - **20-50%**: Possible, but uncertain
         - **<20%**: Unlikely
         
-        **Note**: These are AI predictions for education. Real drugs need lab testing to confirm targets!
+        **Note**: These are heuristic (rule-based) predictions for education, not a trained model. Real drugs need lab testing to confirm targets!
         """)
     
     st.info("""**Note:** Target class predictions use heuristic scoring based on physicochemical properties typical of each target class.  
@@ -1738,7 +1784,7 @@ elif page == "Knowledge Graph":
         - Identify involved biological pathways
         
         **5. Drug Repurposing**
-        - AI-powered predictions for new disease uses
+        - Graph-based predictions for new disease uses (not a trained model)
         - Based on shared targets and network patterns
         - Discover potential new applications for existing drugs
         
@@ -1940,8 +1986,9 @@ elif page == "Knowledge Graph":
     # Tab 3: Drug Repurposing
     with tab3:
         st.markdown("### Drug Repurposing Predictions")
-        st.info("""**Drug repurposing** identifies new therapeutic uses for existing drugs. This AI-powered analysis uses 
-        network patterns and shared targets to predict potential new indications.
+        st.info("""**Drug repurposing** identifies new therapeutic uses for existing drugs. This is a **graph-based
+        heuristic** (shared-target set intersection + network distance over the knowledge graph), not a trained
+        model — it uses network patterns and shared targets to surface potential new indications for review.
         """)
         
         all_drugs = sorted([n for n, d in kg.graph.nodes(data=True) 
@@ -2443,7 +2490,7 @@ elif page == "Case Study":
         This case study demonstrates a typical pharmaceutical lead prioritization workflow:
         
         1. **Multi-parameter optimization**: Balancing efficacy (kinase inhibition) with safety (toxicity) and PK (permeability)
-        2. **Data-driven decision making**: Using ML predictions to rank candidates before expensive experimental validation
+        2. **Structured decision making**: Using rule-based scoring (Lipinski, QED, and the heuristic kinase/ADME/toxicity predictors — not trained models) to rank candidates before expensive experimental validation
         3. **Risk mitigation**: Identifying potential liabilities early in the discovery process
         
         This mirrors industry-standard approaches to lead optimization in kinase inhibitor drug discovery programs.
