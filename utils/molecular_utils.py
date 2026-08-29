@@ -134,7 +134,16 @@ class MolecularProcessor:
             if mol is None:
                 # Return False with error message if parsing failed
                 return False, "Invalid SMILES string"
-            
+
+            # RDKit parses the empty string into a valid Mol with zero atoms,
+            # so `mol is None` never fired for "" and validate_smiles("")
+            # returned (True, ""). An empty input was therefore reported as a
+            # VALID molecule, and every downstream property computed over
+            # nothing: molecular weight 0.0, LogP 0.0, zero rings — all of
+            # which render as a real result for a real compound.
+            if mol.GetNumAtoms() == 0:
+                return False, "SMILES contains no atoms"
+
             # Convert molecule back to canonical SMILES
             # Canonical SMILES provides a unique string for each molecule
             # Different input SMILES for same molecule give same canonical output
@@ -168,7 +177,13 @@ class MolecularProcessor:
         # Wrap in try-except for safety
         try:
             # Parse SMILES and return molecule object
-            return Chem.MolFromSmiles(smiles)
+            mol = Chem.MolFromSmiles(smiles)
+            # Every caller guards on `mol is None`, and none of them guard on
+            # "parsed fine but has no atoms". Collapse the empty molecule into
+            # None so the guard callers already wrote actually covers it.
+            if mol is not None and mol.GetNumAtoms() == 0:
+                return None
+            return mol
         except Exception as exc:
             # None is an honest "no molecule" here — every caller checks it —
             # but the reason was being discarded entirely.
@@ -789,9 +804,22 @@ class MolecularFeatureExtractor:
         Returns:
             Feature vector (2078 dimensions)
         """
-        # Return zero vector if molecule is None
+        # A missing molecule is not a molecule made of zeros. Returning
+        # np.zeros(2078) here produced a feature vector that every downstream
+        # consumer — model, similarity search, clustering — accepts as valid,
+        # so an absent input silently became a data point. This is the same
+        # failure that models/real_admet.py::_featurize_one had.
+        #
+        # tests/test_molecular_utils.py asserted this should raise. It was
+        # correct; the assertion was simply never reached, because that whole
+        # file was aimed at an API that did not exist and every test in it
+        # errored before this one could be evaluated.
         if mol is None:
-            return np.zeros(2078)
+            raise ValueError(
+                "extract_features() requires a molecule, got None. "
+                "Parse the SMILES with smiles_to_mol() and check the result "
+                "before extracting features."
+            )
         
         # Extract 30 key molecular descriptors
         # These capture physicochemical properties

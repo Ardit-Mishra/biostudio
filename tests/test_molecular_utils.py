@@ -27,7 +27,7 @@ class TestMolecularProcessor:
     def test_valid_smiles_ethanol(self):
         """Test processing of simple valid SMILES (ethanol)."""
         smiles = "CCO"
-        mol = self.processor.validate_smiles(smiles)
+        mol = self.processor.smiles_to_mol(smiles)
         
         assert mol is not None
         assert Chem.MolToSmiles(mol) == smiles
@@ -35,26 +35,35 @@ class TestMolecularProcessor:
     def test_valid_smiles_aspirin(self):
         """Test processing of drug molecule (aspirin)."""
         smiles = "CC(=O)Oc1ccccc1C(=O)O"
-        mol = self.processor.validate_smiles(smiles)
+        mol = self.processor.smiles_to_mol(smiles)
         
         assert mol is not None
         properties = self.processor.calculate_basic_properties(mol)
         
-        assert 'molecular_weight' in properties
-        assert properties['molecular_weight'] == pytest.approx(180.16, rel=0.01)
-        assert properties['num_aromatic_rings'] == 1
+        assert 'Molecular Weight' in properties
+        assert properties['Molecular Weight'] == pytest.approx(180.16, rel=0.01)
+        assert properties['Aromatic Rings'] == 1
     
     def test_invalid_smiles(self):
         """Test handling of invalid SMILES."""
         invalid_smiles = "INVALID_SMILES_123"
-        mol = self.processor.validate_smiles(invalid_smiles)
+        mol = self.processor.smiles_to_mol(invalid_smiles)
         
         assert mol is None
     
     def test_empty_smiles(self):
-        """Test handling of empty SMILES string."""
-        mol = self.processor.validate_smiles("")
-        assert mol is None
+        """An empty SMILES is not a molecule.
+
+        RDKit parses "" into a valid Mol with zero atoms, so the usual
+        `mol is None` guard did not fire and validate_smiles("") reported
+        (True, "") -- an empty input accepted as a valid compound, with every
+        property computed over nothing and rendered as a real result.
+        """
+        assert self.processor.smiles_to_mol("") is None
+
+        ok, message = self.processor.validate_smiles("")
+        assert ok is False
+        assert "no atoms" in message
     
     def test_basic_properties_calculation(self):
         """Test basic property calculations."""
@@ -63,18 +72,18 @@ class TestMolecularProcessor:
         
         # Check all expected keys are present
         expected_keys = [
-            'molecular_weight', 'logp', 'num_h_donors', 'num_h_acceptors',
-            'num_rotatable_bonds', 'num_aromatic_rings', 'tpsa'
+            'Molecular Weight', 'LogP', 'H-Bond Donors', 'H-Bond Acceptors',
+            'Rotatable Bonds', 'Aromatic Rings', 'TPSA'
         ]
         
         for key in expected_keys:
             assert key in properties
         
         # Check value ranges
-        assert 100 < properties['molecular_weight'] < 300
-        assert -5 < properties['logp'] < 5
-        assert properties['num_h_donors'] >= 0
-        assert properties['num_h_acceptors'] >= 0
+        assert 100 < properties['Molecular Weight'] < 300
+        assert -5 < properties['LogP'] < 5
+        assert properties['H-Bond Donors'] >= 0
+        assert properties['H-Bond Acceptors'] >= 0
     
     @pytest.mark.parametrize("smiles,expected_mw", [
         ("CCO", 46.07),  # Ethanol
@@ -86,7 +95,7 @@ class TestMolecularProcessor:
         mol = Chem.MolFromSmiles(smiles)
         properties = self.processor.calculate_basic_properties(mol)
         
-        assert properties['molecular_weight'] == pytest.approx(expected_mw, rel=0.01)
+        assert properties['Molecular Weight'] == pytest.approx(expected_mw, rel=0.01)
 
 
 class TestMolecularFeatureExtractor:
@@ -111,8 +120,14 @@ class TestMolecularFeatureExtractor:
         assert not np.any(np.isinf(features))  # No infinite values
     
     def test_feature_extraction_invalid_molecule(self):
-        """Test handling of None molecule."""
-        with pytest.raises(AttributeError):
+        """A missing molecule must raise, not become a zero vector.
+
+        This assertion was correct all along and never ran: every test in this
+        file errored first, against an API that did not exist. extract_features
+        was returning np.zeros(2078) for None, which every downstream consumer
+        accepts as a valid data point.
+        """
+        with pytest.raises(ValueError):
             MolecularFeatureExtractor.extract_features(None)
     
     def test_descriptor_calculation(self):
@@ -160,24 +175,24 @@ class TestEdgeCases:
         """Test processing of large molecule."""
         # Imatinib (Gleevec) - large kinase inhibitor
         smiles = "CN1CCN(CC1)Cc2ccc(cc2)C(=O)Nc3ccc(c(c3)Nc4nccc(n4)c5cccnc5)C(F)(F)F"
-        mol = self.processor.validate_smiles(smiles)
+        mol = self.processor.smiles_to_mol(smiles)
         
         assert mol is not None
         properties = self.processor.calculate_basic_properties(mol)
-        assert properties['molecular_weight'] > 400  # Large molecule
+        assert properties['Molecular Weight'] > 400  # Large molecule
     
     def test_aromatic_molecule(self):
         """Test aromatic ring detection."""
         mol = Chem.MolFromSmiles("c1ccccc1c2ccccc2")  # Biphenyl
         properties = self.processor.calculate_basic_properties(mol)
         
-        assert properties['num_aromatic_rings'] == 2
+        assert properties['Aromatic Rings'] == 2
     
     def test_charged_molecule(self):
         """Test handling of charged species."""
         # Protonated amine
         smiles = "CC[NH3+]"
-        mol = self.processor.validate_smiles(smiles)
+        mol = self.processor.smiles_to_mol(smiles)
         
         # RDKit may handle this differently, just ensure no crash
         assert mol is not None or mol is None  # Either way is okay
@@ -186,14 +201,14 @@ class TestEdgeCases:
         """Test SMILES with stereochemistry."""
         # L-alanine with stereochemistry
         smiles = "C[C@H](N)C(=O)O"
-        mol = self.processor.validate_smiles(smiles)
+        mol = self.processor.smiles_to_mol(smiles)
         
         assert mol is not None
         
     def test_disconnected_fragments(self):
         """Test molecule with disconnected fragments (salt)."""
         smiles = "CC(=O)O.[Na+]"  # Sodium acetate
-        mol = self.processor.validate_smiles(smiles)
+        mol = self.processor.smiles_to_mol(smiles)
         
         # Should handle salts
         assert mol is not None
