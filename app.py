@@ -1117,6 +1117,37 @@ elif page == "Toxicity Radar":
                 if not available:
                     st.warning("No held-out-validated model is available for this endpoint set.")
 
+                # comprehensive_toxicity_profile() only covers the four
+                # toxicity endpoints. The other three trained models —
+                # absorption, distribution and metabolism — had no route into
+                # the UI at all, while ADME Navigator told users to come here
+                # to find them. That made the cross-reference false and left
+                # Caco2_Wang's stated regression with nowhere to appear.
+                other = [n for n in ("Caco2_Wang", "BBB_Martins", "Pgp_Broccatelli", "CYP3A4_Veith")
+                         if n in real_admet_predictor.models]
+                if other:
+                    st.markdown("#### Absorption · Distribution · Metabolism")
+                    st.caption(
+                        "The same XGBoost pipeline, on the remaining trained endpoints. "
+                        "These are properties of the compound, not toxicity."
+                    )
+                    ocols = st.columns(2)
+                    for i, name in enumerate(other):
+                        res = real_admet_predictor.predict_endpoint(mol, name)
+                        with ocols[i % 2]:
+                            label = (res or {}).get("app_label") or name
+                            st.markdown(f"**{label}**")
+                            if res is None:
+                                st.caption("Prediction unavailable for this structure.")
+                                continue
+                            if res["task"] == "regression":
+                                st.metric(res.get("metric") or "Value", f"{res['value']:.3f}")
+                            else:
+                                st.metric("Probability", f"{res['probability'] * 100:.1f}%")
+                            st.caption(f"Model: {res['provenance']}")
+                            if res.get("caveat"):
+                                st.warning(res["caveat"])
+
             # Heuristic predictions
             elif prediction_method == "Heuristic (Rule-Based)":
                 st.markdown("### Heuristic Toxicity Predictions")
