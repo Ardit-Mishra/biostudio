@@ -61,7 +61,8 @@ From `ml-training/biostudio/`, with [`uv`](https://docs.astral.sh/uv/):
 
 ```bash
 uv run --python 3.11 --with "numpy<2" --with "rdkit>=2025.9.1" --with xgboost \
-       --with scikit-learn --with pandas --with PyTDC --with mlflow-skinny \
+       --with scikit-learn --with pandas --with PyTDC \
+       --with mlflow-skinny --with sqlalchemy --with alembic \
        python train_and_save_admet.py
 ```
 
