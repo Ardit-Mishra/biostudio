@@ -153,6 +153,42 @@ class TestEndpointsRespond:
 
 
 # =============================================================================
+# /v1/predict/explain: real per-prediction SHAP + the 3-way ensemble
+# comparison, not just the served XGBoost number.
+# =============================================================================
+class TestExplainEndpoint:
+    def test_explain_returns_prediction_explanation_and_ensemble(self):
+        resp = client.post("/v1/predict/explain", json={"smiles": ASPIRIN, "endpoint": "DILI"})
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["endpoint"] == "DILI"
+        assert 0.0 <= body["prediction"]["probability"] <= 1.0
+        assert len(body["explanation"]["top_features"]) > 0
+        assert "shap_contribution" in body["explanation"]["top_features"][0]
+        for key in ("xgboost", "random_forest", "mlp"):
+            assert key in body["ensemble"]["models"]
+
+    def test_explain_unknown_endpoint_is_404_not_a_fabricated_result(self):
+        resp = client.post("/v1/predict/explain", json={"smiles": ASPIRIN, "endpoint": "NotARealEndpoint"})
+        assert resp.status_code == 404
+        assert "error" in resp.json()
+
+    def test_explain_chemically_invalid_smiles_is_400(self):
+        resp = client.post(
+            "/v1/predict/explain", json={"smiles": CHEMICALLY_INVALID_BUT_CHARSET_OK, "endpoint": "DILI"}
+        )
+        assert resp.status_code == 400
+
+    def test_explain_malformed_smiles_is_422(self):
+        resp = client.post("/v1/predict/explain", json={"smiles": MALFORMED_NOT_SMILES, "endpoint": "DILI"})
+        assert resp.status_code == 422
+
+    def test_explain_alias_path_works(self):
+        resp = client.post("/predict/explain", json={"smiles": ASPIRIN, "endpoint": "DILI"})
+        assert resp.status_code == 200, resp.text
+
+
+# =============================================================================
 # The "model not loaded" path must report itself, never fabricate a number.
 # =============================================================================
 class TestModelUnavailable:

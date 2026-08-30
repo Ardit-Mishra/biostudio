@@ -154,6 +154,16 @@ class BatchMoleculeInput(BaseModel):
     molecules: Annotated[List[BatchMoleculeItem], Field(min_length=1)]
 
 
+class ExplainRequest(BaseModel):
+    smiles: SmilesStr
+    # tdc_name, not the UI's app_label -- e.g. "DILI", "BBB_Martins". Matches
+    # the keys real_admet.py's own manifest/meta dicts use, so a client that
+    # already read /v1/ready's models_loaded list can pass one straight
+    # through without a separate label-to-name lookup table.
+    endpoint: str
+    name: Optional[MoleculeName] = None
+
+
 # =============================================================================
 # SHARED HELPERS
 # =============================================================================
@@ -301,6 +311,7 @@ def read_root() -> Dict:
             "/v1/predict/toxicity",
             "/v1/predict/target",
             "/v1/predict/comprehensive",
+            "/v1/predict/explain",
             "/v1/batch/predict",
             "/v1/health",
             "/v1/ready",
@@ -396,6 +407,41 @@ def predict_comprehensive_v1(molecule: MoleculeInput) -> Dict:
     }
 
 
+@app.post("/v1/predict/explain")
+def predict_explain_v1(request: ExplainRequest) -> Dict:
+    """Real per-prediction SHAP feature attribution for one trained ADMET
+    model, plus the honest 3-way ensemble comparison (XGBoost/RandomForest/
+    MLP) it was checked against -- the same two things the Explainability
+    Canvas page's "ML Model Explainability" tab shows, exposed here so a
+    programmatic caller isn't limited to the Streamlit UI for them.
+
+    404 for an endpoint name with no trained model (not a fabricated
+    explanation); 422 if featurization fails for this specific molecule.
+    """
+    canonical_smiles, mol = _validated_mol(request.smiles)
+    if request.endpoint not in real_admet.models:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No trained model for endpoint '{request.endpoint}'. "
+                   f"Available: {sorted(real_admet.models.keys())}",
+        )
+    prediction = real_admet.predict_endpoint(mol, request.endpoint)
+    explanation = real_admet.explain_endpoint(mol, request.endpoint)
+    if prediction is None or explanation is None:
+        raise HTTPException(
+            status_code=422,
+            detail="Featurization failed for this molecule/endpoint combination",
+        )
+    return {
+        "molecule_name": request.name or "Unknown",
+        "smiles": canonical_smiles,
+        "endpoint": request.endpoint,
+        "prediction": prediction,
+        "explanation": explanation,
+        "ensemble": real_admet.ensemble_predict(mol, request.endpoint),
+    }
+
+
 @app.post("/v1/batch/predict")
 def batch_predict_v1(batch: BatchMoleculeInput) -> List[Dict]:
     if len(batch.molecules) > BATCH_LIMIT:
@@ -452,6 +498,7 @@ app.add_api_route("/predict/adme", predict_adme_v1, methods=["POST"])
 app.add_api_route("/predict/toxicity", predict_toxicity_v1, methods=["POST"])
 app.add_api_route("/predict/target", predict_target_v1, methods=["POST"])
 app.add_api_route("/predict/comprehensive", predict_comprehensive_v1, methods=["POST"])
+app.add_api_route("/predict/explain", predict_explain_v1, methods=["POST"])
 app.add_api_route("/batch/predict", batch_predict_v1, methods=["POST"])
 
 
