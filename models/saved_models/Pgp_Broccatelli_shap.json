@@ -1,0 +1,109 @@
+{
+  "tdc_name": "Pgp_Broccatelli",
+  "method": "shap.TreeExplainer (tree_path_dependent, exact)",
+  "explained_model": "xgboost",
+  "n_test_explained": 245,
+  "base_value": -0.015194120816886425,
+  "top_features": [
+    {
+      "feature": "MolLogP",
+      "feature_index": 2103,
+      "mean_abs_shap": 0.742588
+    },
+    {
+      "feature": "MolMR",
+      "feature_index": 2104,
+      "mean_abs_shap": 0.642438
+    },
+    {
+      "feature": "VSA_EState5",
+      "feature_index": 2174,
+      "mean_abs_shap": 0.467615
+    },
+    {
+      "feature": "SMR_VSA7",
+      "feature_index": 2152,
+      "mean_abs_shap": 0.370306
+    },
+    {
+      "feature": "VSA_EState9",
+      "feature_index": 2178,
+      "mean_abs_shap": 0.219144
+    },
+    {
+      "feature": "MaxAbsEStateIndex",
+      "feature_index": 2095,
+      "mean_abs_shap": 0.203798
+    },
+    {
+      "feature": "AvgIpc",
+      "feature_index": 2048,
+      "mean_abs_shap": 0.197214
+    },
+    {
+      "feature": "EState_VSA2",
+      "feature_index": 2074,
+      "mean_abs_shap": 0.19559
+    },
+    {
+      "feature": "SlogP_VSA6",
+      "feature_index": 2164,
+      "mean_abs_shap": 0.188346
+    },
+    {
+      "feature": "EState_VSA4",
+      "feature_index": 2076,
+      "mean_abs_shap": 0.179626
+    },
+    {
+      "feature": "PEOE_VSA11",
+      "feature_index": 2131,
+      "mean_abs_shap": 0.175447
+    },
+    {
+      "feature": "PEOE_VSA6",
+      "feature_index": 2139,
+      "mean_abs_shap": 0.174413
+    },
+    {
+      "feature": "SMR_VSA6",
+      "feature_index": 2151,
+      "mean_abs_shap": 0.168335
+    },
+    {
+      "feature": "PEOE_VSA1",
+      "feature_index": 2129,
+      "mean_abs_shap": 0.166677
+    },
+    {
+      "feature": "EState_VSA5",
+      "feature_index": 2077,
+      "mean_abs_shap": 0.160895
+    },
+    {
+      "feature": "Chi1n",
+      "feature_index": 2063,
+      "mean_abs_shap": 0.153903
+    },
+    {
+      "feature": "EState_VSA8",
+      "feature_index": 2080,
+      "mean_abs_shap": 0.149824
+    },
+    {
+      "feature": "SlogP_VSA3",
+      "feature_index": 2161,
+      "mean_abs_shap": 0.14403
+    },
+    {
+      "feature": "VSA_EState6",
+      "feature_index": 2175,
+      "mean_abs_shap": 0.124749
+    },
+    {
+      "feature": "FractionCSP3",
+      "feature_index": 2086,
+      "mean_abs_shap": 0.122845
+    }
+  ]
+}

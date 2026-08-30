@@ -1,0 +1,109 @@
+{
+  "tdc_name": "Caco2_Wang",
+  "method": "shap.TreeExplainer (tree_path_dependent, exact)",
+  "explained_model": "xgboost",
+  "n_test_explained": 182,
+  "base_value": -5.2174201011657715,
+  "top_features": [
+    {
+      "feature": "NumHDonors",
+      "feature_index": 2118,
+      "mean_abs_shap": 0.226688
+    },
+    {
+      "feature": "NHOHCount",
+      "feature_index": 2106,
+      "mean_abs_shap": 0.115315
+    },
+    {
+      "feature": "TPSA",
+      "feature_index": 2168,
+      "mean_abs_shap": 0.076909
+    },
+    {
+      "feature": "VSA_EState8",
+      "feature_index": 2177,
+      "mean_abs_shap": 0.070213
+    },
+    {
+      "feature": "MolLogP",
+      "feature_index": 2103,
+      "mean_abs_shap": 0.065539
+    },
+    {
+      "feature": "BalabanJ",
+      "feature_index": 2057,
+      "mean_abs_shap": 0.050738
+    },
+    {
+      "feature": "VSA_EState3",
+      "feature_index": 2172,
+      "mean_abs_shap": 0.047958
+    },
+    {
+      "feature": "HeavyAtomMolWt",
+      "feature_index": 2089,
+      "mean_abs_shap": 0.030336
+    },
+    {
+      "feature": "LabuteASA",
+      "feature_index": 2094,
+      "mean_abs_shap": 0.022713
+    },
+    {
+      "feature": "fr_Al_COO",
+      "feature_index": 2179,
+      "mean_abs_shap": 0.019318
+    },
+    {
+      "feature": "PEOE_VSA10",
+      "feature_index": 2130,
+      "mean_abs_shap": 0.017524
+    },
+    {
+      "feature": "VSA_EState4",
+      "feature_index": 2173,
+      "mean_abs_shap": 0.017074
+    },
+    {
+      "feature": "SPS",
+      "feature_index": 2155,
+      "mean_abs_shap": 0.013152
+    },
+    {
+      "feature": "qed",
+      "feature_index": 2264,
+      "mean_abs_shap": 0.01212
+    },
+    {
+      "feature": "ECFP4 bit 1104",
+      "feature_index": 1104,
+      "mean_abs_shap": 0.011578
+    },
+    {
+      "feature": "Chi4v",
+      "feature_index": 2070,
+      "mean_abs_shap": 0.010881
+    },
+    {
+      "feature": "Kappa2",
+      "feature_index": 2092,
+      "mean_abs_shap": 0.010215
+    },
+    {
+      "feature": "SMR_VSA2",
+      "feature_index": 2147,
+      "mean_abs_shap": 0.009913
+    },
+    {
+      "feature": "PEOE_VSA6",
+      "feature_index": 2139,
+      "mean_abs_shap": 0.009686
+    },
+    {
+      "feature": "NumAtomStereoCenters",
+      "feature_index": 2115,
+      "mean_abs_shap": 0.009469
+    }
+  ]
+}

@@ -195,3 +195,114 @@ class TestModelCardMatchesManifest:
                 f"test_score {meta['test_score']:.3f} next to '{short_label}' "
                 f"-- it has likely drifted from models/saved_models/admet_models_manifest.json"
             )
+
+
+class TestEnsembleModelsAreReal:
+    """The résumé claims 'ensemble ML predictions (Random Forest, XGBoost,
+    Neural Network)'. This class checks that claim against the actual saved
+    artifacts, the same way the rest of this file checks every other claim --
+    not just that the meta.json *says* three models exist, but that all three
+    model files are on disk, loadable, and score-bearing."""
+
+    def test_every_endpoint_has_all_three_model_scores(self):
+        manifest = _manifest()
+        for name, meta in manifest.items():
+            models = meta.get("models")
+            assert models, f"{name}: meta.json has no 'models' ensemble block"
+            for key in ("xgboost", "random_forest", "mlp"):
+                assert key in models, f"{name}: missing '{key}' in models ensemble"
+                assert isinstance(models[key].get("test_score"), (int, float)), (
+                    f"{name}.{key}: test_score is not a real number"
+                )
+
+    def test_rf_and_mlp_artifact_files_exist_on_disk(self):
+        manifest = _manifest()
+        missing = []
+        for name, meta in manifest.items():
+            for key in ("random_forest", "mlp"):
+                fname = meta["models"][key]["model_file"]
+                if not os.path.exists(os.path.join(MODELDIR, fname)):
+                    missing.append(f"{name}.{key}: {fname}")
+        assert not missing, f"ensemble model files missing on disk: {missing}"
+
+    def test_model_comparison_best_is_one_of_the_three(self):
+        manifest = _manifest()
+        for name, meta in manifest.items():
+            best = meta.get("model_comparison", {}).get("best")
+            assert best in ("xgboost", "random_forest", "mlp"), (
+                f"{name}: model_comparison.best is {best!r}, not a real model key"
+            )
+
+    def test_ensemble_predict_returns_all_three_models(self):
+        from models.real_admet import RealADMETPredictor
+
+        predictor = RealADMETPredictor(model_dir=MODELDIR)
+        manifest = _manifest()
+        any_name = next(iter(manifest))
+        result = predictor.ensemble_predict(ASPIRIN, any_name)
+        assert result is not None
+        for key in ("xgboost", "random_forest", "mlp"):
+            assert key in result["models"], f"ensemble_predict missing '{key}'"
+        # XGBoost is always the served model -- if it can't predict here,
+        # nothing else in this file's schema tests would be passing either.
+        assert result["models"]["xgboost"]["available"] is True
+
+
+class TestDescriptorFeatureSpec:
+    """The résumé claims 'computes 200+ molecular descriptors via RDKit'.
+    Checked directly against feature_spec, not assumed from a comment."""
+
+    def test_feature_spec_has_200_plus_descriptors(self):
+        manifest = _manifest()
+        for name, meta in manifest.items():
+            spec = meta["feature_spec"]
+            n_desc = spec.get("n_descriptors")
+            assert n_desc is not None and n_desc >= 200, (
+                f"{name}: feature_spec reports {n_desc} descriptors, not 200+"
+            )
+            assert len(spec["descriptors"]) == n_desc, (
+                f"{name}: feature_spec.descriptors length disagrees with n_descriptors"
+            )
+            assert spec["n_features"] == n_desc + 2048, (
+                f"{name}: n_features should be n_descriptors + 2048 ECFP4 bits"
+            )
+
+
+class TestShapExplanations:
+    """The résumé claims 'SHAP-based feature importance visualization'.
+    Checked by actually calling explain_endpoint and inspecting the shape of
+    what comes back, not by checking that a docstring mentions SHAP."""
+
+    def test_explain_endpoint_returns_real_top_features(self):
+        from models.real_admet import RealADMETPredictor
+
+        predictor = RealADMETPredictor(model_dir=MODELDIR)
+        manifest = _manifest()
+        any_name = next(iter(manifest))
+        explanation = predictor.explain_endpoint(ASPIRIN, any_name, top_k=10)
+        assert explanation is not None
+        assert 0 < len(explanation["top_features"]) <= 10
+        for feature in explanation["top_features"]:
+            assert "feature" in feature and isinstance(feature["feature"], str)
+            assert isinstance(feature["shap_contribution"], float)
+        assert isinstance(explanation["base_value"], float)
+
+    def test_explain_endpoint_unknown_endpoint_returns_none(self):
+        from models.real_admet import RealADMETPredictor
+
+        predictor = RealADMETPredictor(model_dir=MODELDIR)
+        assert predictor.explain_endpoint(ASPIRIN, "NotARealEndpoint") is None
+
+    def test_training_side_shap_summary_files_exist(self):
+        """train_and_save_admet.py additionally writes a global SHAP summary
+        per endpoint (top features by mean |SHAP| over the held-out test
+        set) -- this is the artifact a reviewer would actually open to see
+        the offline feature-importance analysis, separate from the
+        per-prediction explanation exercised above."""
+        manifest = _manifest()
+        for name in manifest:
+            shap_path = os.path.join(MODELDIR, f"{name}_shap.json")
+            assert os.path.exists(shap_path), f"{name}: no {name}_shap.json on disk"
+            with open(shap_path, encoding="utf-8") as f:
+                data = json.load(f)
+            assert data.get("top_features"), f"{name}: shap.json has no top_features"

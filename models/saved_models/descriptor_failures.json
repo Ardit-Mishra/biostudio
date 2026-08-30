@@ -1,0 +1,5 @@
+{
+  "note": "Every RDKit descriptor that raised an exception for any molecule in this run, across every endpoint. Empty is the expected/observed result for the TDC ADMET benchmark's curated SMILES -- this file exists so that if it ever isn't empty, the failure is recorded here rather than silently becoming a 0.0 or NaN with no trace of why.",
+  "n_failures": 0,
+  "failures": []
+}

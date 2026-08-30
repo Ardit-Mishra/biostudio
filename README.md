@@ -30,21 +30,29 @@ Scientific foundations and methodological references are documented in `METHODOL
 ### Small Molecule Analysis
 
 - SMILES validation and canonicalization  
-- RDKit molecular descriptor computation (200+ properties)  
+- RDKit molecular descriptor computation (217 properties — the full `rdkit.Chem.Descriptors`
+  set, computed by [`models/descriptors.py`](models/descriptors.py), not a curated subset)  
 - Morgan fingerprint generation (ECFP4, radius=2, 2048 bits)  
 - Drug-likeness scoring (Lipinski Rule of 5, Veber rules, QED, Synthetic Accessibility)  
 - ADME/PK heuristic scoring (LogP, permeability, BBB, CYP450, clearance)  
 - Toxicity and ADMET prediction  
   - Heuristic structural alerts  
-  - Real XGBoost models trained on Therapeutics Data Commons, scaffold-split and
-    scored once on held-out test data: DILI 0.925, hERG 0.809, Ames 0.845,
-    BBB 0.905, P-gp 0.926 AUROC; CYP3A4 0.869 AUPRC; Caco-2 0.339 MAE.
+  - Real ensemble ML — XGBoost, RandomForest, and an MLPClassifier/Regressor, each
+    trained on Therapeutics Data Commons data with an identical scaffold split and
+    identical (ECFP4 + 217-descriptor) features, and each evaluated once on held-out
+    test data: DILI 0.920, hERG 0.824, Ames 0.866, BBB 0.900, P-gp 0.927 AUROC;
+    CYP3A4 0.880 AUPRC; Caco-2 0.272 MAE (all XGBoost, the served model). RandomForest
+    and MLP are trained and scored anyway so "XGBoost wins" is a checked claim, not an
+    assumed one — RandomForest actually scores higher on 3 of 7 endpoints, and the app
+    says so, in the Explainability Canvas's ensemble comparison table.
     Current numbers, known regressions, and reproduction steps live in
     [`models/saved_models/README.md`](models/saved_models/README.md) — the single
     source of truth for these scores, kept current there rather than duplicated here.
     Carcinogenicity has no model and reports as unavailable rather than guessing.  
 - Target class likelihood estimation (kinase, GPCR, ion channel, enzyme) — heuristic  
-- SHAP-based feature importance visualization  
+- SHAP-based feature importance — real per-prediction Tree SHAP attribution for the
+  served XGBoost models (exact, via `Booster.predict(pred_contribs=True)`), surfaced in
+  the Explainability Canvas page's "ML Model Explainability" tab, not a static chart  
 
 ### Biologic & Protein Analysis
 
@@ -175,9 +183,10 @@ biostudio/
 ├── models/
 │   ├── adme_predictors.py
 │   ├── toxicity_predictors.py
-│   ├── neural_toxicity.py
 │   ├── target_predictors.py
-│   └── ml_models.py
+│   ├── real_admet.py       # ensemble ADMET serving (XGBoost + RF + MLP, SHAP)
+│   ├── descriptors.py      # full RDKit descriptor featurization (217 + ECFP4)
+│   └── saved_models/       # trained artifacts — see saved_models/README.md
 ├── utils/
 │   ├── molecular_utils.py
 │   ├── drug_likeness.py
@@ -232,7 +241,10 @@ Reproducibility notes:
 
 - Random seeds are fixed where applicable.
 - Descriptor generation uses deterministic RDKit functions.
-- Neural network model weights are documented and reproducible.
+- All three ensemble models (XGBoost, RandomForest, MLPClassifier/Regressor) are trained
+  with a fixed seed and saved as artifacts (`models/saved_models/*.joblib`, `*_xgb.json`) —
+  see [`models/saved_models/README.md`](models/saved_models/README.md) for the exact
+  reproduce command and library-version pins.
 
 ---
 
@@ -260,9 +272,10 @@ Methods implemented are grounded in established literature:
 - Veber molecular property filters  
 - QED scoring methodology  
 - Morgan fingerprints  
-- Random Forest and Gradient Boosting for QSAR  
-- SHAP interpretability framework  
-- DeepTox-inspired neural network toxicity modeling  
+- Random Forest and Gradient Boosting for QSAR — trained and evaluated here, not just cited;
+  see the ensemble comparison in [`models/saved_models/README.md`](models/saved_models/README.md)  
+- SHAP / Tree SHAP interpretability — real per-prediction attribution for the trained models,
+  not a diagram of the concept  
 
 See `REFERENCES.md` for full citations.
 

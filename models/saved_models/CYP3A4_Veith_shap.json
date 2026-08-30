@@ -1,0 +1,109 @@
+{
+  "tdc_name": "CYP3A4_Veith",
+  "method": "shap.TreeExplainer (tree_path_dependent, exact)",
+  "explained_model": "xgboost",
+  "n_test_explained": 2467,
+  "base_value": 0.03976372629404068,
+  "top_features": [
+    {
+      "feature": "MolLogP",
+      "feature_index": 2103,
+      "mean_abs_shap": 0.489355
+    },
+    {
+      "feature": "ECFP4 bit 1603",
+      "feature_index": 1603,
+      "mean_abs_shap": 0.25377
+    },
+    {
+      "feature": "BertzCT",
+      "feature_index": 2058,
+      "mean_abs_shap": 0.18842
+    },
+    {
+      "feature": "AvgIpc",
+      "feature_index": 2048,
+      "mean_abs_shap": 0.143181
+    },
+    {
+      "feature": "NumRotatableBonds",
+      "feature_index": 2122,
+      "mean_abs_shap": 0.118151
+    },
+    {
+      "feature": "SMR_VSA7",
+      "feature_index": 2152,
+      "mean_abs_shap": 0.109575
+    },
+    {
+      "feature": "MaxAbsEStateIndex",
+      "feature_index": 2095,
+      "mean_abs_shap": 0.103995
+    },
+    {
+      "feature": "VSA_EState5",
+      "feature_index": 2174,
+      "mean_abs_shap": 0.098794
+    },
+    {
+      "feature": "SlogP_VSA6",
+      "feature_index": 2164,
+      "mean_abs_shap": 0.092187
+    },
+    {
+      "feature": "ECFP4 bit 389",
+      "feature_index": 389,
+      "mean_abs_shap": 0.089764
+    },
+    {
+      "feature": "fr_COO",
+      "feature_index": 2187,
+      "mean_abs_shap": 0.081136
+    },
+    {
+      "feature": "VSA_EState4",
+      "feature_index": 2173,
+      "mean_abs_shap": 0.076173
+    },
+    {
+      "feature": "MolMR",
+      "feature_index": 2104,
+      "mean_abs_shap": 0.072917
+    },
+    {
+      "feature": "BCUT2D_MRHI",
+      "feature_index": 2053,
+      "mean_abs_shap": 0.071875
+    },
+    {
+      "feature": "SlogP_VSA2",
+      "feature_index": 2160,
+      "mean_abs_shap": 0.068359
+    },
+    {
+      "feature": "fr_COO2",
+      "feature_index": 2188,
+      "mean_abs_shap": 0.068091
+    },
+    {
+      "feature": "fr_piperdine",
+      "feature_index": 2248,
+      "mean_abs_shap": 0.067607
+    },
+    {
+      "feature": "SlogP_VSA4",
+      "feature_index": 2162,
+      "mean_abs_shap": 0.063547
+    },
+    {
+      "feature": "BCUT2D_MWLOW",
+      "feature_index": 2056,
+      "mean_abs_shap": 0.058139
+    },
+    {
+      "feature": "Chi4v",
+      "feature_index": 2070,
+      "mean_abs_shap": 0.055865
+    }
+  ]
+}

@@ -1,29 +1,56 @@
 # =============================================================================
 # REAL ADMET PREDICTION MODULE
 # =============================================================================
-# Serves genuine, held-out-validated ADMET predictions from XGBoost models
-# trained on public Therapeutics Data Commons (TDC) datasets with scaffold
-# splits. Replaces the previous random-weight "neural network" demo.
+# Serves genuine, held-out-validated ADMET predictions from an ensemble of
+# XGBoost, RandomForest, and MLP models trained on public Therapeutics Data
+# Commons (TDC) datasets with scaffold splits. Replaces the previous
+# random-weight "neural network" demo.
 #
-# Each prediction carries its model's honest held-out test metric (AUROC/AUPRC/
-# MAE on the TDC test set), so the UI can show provenance instead of a bare
-# number. Featurization here is bit-for-bit identical to training
-# (ml-training/biostudio/train_and_save_admet.py): ECFP4(2048) + 10 RDKit
-# descriptors. If a model file is absent, that endpoint reports as unavailable
-# rather than fabricating a value.
+# The served prediction (probability / value, threshold, etc.) still comes
+# from XGBoost -- it is the model app.py has always shown and the one every
+# existing test asserts a schema against. RandomForest and MLP are trained on
+# the identical split and identical features and their held-out scores are
+# shipped alongside it (models/saved_models/*_meta.json -> "models"), so the
+# comparison is real and inspectable, not decorative. `ensemble_predict()`
+# below exposes all three for callers that want to show or use them.
+#
+# Featurization is the full RDKit descriptor set (217 descriptors) + ECFP4
+# (2048 bits) -- see descriptors.py, which MUST stay byte-identical to
+# ml-training/biostudio/descriptors.py (a separate repo) so training and
+# serving compute the same numbers for the same molecule. If a model file is
+# absent, that endpoint reports as unavailable rather than fabricating a
+# value.
+#
+# SHAP: `explain_endpoint()` returns real per-prediction feature attributions
+# for the served XGBoost model via exact Tree SHAP -- computed through
+# xgboost's own `Booster.predict(pred_contribs=True)` rather than the `shap`
+# package's TreeExplainer. Same algorithm (Tree SHAP is exact for tree
+# ensembles either way; contributions sum to margin - base_value, verified
+# against shap.TreeExplainer's output on this exact model/molecule pair
+# during development), but computed without shap's XGBoost model-dump parser,
+# which cannot read the `base_score` field xgboost >=2.2 writes (a bracketed
+# scientific-notation string like "[5E-1]" -- confirmed reproducible with
+# shap 0.49.1 + xgboost 3.4.1: `ValueError: could not convert string to
+# float: '[5E-1]'`, on both the sklearn wrapper and a plain loaded Booster).
+# Training-side global feature-importance reporting
+# (ml-training/biostudio/train_and_save_admet.py, *_shap.json) still uses the
+# `shap` package directly, in a pinned xgboost==2.1.4 environment where that
+# parser works -- see that script's docstring. This module never imports
+# `shap` at all, so this endpoint has no extra runtime dependency and no
+# version-pinning risk in production.
 # =============================================================================
 import os
 import json
 import logging
-import numpy as np
-from typing import Dict, Optional, Union
+from typing import Dict, List, Optional, Union
 
 _log = logging.getLogger(__name__)
 
 from rdkit import Chem
-from rdkit.Chem import Descriptors
 from rdkit import RDLogger
 RDLogger.DisableLog("rdApp.*")
+
+import numpy as np
 
 try:
     import xgboost as xgb
@@ -31,38 +58,15 @@ try:
 except Exception:
     _HAS_XGB = False
 
-# ---- feature spec: MUST match train_and_save_admet.py exactly ----------------
 try:
-    from rdkit.Chem import rdFingerprintGenerator
-    _MG = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048)
-    def _fp(m):
-        return np.asarray(_MG.GetFingerprintAsNumPy(m), dtype=np.float32)
+    import joblib
+    _HAS_JOBLIB = True
 except Exception:
-    from rdkit.Chem import AllChem, DataStructs
-    def _fp(m):
-        bv = AllChem.GetMorganFingerprintAsBitVect(m, 2, nBits=2048)
-        a = np.zeros((2048,), np.float32)
-        DataStructs.ConvertToNumpyArray(bv, a)
-        return a
+    _HAS_JOBLIB = False
 
-# Must stay byte-identical to ml-training/biostudio/train_and_save_admet.py, the
-# script that produced the *_xgb.json files in models/saved_models/ (adopted
-# 2026-08-29 for their stronger held-out scores on 6 of 7 endpoints).
-#
-# NOTE ON A FIXED BUG: the previous saved_models set (from the 2026-08-26
-# "browser-parity retrain") was trained on 13 RDKit.js-reproducible descriptors
-# (2,061 features), but this file's _DESCS list was only partially updated to
-# match — it kept the old 10-descriptor count and swapped in just two of the
-# functions (CalcNumLipinskiHBD/HBA), producing a 2,058-length vector. XGBoost's
-# DMatrix does not validate feature count against the booster, so it predicted
-# silently on a mismatched, shifted feature vector rather than erroring. That
-# means every live prediction served between 2026-08-26 and 2026-08-29 used the
-# wrong features. Restoring the exact classic 10-descriptor list below (matching
-# what train_and_save_admet.py actually trains on) fixes this for good.
-_DESCS = [Descriptors.MolWt, Descriptors.MolLogP, Descriptors.TPSA, Descriptors.NumHDonors,
-          Descriptors.NumHAcceptors, Descriptors.NumRotatableBonds, Descriptors.NumAromaticRings,
-          Descriptors.FractionCSP3, Descriptors.HeavyAtomCount, Descriptors.NumHeteroatoms]
-_NFEAT = 2048 + len(_DESCS)
+from . import descriptors as feat
+
+FeaturizationError = feat.FeaturizationError
 
 # Toxicity endpoints that back comprehensive_toxicity_profile (drop-in for the
 # old NeuralToxicityPredictor). Keys are the exact UI labels the app already uses.
@@ -76,10 +80,6 @@ _TOX_MAP = {
 _POSITIVE_IS_RISK = {"DILI", "hERG", "AMES", "Carcinogens_Lagunin"}
 
 
-class FeaturizationError(RuntimeError):
-    """Descriptors could not be computed, so no prediction is possible."""
-
-
 def _featurize_one(mol) -> np.ndarray:
     """Featurize one molecule, or raise.
 
@@ -91,21 +91,11 @@ def _featurize_one(mol) -> np.ndarray:
     molecule had never actually been featurized.
 
     Raising is the whole point. The caller turns this into an explicit
-    "unavailable", and no model ever sees a fabricated input.
+    "unavailable", and no model ever sees a fabricated input. Delegates to
+    descriptors.featurize_one, which additionally records *which* descriptor
+    failed rather than only that featurization as a whole did.
     """
-    if mol is None:
-        raise FeaturizationError("no molecule (SMILES did not parse)")
-    try:
-        d = np.array([f(mol) for f in _DESCS], np.float32)
-        v = np.concatenate([_fp(mol), d])
-    except Exception as exc:
-        raise FeaturizationError(
-            f"RDKit descriptor calculation failed: {type(exc).__name__}: {exc}"
-        ) from exc
-    # NaN/inf are still coerced: a descriptor legitimately returning inf (an
-    # undefined ratio on an odd fragment) is a value, not a crash. What is no
-    # longer tolerated is an exception silently becoming a whole zero vector.
-    return np.nan_to_num(v, nan=0.0, posinf=0.0, neginf=0.0).reshape(1, -1)
+    return feat.featurize_one(mol).reshape(1, -1)
 
 
 def _default_model_dir() -> str:
@@ -121,12 +111,15 @@ def _default_model_dir() -> str:
 
 
 class RealADMETPredictor:
-    """Loads saved XGBoost ADMET models and serves real, provenance-tagged
-    predictions. Safe to instantiate even when no models are present."""
+    """Loads saved XGBoost/RandomForest/MLP ADMET models and serves real,
+    provenance-tagged predictions. Safe to instantiate even when no models
+    are present."""
 
     def __init__(self, model_dir: Optional[str] = None):
         self.model_dir = model_dir or _default_model_dir()
-        self.models: Dict[str, "xgb.XGBModel"] = {}
+        self.models: Dict[str, "xgb.Booster"] = {}
+        self.rf_models: Dict[str, object] = {}
+        self.mlp_models: Dict[str, object] = {}
         self.meta: Dict[str, dict] = {}
         self._load()
 
@@ -158,6 +151,26 @@ class RealADMETPredictor:
                 self.meta[name] = meta
             except Exception:
                 continue
+            # Ensemble siblings are optional: a missing/unloadable RF or MLP
+            # file degrades that one model to "unavailable" in
+            # ensemble_predict(), it never blocks XGBoost from serving.
+            if _HAS_JOBLIB:
+                rf_info = meta.get("models", {}).get("random_forest", {})
+                rf_file = rf_info.get("model_file") or f"{name}_rf.joblib"
+                rf_path = os.path.join(self.model_dir, rf_file)
+                if os.path.exists(rf_path):
+                    try:
+                        self.rf_models[name] = joblib.load(rf_path)
+                    except Exception as exc:
+                        _log.warning("failed to load RF for %s: %s", name, exc)
+                mlp_info = meta.get("models", {}).get("mlp", {})
+                mlp_file = mlp_info.get("model_file") or f"{name}_mlp.joblib"
+                mlp_path = os.path.join(self.model_dir, mlp_file)
+                if os.path.exists(mlp_path):
+                    try:
+                        self.mlp_models[name] = joblib.load(mlp_path)
+                    except Exception as exc:
+                        _log.warning("failed to load MLP for %s: %s", name, exc)
 
     def _raw_predict(self, tdc_name: str, X: np.ndarray) -> float:
         dm = xgb.DMatrix(X)
@@ -219,6 +232,113 @@ class RealADMETPredictor:
                 "metric": m.get("official_metric"), "test_score": m.get("test_score"),
                 "provenance": self._provenance(tdc_name), "caveat": self.caveat(tdc_name),
                 "app_label": m.get("app_label")}
+
+    def ensemble_predict(self, mol_or_smiles: Union[str, "Chem.Mol"],
+                          tdc_name: str) -> Optional[dict]:
+        """XGBoost + RandomForest + MLP predictions for one endpoint, each
+        with its own held-out test score, so a caller can show the full
+        comparison instead of only the served model. A model whose file
+        didn't load reports `available: False` under its own key rather than
+        being silently omitted -- the caller can tell "this model wasn't
+        trained/didn't load" from "this model wasn't asked for"."""
+        if tdc_name not in self.models:
+            return None
+        mol = (Chem.MolFromSmiles(mol_or_smiles)
+               if isinstance(mol_or_smiles, str) else mol_or_smiles)
+        if mol is None:
+            return None
+        try:
+            X = _featurize_one(mol)
+        except FeaturizationError as exc:
+            _log.warning("featurization failed for %s: %s", tdc_name, exc)
+            return None
+
+        m = self.meta.get(tdc_name, {})
+        is_clf = m.get("task") != "regression"
+        model_scores = m.get("models", {})
+        out = {}
+
+        xgb_prob = self._raw_predict(tdc_name, X)
+        out["xgboost"] = {
+            "available": True,
+            "value": round(xgb_prob, 3),
+            "test_score": model_scores.get("xgboost", {}).get("test_score", m.get("test_score")),
+        }
+
+        for key, bucket in (("random_forest", self.rf_models), ("mlp", self.mlp_models)):
+            pipe = bucket.get(tdc_name)
+            if pipe is None:
+                out[key] = {"available": False, "reason": "model file not present or failed to load"}
+                continue
+            try:
+                pred = pipe.predict_proba(X)[:, 1][0] if is_clf else pipe.predict(X)[0]
+                out[key] = {
+                    "available": True,
+                    "value": round(float(pred), 3),
+                    "test_score": model_scores.get(key, {}).get("test_score"),
+                }
+            except Exception as exc:
+                out[key] = {"available": False, "reason": f"{type(exc).__name__}: {exc}"}
+
+        return {
+            "task": "classification" if is_clf else "regression",
+            "metric": m.get("official_metric"),
+            "app_label": m.get("app_label"),
+            "best_model": m.get("model_comparison", {}).get("best"),
+            "models": out,
+        }
+
+    def explain_endpoint(self, mol_or_smiles: Union[str, "Chem.Mol"],
+                          tdc_name: str, top_k: int = 10) -> Optional[dict]:
+        """Real per-prediction SHAP (Tree SHAP, exact) feature attribution
+        for the served XGBoost model. Computed via xgboost's own
+        `Booster.predict(pred_contribs=True)` -- see the module docstring for
+        why this isn't the `shap` package's TreeExplainer. Returns None if
+        the molecule/endpoint is unavailable -- never a fabricated
+        explanation standing in for a real one.
+
+        Contributions are in margin (logit) space for classifiers -- they sum
+        with `base_value` to the pre-sigmoid score, not directly to the
+        displayed probability. That is Tree SHAP's actual unit for a
+        binary:logistic booster; converting each contribution to a
+        probability-space number individually would not be additive and
+        would misrepresent the method, so this reports the true unit instead
+        of a more readable but wrong one.
+        """
+        if not _HAS_XGB or tdc_name not in self.models:
+            return None
+        mol = (Chem.MolFromSmiles(mol_or_smiles)
+               if isinstance(mol_or_smiles, str) else mol_or_smiles)
+        if mol is None:
+            return None
+        try:
+            X = _featurize_one(mol)
+        except FeaturizationError as exc:
+            _log.warning("featurization failed for %s: %s", tdc_name, exc)
+            return None
+        try:
+            dm = xgb.DMatrix(X)
+            contribs = self.models[tdc_name].predict(dm, pred_contribs=True)[0]
+            base_value = float(contribs[-1])
+            row = contribs[:-1]
+            order = np.argsort(-np.abs(row))[:top_k]
+            top = [
+                {
+                    "feature": feat.feature_name(int(i)),
+                    "value": round(float(X[0, i]), 4),
+                    "shap_contribution": round(float(row[i]), 4),
+                }
+                for i in order
+            ]
+            return {
+                "tdc_name": tdc_name, "base_value": round(base_value, 4), "top_features": top,
+                "units": "margin (logit) space" if self.meta.get(tdc_name, {}).get("task") != "regression"
+                         else "predicted value's own units",
+                "method": "exact Tree SHAP via xgboost Booster.predict(pred_contribs=True)",
+            }
+        except Exception as exc:
+            _log.warning("SHAP explanation failed for %s: %s", tdc_name, exc)
+            return None
 
     def comprehensive_toxicity_profile(self, mol) -> Dict:
         """Drop-in replacement for NeuralToxicityPredictor.comprehensive_toxicity_profile.

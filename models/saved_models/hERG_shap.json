@@ -1,0 +1,109 @@
+{
+  "tdc_name": "hERG",
+  "method": "shap.TreeExplainer (tree_path_dependent, exact)",
+  "explained_model": "xgboost",
+  "n_test_explained": 132,
+  "base_value": -0.33719420433044434,
+  "top_features": [
+    {
+      "feature": "VSA_EState3",
+      "feature_index": 2172,
+      "mean_abs_shap": 0.264547
+    },
+    {
+      "feature": "Chi1n",
+      "feature_index": 2063,
+      "mean_abs_shap": 0.263805
+    },
+    {
+      "feature": "TPSA",
+      "feature_index": 2168,
+      "mean_abs_shap": 0.262777
+    },
+    {
+      "feature": "MolLogP",
+      "feature_index": 2103,
+      "mean_abs_shap": 0.220879
+    },
+    {
+      "feature": "EState_VSA1",
+      "feature_index": 2071,
+      "mean_abs_shap": 0.218981
+    },
+    {
+      "feature": "VSA_EState6",
+      "feature_index": 2175,
+      "mean_abs_shap": 0.214168
+    },
+    {
+      "feature": "EState_VSA10",
+      "feature_index": 2072,
+      "mean_abs_shap": 0.209668
+    },
+    {
+      "feature": "FpDensityMorgan2",
+      "feature_index": 2084,
+      "mean_abs_shap": 0.203112
+    },
+    {
+      "feature": "SMR_VSA7",
+      "feature_index": 2152,
+      "mean_abs_shap": 0.197692
+    },
+    {
+      "feature": "BCUT2D_CHGLO",
+      "feature_index": 2050,
+      "mean_abs_shap": 0.195823
+    },
+    {
+      "feature": "Chi4n",
+      "feature_index": 2069,
+      "mean_abs_shap": 0.167032
+    },
+    {
+      "feature": "SMR_VSA6",
+      "feature_index": 2151,
+      "mean_abs_shap": 0.165207
+    },
+    {
+      "feature": "Kappa2",
+      "feature_index": 2092,
+      "mean_abs_shap": 0.161721
+    },
+    {
+      "feature": "BCUT2D_LOGPLOW",
+      "feature_index": 2052,
+      "mean_abs_shap": 0.16104
+    },
+    {
+      "feature": "EState_VSA4",
+      "feature_index": 2076,
+      "mean_abs_shap": 0.153152
+    },
+    {
+      "feature": "MinPartialCharge",
+      "feature_index": 2102,
+      "mean_abs_shap": 0.139384
+    },
+    {
+      "feature": "MolMR",
+      "feature_index": 2104,
+      "mean_abs_shap": 0.139141
+    },
+    {
+      "feature": "PEOE_VSA4",
+      "feature_index": 2137,
+      "mean_abs_shap": 0.135721
+    },
+    {
+      "feature": "BCUT2D_LOGPHI",
+      "feature_index": 2051,
+      "mean_abs_shap": 0.131617
+    },
+    {
+      "feature": "SMR_VSA5",
+      "feature_index": 2150,
+      "mean_abs_shap": 0.130708
+    }
+  ]
+}

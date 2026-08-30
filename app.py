@@ -84,6 +84,7 @@ from models.target_predictors import TargetClassPredictor
 # datasets with scaffold splits) — replaces the previous random-weight "neural
 # network" toxicity demo.
 from models.real_admet import RealADMETPredictor
+from models import descriptors as admet_feat
 
 # Import case study data (kinase inhibitor candidates)
 from data.kinase_inhibitors import get_case_study_data, get_approved_kinase_drugs
@@ -1063,7 +1064,7 @@ elif page == "Toxicity Radar":
         ["XGBoost (Gradient-Boosted)", "Heuristic (Rule-Based)", "Both (Comparison)"],
         index=0,
         horizontal=True,
-        help="XGBoost models use ECFP4 fingerprints + RDKit descriptors, held-out validated on TDC. Heuristic uses structural alerts."
+        help=f"XGBoost models use ECFP4 fingerprints + {admet_feat.N_DESC} RDKit descriptors, held-out validated on TDC. Heuristic uses structural alerts."
     )
 
     # SMILES input
@@ -1081,7 +1082,7 @@ elif page == "Toxicity Radar":
             # Real XGBoost ADMET predictions
             if prediction_method == "XGBoost (Gradient-Boosted)":
                 st.markdown("### XGBoost Toxicity Predictions")
-                st.caption("ECFP4(2048) + 10 RDKit descriptors | held-out validated on TDC | endpoints without a validated model are omitted")
+                st.caption(f"ECFP4({admet_feat.FP_BITS}) + {admet_feat.N_DESC} RDKit descriptors | held-out validated on TDC | endpoints without a validated model are omitted | see the Explainability Canvas for per-prediction SHAP + ensemble comparison")
 
                 # Get real ADMET predictions
                 admet_profile = real_admet_predictor.comprehensive_toxicity_profile(mol)
@@ -1717,82 +1718,202 @@ elif page == "Drug-Likeness Deck":
 # ML model interpretability with feature importance
 elif page == "Explainability Canvas":
     st.markdown(
-        section_header("calibration", "Explainability Canvas", "Why the score says that — traced back to the published formula, not a fitted model"),
+        section_header("calibration", "Explainability Canvas", "Why the score says that — published formulas for drug-likeness, real SHAP attributions for the trained ADMET models"),
         unsafe_allow_html=True,
     )
-    
-    with st.expander("**Understanding This Assessment - Why the Score Says That**"):
-        st.markdown("""
-        ### What is Explainability?
-        **Explainability** shows you WHY a molecule scores the way it does — not a black box,
-        but rules you can check by hand.
 
-        ### Rule-Based, Not a Trained Classifier
+    tab_rules, tab_shap = st.tabs(["Rule-Based Drug-Likeness", "ML Model Explainability (SHAP)"])
 
-        This page evaluates drug-likeness using established **formulas**, not a machine-learning
-        model trained on data:
+    # -------------------------------------------------------------------
+    # TAB 1: rule-based drug-likeness (unchanged) — a fixed formula IS its
+    # own explanation, so there is nothing for SHAP to attribute here.
+    # -------------------------------------------------------------------
+    with tab_rules:
+        with st.expander("**Understanding This Assessment - Why the Score Says That**"):
+            st.markdown("""
+            ### What is Explainability?
+            **Explainability** shows you WHY a molecule scores the way it does — not a black box,
+            but rules you can check by hand.
 
-        - **Lipinski's Rule of 5** — molecular weight, LogP, H-bond donors/acceptors
-        - **Veber Rules** — rotatable bonds, topological polar surface area (TPSA)
-        - **QED** (Quantitative Estimate of Drug-likeness) — a weighted composite of 8
-          physicochemical properties, published by Bickerton et al. (2012)
-        - **Synthetic Accessibility** — a fragment-complexity estimate
+            ### Rule-Based, Not a Trained Classifier
 
-        Each of these is a fixed, published formula applied directly to the molecule's RDKit
-        descriptors — every number here traces to a documented equation, not a fitted model.
+            This tab evaluates drug-likeness using established **formulas**, not a machine-learning
+            model trained on data:
 
-        ### How to Use
-        1. **Enter your molecule's SMILES**
-        2. **Click "Run Drug-Likeness Analysis"**
-        3. **Review each rule's pass/fail and the overall score**
+            - **Lipinski's Rule of 5** — molecular weight, LogP, H-bond donors/acceptors
+            - **Veber Rules** — rotatable bonds, topological polar surface area (TPSA)
+            - **QED** (Quantitative Estimate of Drug-likeness) — a weighted composite of 8
+              physicochemical properties, published by Bickerton et al. (2012)
+            - **Synthetic Accessibility** — a fragment-complexity estimate
 
-        **Why this matters**: Because these are formulas, not learned models, there is no
-        "confidence" or feature-importance chart to show — the calculation itself *is* the
-        explanation.
-        """)
+            Each of these is a fixed, published formula applied directly to the molecule's RDKit
+            descriptors — every number here traces to a documented equation, not a fitted model.
 
-    smiles_input = st.text_input("Enter SMILES String", "CC(C)Cc1ccc(cc1)C(C)C(=O)O")
-
-    if st.button("Run Drug-Likeness Analysis", type="primary"):
-        is_valid, canonical_smiles = mol_processor.validate_smiles(smiles_input)
-
-        if is_valid:
-            mol = mol_processor.smiles_to_mol(canonical_smiles)
-
-            # Rule-based drug-likeness (QED, Lipinski Ro5, Veber) — not a trained classifier
-            analysis = drug_likeness.comprehensive_analysis(mol)
-
-            st.markdown("### Rule-Based Drug-Likeness Results")
-            st.caption("Lipinski, Veber, QED, Synthetic Accessibility — published formulas, not a trained model")
-
-            col1, col2, col3 = st.columns(3)
-            col1.metric("Lipinski Ro5", "Pass" if analysis['Lipinski'].get('Passes') else "Fail",
-                        f"{analysis['Lipinski'].get('Violations', '?')} violations")
-            col2.metric("Veber", "Pass" if analysis['Veber'].get('Passes') else "Fail")
-            col3.metric("QED Score", analysis['QED'].get('QED Score', 'n/a'), analysis['QED'].get('Category', ''))
-
-            st.markdown(f"**Overall Score:** {analysis['Overall Score']} — {analysis['Recommendation']}")
-
-            st.markdown("### Rule Breakdown")
-            colA, colB = st.columns(2)
-            with colA:
-                st.markdown("#### Lipinski's Rule of 5")
-                st.write(analysis['Lipinski'])
-                st.markdown("#### QED")
-                st.write(analysis['QED'])
-            with colB:
-                st.markdown("#### Veber Rules")
-                st.write(analysis['Veber'])
-                st.markdown("#### Synthetic Accessibility")
-                st.write(analysis['Synthetic Accessibility'])
-
-            st.info("""**Method**: Rule-based (structural formulas applied to RDKit-computed descriptors) —
-            not a trained classifier, so there is no cross-validation or feature-importance chart.
-            Lipinski/Veber/QED are the same industry-standard rules used elsewhere in this app's
-            Drug-Likeness Deck.
+            **Why this matters**: Because these are formulas, not learned models, there is no
+            "confidence" or feature-importance chart to show for them — the calculation itself
+            *is* the explanation. (For the trained ADMET models, which genuinely do have learned
+            feature importances, see the **ML Model Explainability** tab.)
             """)
+
+        smiles_input = st.text_input("Enter SMILES String", "CC(C)Cc1ccc(cc1)C(C)C(=O)O", key="explain_rules_smiles")
+
+        if st.button("Run Drug-Likeness Analysis", type="primary"):
+            is_valid, canonical_smiles = mol_processor.validate_smiles(smiles_input)
+
+            if is_valid:
+                mol = mol_processor.smiles_to_mol(canonical_smiles)
+
+                # Rule-based drug-likeness (QED, Lipinski Ro5, Veber) — not a trained classifier
+                analysis = drug_likeness.comprehensive_analysis(mol)
+
+                st.markdown("### Rule-Based Drug-Likeness Results")
+                st.caption("Lipinski, Veber, QED, Synthetic Accessibility — published formulas, not a trained model")
+
+                col1, col2, col3 = st.columns(3)
+                col1.metric("Lipinski Ro5", "Pass" if analysis['Lipinski'].get('Passes') else "Fail",
+                            f"{analysis['Lipinski'].get('Violations', '?')} violations")
+                col2.metric("Veber", "Pass" if analysis['Veber'].get('Passes') else "Fail")
+                col3.metric("QED Score", analysis['QED'].get('QED Score', 'n/a'), analysis['QED'].get('Category', ''))
+
+                st.markdown(f"**Overall Score:** {analysis['Overall Score']} — {analysis['Recommendation']}")
+
+                st.markdown("### Rule Breakdown")
+                colA, colB = st.columns(2)
+                with colA:
+                    st.markdown("#### Lipinski's Rule of 5")
+                    st.write(analysis['Lipinski'])
+                    st.markdown("#### QED")
+                    st.write(analysis['QED'])
+                with colB:
+                    st.markdown("#### Veber Rules")
+                    st.write(analysis['Veber'])
+                    st.markdown("#### Synthetic Accessibility")
+                    st.write(analysis['Synthetic Accessibility'])
+
+                st.info("""**Method**: Rule-based (structural formulas applied to RDKit-computed descriptors) —
+                not a trained classifier, so there is no cross-validation or feature-importance chart.
+                Lipinski/Veber/QED are the same industry-standard rules used elsewhere in this app's
+                Drug-Likeness Deck.
+                """)
+            else:
+                st.error("Invalid SMILES string")
+
+    # -------------------------------------------------------------------
+    # TAB 2: real SHAP feature attribution for the trained ADMET models,
+    # plus the honest 3-way ensemble comparison those models were checked
+    # against (XGBoost is served; RandomForest/MLP are evaluated, not
+    # assumed to lose).
+    # -------------------------------------------------------------------
+    with tab_shap:
+        with st.expander("**How This Differs From the Rule-Based Tab**"):
+            st.markdown(f"""
+            ### This Is a Fitted Model, So It Has a Real Feature Importance
+
+            The ADMET toxicity/ADME endpoints (Hepatotoxicity, hERG, Ames, BBB, P-gp, CYP3A4,
+            Caco-2) are gradient-boosted trees (**XGBoost**) trained on public Therapeutics Data
+            Commons data — not formulas. For a trained model, "why did it score this way" is a
+            real, answerable question, and **SHAP** (SHapley Additive exPlanations) answers it per
+            prediction: it decomposes one prediction into the contribution of every input feature.
+
+            - **Method**: exact Tree SHAP, computed via XGBoost's own
+              `Booster.predict(pred_contribs=True)` — the same algorithm the `shap` package's
+              `TreeExplainer` implements for tree ensembles, run directly through xgboost's C++
+              implementation rather than through `shap`'s Python model-dump parser (a real,
+              version-specific incompatibility between `shap` and newer `xgboost` release's
+              `base_score` serialization made that parser fail on these exact model files — this
+              path avoids it entirely rather than working around it silently).
+            - **Features**: {admet_feat.N_DESC} RDKit descriptors (named, e.g. `TPSA`, `MolWt`) plus
+              {admet_feat.FP_BITS} ECFP4 fingerprint bits (shown as `ECFP4 bit N` — a substructure identity, not a
+              human-readable name, which is an honest limitation of fingerprint features, not
+              something this page hides).
+            - **Units**: contributions are in margin (logit) space for the toxicity/ADME
+              classifiers — they sum with the base value to the pre-sigmoid score, not directly to
+              the displayed percentage. Converting each one individually to probability space would
+              not be additive and would misrepresent the method.
+            - **Ensemble comparison**: XGBoost is the model this app serves, but RandomForest and
+              an MLPClassifier/Regressor are trained on the identical split and identical features
+              and evaluated the same way — shown below so "XGBoost was chosen" is a checked claim,
+              not an assumed one.
+            """)
+
+        available_endpoints = {
+            m.get("app_label", name): name
+            for name, m in sorted(real_admet_predictor.meta.items())
+            if name in real_admet_predictor.models
+        }
+
+        if not available_endpoints:
+            st.warning("No trained ADMET model is loaded, so there is nothing to explain here.")
         else:
-            st.error("Invalid SMILES string")
+            col_sel, col_smiles = st.columns([1, 2])
+            with col_sel:
+                endpoint_label = st.selectbox("ADMET endpoint", list(available_endpoints.keys()))
+            with col_smiles:
+                shap_smiles = st.text_input("Enter SMILES String", "CC(C)Cc1ccc(cc1)C(C)C(=O)O", key="explain_shap_smiles")
+
+            if st.button("Explain This Prediction", type="primary"):
+                tdc_name = available_endpoints[endpoint_label]
+                is_valid, canonical_smiles = mol_processor.validate_smiles(shap_smiles)
+                if not is_valid:
+                    st.error("Invalid SMILES string")
+                else:
+                    mol = mol_processor.smiles_to_mol(canonical_smiles)
+                    meta = real_admet_predictor.meta.get(tdc_name, {})
+
+                    pred = real_admet_predictor.predict_endpoint(mol, tdc_name)
+                    explanation = real_admet_predictor.explain_endpoint(mol, tdc_name, top_k=15)
+
+                    if pred is None or explanation is None:
+                        st.warning("Featurization or explanation failed for this molecule/endpoint — "
+                                   "no prediction is shown rather than a substitute value.")
+                    else:
+                        st.markdown(f"### {endpoint_label}")
+                        if pred["task"] == "classification":
+                            st.metric("Predicted probability", f"{pred['probability'] * 100:.1f}%",
+                                      f"threshold {pred['threshold']:.2f}")
+                        else:
+                            st.metric(pred.get("metric") or "Predicted value", f"{pred['value']:.3f}")
+                        st.caption(f"Model: {pred['provenance']}")
+                        if pred.get("caveat"):
+                            st.warning(pred["caveat"])
+
+                        st.markdown("#### Top Contributing Features (Tree SHAP)")
+                        st.caption(
+                            f"Base value {explanation['base_value']:.3f} ({explanation['units']}) "
+                            f"+ each feature's signed contribution below = the model's margin score. "
+                            f"Positive pushes toward a positive/high prediction, negative pushes away."
+                        )
+                        shap_rows = [
+                            {"Feature": f["feature"], "Molecule's value": f["value"],
+                             "SHAP contribution": f["shap_contribution"]}
+                            for f in explanation["top_features"]
+                        ]
+                        st.dataframe(shap_rows, use_container_width=True, hide_index=True)
+                        st.caption(f"Method: {explanation['method']}")
+
+                        st.markdown("#### Ensemble Comparison — Evaluated, Not Assumed")
+                        ensemble = real_admet_predictor.ensemble_predict(mol, tdc_name)
+                        model_scores = meta.get("models", {})
+                        comparison_rows = []
+                        for key, display in (("xgboost", "XGBoost (served)"),
+                                              ("random_forest", "Random Forest"),
+                                              ("mlp", "MLP")):
+                            info = (ensemble or {}).get("models", {}).get(key, {})
+                            score = model_scores.get(key, {}).get("test_score")
+                            comparison_rows.append({
+                                "Model": display,
+                                "This molecule": info.get("value") if info.get("available") else "unavailable",
+                                f"Held-out {meta.get('official_metric', 'score')}":
+                                    round(score, 3) if score is not None else "n/a",
+                            })
+                        st.dataframe(comparison_rows, use_container_width=True, hide_index=True)
+                        best = meta.get("model_comparison", {}).get("best")
+                        if best:
+                            st.caption(
+                                f"Best on this endpoint's held-out test set: **{best.replace('_', ' ').title()}**. "
+                                f"XGBoost is still what this app serves for every endpoint, for consistency across "
+                                f"all seven — {meta.get('model_comparison', {}).get('note', '')}"
+                            )
 
 
 # =============================================================================

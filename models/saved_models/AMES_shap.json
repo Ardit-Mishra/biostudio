@@ -1,0 +1,109 @@
+{
+  "tdc_name": "AMES",
+  "method": "shap.TreeExplainer (tree_path_dependent, exact)",
+  "explained_model": "xgboost",
+  "n_test_explained": 1457,
+  "base_value": -0.012328536249697208,
+  "top_features": [
+    {
+      "feature": "SlogP_VSA8",
+      "feature_index": 2166,
+      "mean_abs_shap": 0.412107
+    },
+    {
+      "feature": "SMR_VSA5",
+      "feature_index": 2150,
+      "mean_abs_shap": 0.125734
+    },
+    {
+      "feature": "SMR_VSA6",
+      "feature_index": 2151,
+      "mean_abs_shap": 0.122561
+    },
+    {
+      "feature": "qed",
+      "feature_index": 2264,
+      "mean_abs_shap": 0.118897
+    },
+    {
+      "feature": "ECFP4 bit 725",
+      "feature_index": 725,
+      "mean_abs_shap": 0.116673
+    },
+    {
+      "feature": "ECFP4 bit 1923",
+      "feature_index": 1923,
+      "mean_abs_shap": 0.115825
+    },
+    {
+      "feature": "VSA_EState4",
+      "feature_index": 2173,
+      "mean_abs_shap": 0.11449
+    },
+    {
+      "feature": "HallKierAlpha",
+      "feature_index": 2087,
+      "mean_abs_shap": 0.108718
+    },
+    {
+      "feature": "SlogP_VSA10",
+      "feature_index": 2157,
+      "mean_abs_shap": 0.102424
+    },
+    {
+      "feature": "SMR_VSA7",
+      "feature_index": 2152,
+      "mean_abs_shap": 0.100389
+    },
+    {
+      "feature": "PEOE_VSA2",
+      "feature_index": 2135,
+      "mean_abs_shap": 0.097926
+    },
+    {
+      "feature": "BCUT2D_MWHI",
+      "feature_index": 2055,
+      "mean_abs_shap": 0.095537
+    },
+    {
+      "feature": "BCUT2D_MRLOW",
+      "feature_index": 2054,
+      "mean_abs_shap": 0.082242
+    },
+    {
+      "feature": "MaxAbsPartialCharge",
+      "feature_index": 2096,
+      "mean_abs_shap": 0.078013
+    },
+    {
+      "feature": "MinPartialCharge",
+      "feature_index": 2102,
+      "mean_abs_shap": 0.074541
+    },
+    {
+      "feature": "VSA_EState7",
+      "feature_index": 2176,
+      "mean_abs_shap": 0.07065
+    },
+    {
+      "feature": "FpDensityMorgan3",
+      "feature_index": 2085,
+      "mean_abs_shap": 0.069571
+    },
+    {
+      "feature": "SMR_VSA10",
+      "feature_index": 2146,
+      "mean_abs_shap": 0.068753
+    },
+    {
+      "feature": "fr_epoxide",
+      "feature_index": 2218,
+      "mean_abs_shap": 0.068246
+    },
+    {
+      "feature": "ECFP4 bit 1195",
+      "feature_index": 1195,
+      "mean_abs_shap": 0.067561
+    }
+  ]
+}

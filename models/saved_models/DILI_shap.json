@@ -1,0 +1,109 @@
+{
+  "tdc_name": "DILI",
+  "method": "shap.TreeExplainer (tree_path_dependent, exact)",
+  "explained_model": "xgboost",
+  "n_test_explained": 96,
+  "base_value": -0.014361257664859295,
+  "top_features": [
+    {
+      "feature": "HallKierAlpha",
+      "feature_index": 2087,
+      "mean_abs_shap": 0.510414
+    },
+    {
+      "feature": "SMR_VSA10",
+      "feature_index": 2146,
+      "mean_abs_shap": 0.39147
+    },
+    {
+      "feature": "SlogP_VSA2",
+      "feature_index": 2160,
+      "mean_abs_shap": 0.378557
+    },
+    {
+      "feature": "BCUT2D_MRHI",
+      "feature_index": 2053,
+      "mean_abs_shap": 0.327048
+    },
+    {
+      "feature": "ECFP4 bit 1088",
+      "feature_index": 1088,
+      "mean_abs_shap": 0.263653
+    },
+    {
+      "feature": "NumAromaticHeterocycles",
+      "feature_index": 2113,
+      "mean_abs_shap": 0.259475
+    },
+    {
+      "feature": "FractionCSP3",
+      "feature_index": 2086,
+      "mean_abs_shap": 0.239287
+    },
+    {
+      "feature": "NOCount",
+      "feature_index": 2107,
+      "mean_abs_shap": 0.224391
+    },
+    {
+      "feature": "BCUT2D_LOGPLOW",
+      "feature_index": 2052,
+      "mean_abs_shap": 0.215697
+    },
+    {
+      "feature": "PEOE_VSA7",
+      "feature_index": 2140,
+      "mean_abs_shap": 0.19727
+    },
+    {
+      "feature": "EState_VSA7",
+      "feature_index": 2079,
+      "mean_abs_shap": 0.196747
+    },
+    {
+      "feature": "EState_VSA2",
+      "feature_index": 2074,
+      "mean_abs_shap": 0.191872
+    },
+    {
+      "feature": "NumAromaticRings",
+      "feature_index": 2114,
+      "mean_abs_shap": 0.17551
+    },
+    {
+      "feature": "VSA_EState2",
+      "feature_index": 2171,
+      "mean_abs_shap": 0.158885
+    },
+    {
+      "feature": "FpDensityMorgan3",
+      "feature_index": 2085,
+      "mean_abs_shap": 0.135196
+    },
+    {
+      "feature": "HeavyAtomMolWt",
+      "feature_index": 2089,
+      "mean_abs_shap": 0.134714
+    },
+    {
+      "feature": "EState_VSA4",
+      "feature_index": 2076,
+      "mean_abs_shap": 0.134556
+    },
+    {
+      "feature": "EState_VSA5",
+      "feature_index": 2077,
+      "mean_abs_shap": 0.127569
+    },
+    {
+      "feature": "VSA_EState4",
+      "feature_index": 2173,
+      "mean_abs_shap": 0.126157
+    },
+    {
+      "feature": "MaxAbsEStateIndex",
+      "feature_index": 2095,
+      "mean_abs_shap": 0.123214
+    }
+  ]
+}
