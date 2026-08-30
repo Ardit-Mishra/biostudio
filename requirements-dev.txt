@@ -1,0 +1,8 @@
+# Test-only dependencies. Kept out of requirements.txt so the Streamlit
+# deployment does not ship a test client it never uses.
+#
+# httpx2 is required by starlette.testclient (FastAPI's TestClient). Without it
+# the whole suite fails at COLLECTION — not as a test failure but as an error,
+# which is easy to mistake for "tests are fine, something else is broken".
+pytest>=8.0
+httpx2
