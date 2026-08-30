@@ -293,6 +293,63 @@ class TestShapExplanations:
         predictor = RealADMETPredictor(model_dir=MODELDIR)
         assert predictor.explain_endpoint(ASPIRIN, "NotARealEndpoint") is None
 
+
+class TestNonFiniteDescriptorIsRecorded:
+    """A descriptor that returns NaN/inf WITHOUT raising must still be
+    recorded in `failures`, distinctly from the (already-covered) exception
+    path -- otherwise descriptor_failures.json can read '0 failures' while a
+    real descriptor result was silently coerced to 0.0."""
+
+    def test_non_finite_result_is_appended_to_failures(self, monkeypatch):
+        from models import descriptors as d
+
+        # Force the first descriptor function to return NaN without raising,
+        # to exercise the non-exception branch specifically.
+        bad_index = 0
+        real_funcs = list(d._DESC_FUNCS)
+        bad_name = d.DESC_NAMES[bad_index]
+
+        def _nan_func(mol):
+            return float("nan")
+
+        patched_funcs = list(real_funcs)
+        patched_funcs[bad_index] = _nan_func
+        monkeypatch.setattr(d, "_DESC_FUNCS", patched_funcs)
+
+        failures = []
+        vec = d.featurize_one(ASPIRIN, source="aspirin", failures=failures)
+
+        assert vec[d.FP_BITS + bad_index] == 0.0
+        matching = [f for f in failures if f["descriptor"] == bad_name]
+        assert len(matching) == 1, (
+            "non-finite descriptor result must be recorded in `failures`, "
+            "not silently coerced to 0.0 with no trace"
+        )
+        assert "non-finite" in matching[0]["error"]
+
+    def test_exception_and_non_finite_failures_are_distinguishable(self, monkeypatch):
+        from models import descriptors as d
+
+        real_funcs = list(d._DESC_FUNCS)
+
+        def _raises(mol):
+            raise ValueError("boom")
+
+        def _nan_func(mol):
+            return float("inf")
+
+        patched_funcs = list(real_funcs)
+        patched_funcs[0] = _raises
+        patched_funcs[1] = _nan_func
+        monkeypatch.setattr(d, "_DESC_FUNCS", patched_funcs)
+
+        failures = []
+        d.featurize_one(ASPIRIN, source="aspirin", failures=failures)
+
+        errors_by_descriptor = {f["descriptor"]: f["error"] for f in failures}
+        assert "boom" in errors_by_descriptor[d.DESC_NAMES[0]]
+        assert "non-finite" in errors_by_descriptor[d.DESC_NAMES[1]]
+
     def test_training_side_shap_summary_files_exist(self):
         """train_and_save_admet.py additionally writes a global SHAP summary
         per endpoint (top features by mean |SHAP| over the held-out test

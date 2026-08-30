@@ -133,7 +133,23 @@ def featurize_one(mol_or_smiles, source: Optional[str] = None,
             # +-inf only once narrowed to float32 -- catching it here, not
             # before the cast, is what actually keeps inf out of the array
             # this function returns.
-            desc[i] = v if np.isfinite(v) else np.float32(0.0)
+            if np.isfinite(v):
+                desc[i] = v
+            else:
+                # Distinct from the exception branch below: the descriptor
+                # function returned without raising, but the result itself
+                # is NaN/inf (e.g. a degenerate 0/0 ratio on an unusual ring
+                # system). Coercing to 0.0 must still be recorded -- silently
+                # substituting a value here is exactly the failure mode this
+                # module exists to avoid (see CLAUDE.md: a failure path must
+                # surface an error, never a substitute value).
+                desc[i] = np.float32(0.0)
+                if failures is not None:
+                    failures.append({
+                        "molecule": label,
+                        "descriptor": name,
+                        "error": f"non-finite result ({v!r}), coerced to 0.0",
+                    })
         except Exception as exc:
             desc[i] = np.nan
             if failures is not None:

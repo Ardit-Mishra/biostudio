@@ -149,7 +149,8 @@ class RealADMETPredictor:
                 booster.load_model(mpath)
                 self.models[name] = booster
                 self.meta[name] = meta
-            except Exception:
+            except Exception as exc:
+                _log.warning("failed to load XGBoost model for %s: %s", name, exc)
                 continue
             # Ensemble siblings are optional: a missing/unloadable RF or MLP
             # file degrades that one model to "unavailable" in
