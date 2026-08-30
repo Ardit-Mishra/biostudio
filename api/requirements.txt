@@ -6,11 +6,22 @@
 # Versions are pinned to match models/saved_models/admet_models_manifest.json
 # "library_versions" (the environment the shipped *_xgb.json models were
 # trained and serialized in) wherever a matching wheel is published:
-#   xgboost 3.2.0, rdkit 2026.3.5, numpy 1.26.4 (Python 3.11.15 in training;
-#   this service targets Python 3.12).
+#   xgboost 3.2.0, rdkit 2026.3.5, numpy 1.26.4, pandas 3.0.5,
+#   scikit-learn 1.9.0 (Python 3.11.15 in training; this service targets
+#   Python 3.12). All five pins above were confirmed installable via
+#   `pip index versions` before being written here.
 # fastapi/pydantic aren't part of that training manifest (they're serving-
 # layer only), so they're pinned instead to the minimums this API is written
 # and tested against.
+#
+# pandas and scikit-learn are listed here even though prediction_api.py never
+# imports them directly: it imports utils/molecular_utils.py (hard `import
+# pandas`) and models/adme_predictors.py (hard `from sklearn.ensemble import
+# ...`) at module load time, so both are real, non-optional runtime
+# dependencies of this service, not just the Streamlit app's. Installing only
+# the versions previously listed here crashes the API on startup with
+# ModuleNotFoundError -- verified by installing this exact file into a clean
+# `uv` environment and importing api.prediction_api:app.
 #
 # xgboost-cpu, NOT xgboost: the default `xgboost` wheel bundles ~190MB of
 # CUDA runtime this CPU-only inference service never uses.
@@ -24,3 +35,5 @@ pydantic==2.12.4
 rdkit==2026.3.5
 xgboost-cpu==3.2.0
 numpy==1.26.4
+pandas==3.0.5
+scikit-learn==1.9.0

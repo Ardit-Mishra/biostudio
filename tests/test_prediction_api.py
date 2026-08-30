@@ -153,6 +153,39 @@ class TestEndpointsRespond:
 
 
 # =============================================================================
+# The "model not loaded" path must report itself, never fabricate a number.
+# =============================================================================
+class TestModelUnavailable:
+    """_real_model_entry()'s `available: False` branch -- exercised here by
+    forcing real_admet.predict_endpoint to return None, standing in for a
+    model that failed to load or a molecule that failed featurization. Every
+    other test in this file runs against a fully-loaded model set and only
+    ever hits the `available: True` branch, so without this test the "never
+    fabricate a number" guarantee this whole module exists for was unverified
+    for its actual failure path."""
+
+    def test_adme_reports_unavailable_not_a_fabricated_number(self, monkeypatch):
+        monkeypatch.setattr(real_admet, "predict_endpoint", lambda *a, **k: None)
+
+        resp = client.post("/v1/predict/adme", json={"smiles": ASPIRIN})
+        assert resp.status_code == 200, resp.text
+        profile = resp.json()["adme_profile"]
+
+        checked_any = False
+        for section in profile.values():
+            for entry in section.values():
+                if entry.get("method") != "model":
+                    continue  # heuristic entries are untouched by this patch
+                checked_any = True
+                assert entry["available"] is False
+                assert "reason" in entry and entry["reason"]
+                # Never a numeric prediction alongside available: False.
+                assert "probability" not in entry
+                assert "value" not in entry
+        assert checked_any, "expected at least one real-model ADME entry to inspect"
+
+
+# =============================================================================
 # Old unversioned paths are aliases, not a second implementation.
 # =============================================================================
 class TestBackCompatAliases:

@@ -28,6 +28,7 @@
 # =============================================================================
 
 import os
+import re
 import sys
 import logging
 from typing import Annotated, Dict, List, Optional
@@ -134,13 +135,49 @@ class MoleculeInput(BaseModel):
     name: Optional[MoleculeName] = None
 
 
+# Deliberately looser than MoleculeInput: `smiles` here is a plain string, not
+# SmilesStr, so a shape violation (empty, too long, bad charset) in one batch
+# item does NOT fail Pydantic request-body validation for the whole batch --
+# it reaches _smiles_shape_error() inside the loop below and comes back as a
+# per-molecule "error" entry, exactly like a chemistry-level failure already
+# did. (A previous version used MoleculeInput here, which meant one
+# shape-invalid SMILES anywhere in a 50-molecule batch turned into a single
+# 422 for the entire request -- so the other 49 molecules never got a result
+# either, contradicting this endpoint's own "one bad molecule must not fail
+# the other 49" design.)
+class BatchMoleculeItem(BaseModel):
+    smiles: Annotated[str, StringConstraints(strip_whitespace=True)]
+    name: Optional[MoleculeName] = None
+
+
 class BatchMoleculeInput(BaseModel):
-    molecules: Annotated[List[MoleculeInput], Field(min_length=1)]
+    molecules: Annotated[List[BatchMoleculeItem], Field(min_length=1)]
 
 
 # =============================================================================
 # SHARED HELPERS
 # =============================================================================
+
+
+_SMILES_MAX_LEN = 500
+
+
+def _smiles_shape_error(smiles: str) -> Optional[str]:
+    """Manual re-application of MoleculeInput/SmilesStr's shape checks
+    (non-empty, max length, allowed charset) for use inside the batch loop,
+    so a shape violation in one molecule reports as that molecule's "error"
+    entry instead of a whole-batch 422 -- unlike the single-molecule
+    endpoints, where SmilesStr rejecting the one-and-only input at the
+    schema level is exactly the desired behavior. Returns None when the
+    shape is fine (chemistry validity is still checked separately, by
+    _validated_mol)."""
+    if not smiles:
+        return "SMILES string must not be empty"
+    if len(smiles) > _SMILES_MAX_LEN:
+        return f"SMILES string exceeds the {_SMILES_MAX_LEN}-character limit"
+    if not re.match(_SMILES_PATTERN, smiles):
+        return "SMILES contains characters outside the allowed set"
+    return None
 
 
 def _validated_mol(smiles: str):
@@ -369,6 +406,12 @@ def batch_predict_v1(batch: BatchMoleculeInput) -> List[Dict]:
 
     results = []
     for molecule in batch.molecules:
+        shape_err = _smiles_shape_error(molecule.smiles)
+        if shape_err is not None:
+            # Same failure family as a chemistry-invalid molecule below --
+            # reported per-molecule, never escalated to a whole-batch 422.
+            results.append({"molecule_name": molecule.name or "Unknown", "error": shape_err})
+            continue
         try:
             canonical_smiles, mol = _validated_mol(molecule.smiles)
         except HTTPException as exc:
