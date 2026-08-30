@@ -1,0 +1,26 @@
+# Minimal runtime dependencies for the FastAPI prediction service ONLY.
+# Do NOT add Streamlit/plotly/seaborn/etc here -- those belong to the app's
+# own requirements.txt at the repo root. This file exists so the API can be
+# deployed/containerized without dragging in the entire Streamlit stack.
+#
+# Versions are pinned to match models/saved_models/admet_models_manifest.json
+# "library_versions" (the environment the shipped *_xgb.json models were
+# trained and serialized in) wherever a matching wheel is published:
+#   xgboost 3.2.0, rdkit 2026.3.5, numpy 1.26.4 (Python 3.11.15 in training;
+#   this service targets Python 3.12).
+# fastapi/pydantic aren't part of that training manifest (they're serving-
+# layer only), so they're pinned instead to the minimums this API is written
+# and tested against.
+#
+# xgboost-cpu, NOT xgboost: the default `xgboost` wheel bundles ~190MB of
+# CUDA runtime this CPU-only inference service never uses.
+#
+# Deliberately NOT listed here: an ASGI server (uvicorn/gunicorn). Supply
+# whichever one the deployment target expects (`pip install uvicorn` locally,
+# or the platform's own ASGI runner in production) so this file stays scoped
+# to what api/prediction_api.py itself imports.
+fastapi==0.121.2
+pydantic==2.12.4
+rdkit==2026.3.5
+xgboost-cpu==3.2.0
+numpy==1.26.4

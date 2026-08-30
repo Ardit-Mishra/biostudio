@@ -1,302 +1,420 @@
 # =============================================================================
 # FASTAPI PREDICTION API MODULE
 # =============================================================================
-# This module provides REST API endpoints for pharmaceutical predictions.
-# Enables programmatic access to all platform capabilities:
-# - Drug-likeness analysis
-# - ADME/PK profiling
-# - Toxicity screening
-# - Target class prediction
-# - Comprehensive analysis
-# - Batch processing
+# REST API for the BioStudio prediction platform.
+#
+# HONESTY CONTRACT (why this file looks the way it does):
+# The API used to import ONLY the heuristic modules (models/adme_predictors.py,
+# models/toxicity_predictors.py, models/target_predictors.py) -- rule-based
+# formulas over RDKit descriptors, explicitly documented in their own
+# docstrings as "not from a trained model". Meanwhile the real, held-out-
+# validated XGBoost models (models/real_admet.py, trained on TDC data with
+# scaffold splits) were wired only into the Streamlit app. The endpoint list
+# advertised externally was true; the substance behind it was not.
+#
+# This module now serves the real models wherever one exists for an endpoint,
+# and falls back to the heuristic formulas only where no trained model is
+# available -- and every response says, in an explicit "method" field, which
+# kind of number it is looking at ("model" vs "heuristic" vs "rule_based").
+# Nothing here infers a fact silently: a missing model reports itself as
+# missing, a failed featurization reports itself as failed, and no failure
+# path ever substitutes a number in place of an error.
+#
+# Old, unversioned paths (/predict/..., /batch/predict) keep working -- they
+# are thin aliases onto the exact same /v1 handlers, so the fix applies to
+# both without duplicating logic.
 #
 # Run with: uvicorn api.prediction_api:app --host 0.0.0.0 --port 8000
 # =============================================================================
 
-# Import FastAPI framework for building REST APIs
-from fastapi import FastAPI, HTTPException
-# Import Pydantic for request/response data validation
-from pydantic import BaseModel
-# Import type hints for documentation
-from typing import List, Dict, Optional
-# Import sys for modifying Python path
-import sys
-# Import os for path manipulation
 import os
+import sys
+import logging
+from typing import Annotated, Dict, List, Optional
 
-# Add parent directory to Python path
-# This allows importing from sibling directories (utils, models)
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field, StringConstraints
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+# Add parent directory to Python path so sibling packages (utils, models)
+# import cleanly regardless of the working directory uvicorn is launched from.
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Import core molecular processing utilities
 from utils.molecular_utils import MolecularProcessor
-# Import drug-likeness calculator
 from utils.drug_likeness import DrugLikenessCalculator
-# Import ADME prediction module
 from models.adme_predictors import ADMEPredictor
-# Import toxicity prediction module
 from models.toxicity_predictors import ToxicityPredictor
-# Import target class prediction module
 from models.target_predictors import TargetClassPredictor
+from models.real_admet import get_predictor as get_real_admet_predictor
+from models.real_admet import _TOX_MAP as _REAL_TOX_LABEL_TO_TDC_NAME
 
-# Create FastAPI application instance
-# title: Display name in API documentation
-# description: Explains API purpose
-# version: API version number
+_log = logging.getLogger(__name__)
+
 app = FastAPI(
     title="AI-Powered Drug Discovery API",
-    description="REST API for molecular property prediction, ADME/PK analysis, toxicity screening, and drug-likeness assessment",
-    version="1.0.0"
+    description=(
+        "REST API for molecular property prediction. ADME/toxicity endpoints "
+        "backed by TDC-trained XGBoost models are served from models/real_admet.py "
+        "with honest held-out metrics and per-model caveats; endpoints with no "
+        "trained model fall back to clearly-labelled rule-based/heuristic scoring."
+    ),
+    version="2.0.0",
 )
 
-# Initialize model instances (created once, reused for all requests)
-# MolecularProcessor: SMILES validation and property calculation
+# ---- model instances (constructed once, reused for every request) ---------
 mol_processor = MolecularProcessor()
-# DrugLikenessCalculator: Lipinski, Veber, QED, SA scores
 drug_likeness = DrugLikenessCalculator()
-# ADMEPredictor: Absorption, distribution, metabolism, excretion
-adme_predictor = ADMEPredictor()
-# ToxicityPredictor: Hepatotox, cardiotox, mutagenicity, carcinogenicity
-toxicity_predictor = ToxicityPredictor()
-# TargetClassPredictor: Kinase, GPCR, ion channel, enzyme
-target_predictor = TargetClassPredictor()
+adme_predictor = ADMEPredictor()          # heuristic fallback only
+toxicity_predictor = ToxicityPredictor()  # heuristic fallback only
+target_predictor = TargetClassPredictor() # heuristic only -- no trained model exists
+real_admet = get_real_admet_predictor()   # validated XGBoost models
+
+BATCH_LIMIT = 50
+
+# =============================================================================
+# ERROR ENVELOPE
+# =============================================================================
+# Every error response -- validation failure, bad SMILES, batch too large,
+# unhandled exception -- comes back shaped the same way:
+#   {"error": {"code": <int>, "message": <str>, ...}}
+# so a client never has to guess whether "detail" is a string or a list, and
+# a failure never resembles a successful payload.
 
 
-# Pydantic model for single molecule input
-# Defines expected request body structure
+def _error_response(status_code: int, message: str, **extra) -> JSONResponse:
+    return JSONResponse(status_code=status_code, content={"error": {"code": status_code, "message": message, **extra}})
+
+
+@app.exception_handler(StarletteHTTPException)
+async def _http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
+    return _error_response(exc.status_code, str(exc.detail))
+
+
+@app.exception_handler(RequestValidationError)
+async def _validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    # 422: the request body itself doesn't satisfy the schema (bad type,
+    # SMILES charset/length violation, missing field, etc).
+    return _error_response(422, "Request validation failed", details=exc.errors())
+
+
+@app.exception_handler(Exception)
+async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    # Last resort. The point of this handler existing at all is that no
+    # unexpected exception is allowed to turn into a 500 with an HTML
+    # traceback page, or worse, a partially-built JSON body that looks like
+    # a real result. Log the real exception server-side; never leak internals
+    # to the client, and never fabricate a substitute value.
+    _log.exception("unhandled exception in %s", request.url.path)
+    return _error_response(500, "Internal server error")
+
+
+# =============================================================================
+# REQUEST MODELS
+# =============================================================================
+# SMILES is not a bare `str`. It is constrained to a plausible SMILES
+# character set with sane length bounds, so obviously-malformed input (empty,
+# whitespace, prose, absurdly long strings) is rejected as a structured 422
+# before it ever reaches RDKit. A syntactically-plausible-but-chemically-
+# invalid SMILES (e.g. "C(" ) still passes this constraint and is rejected
+# with a 400 by the existing RDKit-backed validate_smiles() check below --
+# that distinction (shape vs chemistry) is deliberate.
+_SMILES_PATTERN = r"^[A-Za-z0-9@+\-\[\]\(\)=#$:%./\\*]+$"
+
+SmilesStr = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=500, pattern=_SMILES_PATTERN),
+]
+MoleculeName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+
+
 class MoleculeInput(BaseModel):
-    # SMILES string is required
-    smiles: str
-    # Molecule name is optional (defaults to None)
-    name: Optional[str] = None
+    smiles: SmilesStr
+    name: Optional[MoleculeName] = None
 
 
-# Pydantic model for batch molecule input
-# Allows processing multiple molecules in one request
 class BatchMoleculeInput(BaseModel):
-    # List of MoleculeInput objects
-    molecules: List[MoleculeInput]
+    molecules: Annotated[List[MoleculeInput], Field(min_length=1)]
 
 
-# Root endpoint - API documentation/welcome page
-# GET / returns API information
+# =============================================================================
+# SHARED HELPERS
+# =============================================================================
+
+
+def _validated_mol(smiles: str):
+    """Canonicalize + parse a SMILES already known to satisfy the request
+    schema. Raises HTTPException(400) for anything RDKit itself rejects --
+    never returns a placeholder molecule."""
+    is_valid, canonical_or_error = mol_processor.validate_smiles(smiles)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=canonical_or_error)
+    mol = mol_processor.smiles_to_mol(canonical_or_error)
+    if mol is None:
+        # Should be unreachable given validate_smiles just approved it, but
+        # this is exactly the kind of gap the honesty pass exists to close:
+        # if it ever does happen, surface it, don't compute over None.
+        raise HTTPException(status_code=400, detail="SMILES parsed as valid but molecule construction failed")
+    return canonical_or_error, mol
+
+
+def _real_model_entry(mol, tdc_name: str) -> Dict:
+    """One real-model endpoint result, tagged so a caller can never mistake
+    it for a heuristic. `available: False` (never a number) when the model
+    didn't load or featurization failed."""
+    result = real_admet.predict_endpoint(mol, tdc_name)
+    if result is None:
+        return {
+            "method": "model",
+            "available": False,
+            "tdc_name": tdc_name,
+            "reason": "model not loaded, or featurization failed for this molecule",
+        }
+    return {"method": "model", "available": True, "tdc_name": tdc_name, **result}
+
+
+def _heuristic_entry(result: Dict) -> Dict:
+    return {"method": "heuristic", **result}
+
+
+def build_adme_profile(mol) -> Dict:
+    """ADME profile grouped by pharmacokinetic phase. Each leaf is tagged
+    "model" (real_admet.py, TDC-validated XGBoost) or "heuristic"
+    (models/adme_predictors.py -- rule-based, per its own docstring)."""
+    return {
+        "absorption": {
+            "caco2_permeability": _real_model_entry(mol, "Caco2_Wang"),
+            "pgp_inhibition": _real_model_entry(mol, "Pgp_Broccatelli"),
+            "logp_heuristic": _heuristic_entry(adme_predictor.predict_logp(mol)),
+        },
+        "distribution": {
+            "bbb_penetration": _real_model_entry(mol, "BBB_Martins"),
+        },
+        "metabolism": {
+            "cyp3a4_inhibition": _real_model_entry(mol, "CYP3A4_Veith"),
+            # No trained model covers the other CYP isoforms -- heuristic only.
+            "cyp450_isoforms_heuristic": _heuristic_entry(adme_predictor.predict_cyp450_metabolism(mol)),
+        },
+        "excretion": {
+            # No trained clearance model exists at all -- heuristic only.
+            "clearance_heuristic": _heuristic_entry(adme_predictor.predict_clearance(mol)),
+        },
+    }
+
+
+# Real-model toxicity endpoints, by the exact UI label real_admet.py already
+# uses, mapped to the heuristic method that stands in when no model is
+# loaded for that label (only Carcinogenicity has no trained model today).
+_TOX_HEURISTIC_FALLBACK = {
+    "Hepatotoxicity": toxicity_predictor.predict_hepatotoxicity,
+    "Cardiotoxicity (hERG)": toxicity_predictor.predict_cardiotoxicity_herg,
+    "Mutagenicity (Ames)": toxicity_predictor.predict_mutagenicity_ames,
+    "Carcinogenicity": toxicity_predictor.predict_carcinogenicity,
+}
+
+
+def build_toxicity_profile(mol) -> Dict:
+    """Toxicity profile. Real model output (with provenance + any caveat)
+    where a trained model exists for the endpoint; explicitly-labelled
+    heuristic fallback otherwise. Never blends the two under one number."""
+    model_profile = real_admet.comprehensive_toxicity_profile(mol)
+    out: Dict[str, Dict] = {}
+    for label, entry in model_profile.items():
+        if entry.get("risk_level") == "Unavailable":
+            fallback_fn = _TOX_HEURISTIC_FALLBACK.get(label)
+            fallback = fallback_fn(mol) if fallback_fn else {"error": "no heuristic available either"}
+            out[label] = _heuristic_entry(fallback)
+        else:
+            tdc_name = _REAL_TOX_LABEL_TO_TDC_NAME.get(label)
+            out[label] = {"method": "model", "tdc_name": tdc_name, **entry}
+    return out
+
+
+def build_target_profile(mol) -> Dict:
+    """No trained target-class model exists anywhere in this repo -- this
+    endpoint is heuristic end to end, and says so at the top level rather
+    than per-field, since every field here is the same kind of number."""
+    return {"method": "heuristic", "prediction": target_predictor.comprehensive_target_prediction(mol)}
+
+
+def build_druglikeness_profile(mol) -> Dict:
+    """Lipinski/Veber/QED/SA are established deterministic cheminformatics
+    formulas, not a fitted model and not a guess -- "rule_based" distinguishes
+    this from both "model" (held-out-validated) and "heuristic" (informal
+    rule-of-thumb scoring)."""
+    return {"method": "rule_based", **drug_likeness.comprehensive_analysis(mol)}
+
+
+# =============================================================================
+# ROOT / HEALTH / READINESS
+# =============================================================================
+
+
 @app.get("/")
-def read_root():
-    # Return JSON with API info and available endpoints
+def read_root() -> Dict:
     return {
-        # Welcome message
         "message": "AI-Powered Drug Discovery API",
-        # API description
         "description": "Computational chemistry and machine learning platform for pharmaceutical research",
-        # Current version
-        "version": "1.0.0",
-        # List of available endpoints
+        "version": app.version,
+        "docs": "/docs",
         "endpoints": [
-            "/predict/druglikeness",
-            "/predict/adme",
-            "/predict/toxicity",
-            "/predict/target",
-            "/predict/comprehensive",
-            "/batch/predict"
-        ]
+            "/v1/predict/druglikeness",
+            "/v1/predict/adme",
+            "/v1/predict/toxicity",
+            "/v1/predict/target",
+            "/v1/predict/comprehensive",
+            "/v1/batch/predict",
+            "/v1/health",
+            "/v1/ready",
+        ],
+        "note": "Unversioned /predict/* and /batch/predict paths still work as aliases of the /v1/* routes above.",
     }
 
 
-# Drug-likeness prediction endpoint
-# POST /predict/druglikeness
-# Analyzes molecule for Lipinski, Veber, QED, SA scores
-@app.post("/predict/druglikeness")
-def predict_druglikeness(molecule: MoleculeInput) -> Dict:
-    # Validate and canonicalize SMILES input
-    is_valid, canonical_smiles = mol_processor.validate_smiles(molecule.smiles)
-    
-    # Return HTTP 400 error if SMILES is invalid
-    if not is_valid:
-        raise HTTPException(status_code=400, detail="Invalid SMILES string")
-    
-    # Convert SMILES to RDKit molecule object
-    mol = mol_processor.smiles_to_mol(canonical_smiles)
-    
-    # Run comprehensive drug-likeness analysis
-    result = drug_likeness.comprehensive_analysis(mol)
-    
-    # Return results with molecule info
+@app.get("/v1/health")
+def health() -> Dict:
+    """Liveness only: the process is up and answering requests. Says nothing
+    about whether the real models actually loaded -- that's /v1/ready."""
+    return {"status": "ok"}
+
+
+@app.get("/v1/ready")
+def ready() -> Dict:
+    """Readiness: did the 7 validated XGBoost models actually load, not just
+    'is the process running'. Reports exactly which ones are missing rather
+    than collapsing to a single ok/not-ok bit."""
+    manifest_names = sorted(real_admet.meta.keys()) if real_admet.meta else sorted(real_admet.models.keys())
+    loaded_names = sorted(real_admet.models.keys())
+    missing = sorted(set(manifest_names) - set(loaded_names))
+    is_ready = real_admet.available() and not missing and len(loaded_names) > 0
+    body = {
+        "ready": is_ready,
+        "models_loaded": loaded_names,
+        "models_expected": manifest_names,
+        "models_missing": missing,
+        "model_dir": real_admet.model_dir,
+    }
+    if not is_ready:
+        return JSONResponse(status_code=503, content=body)
+    return body
+
+
+# =============================================================================
+# V1 PREDICTION ENDPOINTS
+# =============================================================================
+
+
+@app.post("/v1/predict/druglikeness")
+def predict_druglikeness_v1(molecule: MoleculeInput) -> Dict:
+    canonical_smiles, mol = _validated_mol(molecule.smiles)
     return {
-        # Molecule name (from input or "Unknown")
         "molecule_name": molecule.name or "Unknown",
-        # Canonical SMILES representation
         "smiles": canonical_smiles,
-        # Drug-likeness analysis results
-        "analysis": result
+        "analysis": build_druglikeness_profile(mol),
     }
 
 
-# ADME/PK prediction endpoint
-# POST /predict/adme
-# Predicts absorption, distribution, metabolism, excretion properties
-@app.post("/predict/adme")
-def predict_adme(molecule: MoleculeInput) -> Dict:
-    # Validate SMILES input
-    is_valid, canonical_smiles = mol_processor.validate_smiles(molecule.smiles)
-    
-    # Return error for invalid SMILES
-    if not is_valid:
-        raise HTTPException(status_code=400, detail="Invalid SMILES string")
-    
-    # Convert to RDKit molecule
-    mol = mol_processor.smiles_to_mol(canonical_smiles)
-    
-    # Run comprehensive ADME profiling
-    result = adme_predictor.comprehensive_adme_profile(mol)
-    
-    # Return ADME profile with molecule info
+@app.post("/v1/predict/adme")
+def predict_adme_v1(molecule: MoleculeInput) -> Dict:
+    canonical_smiles, mol = _validated_mol(molecule.smiles)
     return {
         "molecule_name": molecule.name or "Unknown",
         "smiles": canonical_smiles,
-        "adme_profile": result
+        "adme_profile": build_adme_profile(mol),
     }
 
 
-# Toxicity prediction endpoint
-# POST /predict/toxicity
-# Assesses hepatotoxicity, cardiotoxicity, mutagenicity, carcinogenicity
-@app.post("/predict/toxicity")
-def predict_toxicity(molecule: MoleculeInput) -> Dict:
-    # Validate SMILES input
-    is_valid, canonical_smiles = mol_processor.validate_smiles(molecule.smiles)
-    
-    # Return error for invalid SMILES
-    if not is_valid:
-        raise HTTPException(status_code=400, detail="Invalid SMILES string")
-    
-    # Convert to RDKit molecule
-    mol = mol_processor.smiles_to_mol(canonical_smiles)
-    
-    # Run comprehensive toxicity profiling
-    result = toxicity_predictor.comprehensive_toxicity_profile(mol)
-    
-    # Return toxicity profile with molecule info
+@app.post("/v1/predict/toxicity")
+def predict_toxicity_v1(molecule: MoleculeInput) -> Dict:
+    canonical_smiles, mol = _validated_mol(molecule.smiles)
     return {
         "molecule_name": molecule.name or "Unknown",
         "smiles": canonical_smiles,
-        "toxicity_profile": result
+        "toxicity_profile": build_toxicity_profile(mol),
     }
 
 
-# Target class prediction endpoint
-# POST /predict/target
-# Predicts likely drug target class (kinase, GPCR, ion channel, enzyme)
-@app.post("/predict/target")
-def predict_target(molecule: MoleculeInput) -> Dict:
-    # Validate SMILES input
-    is_valid, canonical_smiles = mol_processor.validate_smiles(molecule.smiles)
-    
-    # Return error for invalid SMILES
-    if not is_valid:
-        raise HTTPException(status_code=400, detail="Invalid SMILES string")
-    
-    # Convert to RDKit molecule
-    mol = mol_processor.smiles_to_mol(canonical_smiles)
-    
-    # Run comprehensive target prediction
-    result = target_predictor.comprehensive_target_prediction(mol)
-    
-    # Return target predictions with molecule info
+@app.post("/v1/predict/target")
+def predict_target_v1(molecule: MoleculeInput) -> Dict:
+    canonical_smiles, mol = _validated_mol(molecule.smiles)
     return {
         "molecule_name": molecule.name or "Unknown",
         "smiles": canonical_smiles,
-        "target_prediction": result
+        "target_prediction": build_target_profile(mol),
     }
 
 
-# Comprehensive prediction endpoint
-# POST /predict/comprehensive
-# Runs all analyses in one request
-@app.post("/predict/comprehensive")
-def predict_comprehensive(molecule: MoleculeInput) -> Dict:
-    # Validate SMILES input
-    is_valid, canonical_smiles = mol_processor.validate_smiles(molecule.smiles)
-    
-    # Return error for invalid SMILES
-    if not is_valid:
-        raise HTTPException(status_code=400, detail="Invalid SMILES string")
-    
-    # Convert to RDKit molecule
-    mol = mol_processor.smiles_to_mol(canonical_smiles)
-    
-    # Return all analyses combined
+@app.post("/v1/predict/comprehensive")
+def predict_comprehensive_v1(molecule: MoleculeInput) -> Dict:
+    canonical_smiles, mol = _validated_mol(molecule.smiles)
     return {
-        # Molecule identification
         "molecule_name": molecule.name or "Unknown",
         "smiles": canonical_smiles,
-        # Basic molecular properties
         "basic_properties": mol_processor.calculate_basic_properties(mol),
-        # Drug-likeness scores
-        "drug_likeness": drug_likeness.comprehensive_analysis(mol),
-        # ADME/PK profile
-        "adme_profile": adme_predictor.comprehensive_adme_profile(mol),
-        # Toxicity assessment
-        "toxicity_profile": toxicity_predictor.comprehensive_toxicity_profile(mol),
-        # Target class prediction
-        "target_prediction": target_predictor.comprehensive_target_prediction(mol)
+        "drug_likeness": build_druglikeness_profile(mol),
+        "adme_profile": build_adme_profile(mol),
+        "toxicity_profile": build_toxicity_profile(mol),
+        "target_prediction": build_target_profile(mol),
     }
 
 
-# Batch prediction endpoint
-# POST /batch/predict
-# Process multiple molecules in one request
-# Useful for high-throughput screening workflows
-@app.post("/batch/predict")
-def batch_predict(batch: BatchMoleculeInput) -> List[Dict]:
-    # Initialize results list
+@app.post("/v1/batch/predict")
+def batch_predict_v1(batch: BatchMoleculeInput) -> List[Dict]:
+    if len(batch.molecules) > BATCH_LIMIT:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Batch of {len(batch.molecules)} molecules exceeds the {BATCH_LIMIT}-molecule limit",
+        )
+
     results = []
-    
-    # Process each molecule in the batch
     for molecule in batch.molecules:
-        # Wrap in try-except for error handling
         try:
-            # Validate SMILES
-            is_valid, canonical_smiles = mol_processor.validate_smiles(molecule.smiles)
-            
-            # Handle invalid SMILES gracefully (don't fail entire batch)
-            if not is_valid:
-                # Add error result and continue to next molecule
-                results.append({
-                    "molecule_name": molecule.name or "Unknown",
-                    "error": "Invalid SMILES string"
-                })
-                # Skip to next molecule
-                continue
-            
-            # Convert to RDKit molecule
-            mol = mol_processor.smiles_to_mol(canonical_smiles)
-            
-            # Run analyses and add to results
+            canonical_smiles, mol = _validated_mol(molecule.smiles)
+        except HTTPException as exc:
+            # Per-molecule failure, not a batch failure: report it and keep
+            # going, exactly like the rest of the batch's siblings expect.
+            results.append({"molecule_name": molecule.name or "Unknown", "error": str(exc.detail)})
+            continue
+        try:
             results.append({
                 "molecule_name": molecule.name or "Unknown",
                 "smiles": canonical_smiles,
-                # Include key analyses
-                "drug_likeness": drug_likeness.comprehensive_analysis(mol),
-                "adme_profile": adme_predictor.comprehensive_adme_profile(mol),
-                "toxicity_profile": toxicity_predictor.comprehensive_toxicity_profile(mol)
+                "drug_likeness": build_druglikeness_profile(mol),
+                "adme_profile": build_adme_profile(mol),
+                "toxicity_profile": build_toxicity_profile(mol),
             })
-        
-        # Handle any unexpected errors
-        except Exception as e:
-            # Add error to results and continue
+        except Exception as exc:  # noqa: BLE001 -- deliberately broad: one bad
+            # molecule in a 50-molecule batch must not fail the other 49, but
+            # it must show up as an explicit error, never as a missing or
+            # substitute result.
+            _log.exception("batch prediction failed for molecule %r", molecule.smiles)
             results.append({
                 "molecule_name": molecule.name or "Unknown",
-                "error": str(e)
+                "smiles": canonical_smiles,
+                "error": f"{type(exc).__name__}: {exc}",
             })
-    
-    # Return all results
     return results
 
 
-# Entry point for running server directly
-# Execute with: python api/prediction_api.py
+# =============================================================================
+# BACK-COMPAT ALIASES -- same handlers, old unversioned paths
+# =============================================================================
+# The résumé/README-documented paths keep working. These are not separate
+# implementations to keep in sync -- add_api_route binds the exact same
+# function object /v1 uses, so the honesty fix applies to both automatically.
+
+app.add_api_route("/predict/druglikeness", predict_druglikeness_v1, methods=["POST"])
+app.add_api_route("/predict/adme", predict_adme_v1, methods=["POST"])
+app.add_api_route("/predict/toxicity", predict_toxicity_v1, methods=["POST"])
+app.add_api_route("/predict/target", predict_target_v1, methods=["POST"])
+app.add_api_route("/predict/comprehensive", predict_comprehensive_v1, methods=["POST"])
+app.add_api_route("/batch/predict", batch_predict_v1, methods=["POST"])
+
+
+# =============================================================================
+# ENTRY POINT
+# =============================================================================
 if __name__ == "__main__":
-    # Import uvicorn ASGI server
     import uvicorn
-    # Run server on all interfaces (0.0.0.0) port 8000
     uvicorn.run(app, host="0.0.0.0", port=8000)
