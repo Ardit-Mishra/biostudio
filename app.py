@@ -95,8 +95,58 @@ from features.protein_utils import ProteinAnalyzer
 # Import input type detector (SMILES vs sequence)
 from features.input_detector import InputDetector
 
-# Import example molecule data (peptides and proteins)
-from data.example_molecules import get_all_peptide_names, get_all_protein_names, get_peptide, get_protein
+# Import example molecule data (small molecules, peptides and proteins)
+from data.example_molecules import (
+    get_all_peptide_names,
+    get_all_protein_names,
+    get_all_small_molecule_names,
+    get_peptide,
+    get_protein,
+    get_small_molecule,
+)
+
+# Import multiple sequence alignment utilities (FAMSA — pip-installable, no
+# external binary; NOT ClustalW/MUSCLE, see module docstring).
+from features.alignment_utils import ENGINE_CITATION as MSA_ENGINE_CITATION
+from features.alignment_utils import ENGINE_NAME as MSA_ENGINE_NAME
+from features.alignment_utils import AlignmentError, align_sequences, parse_fasta_multi
+
+# Import phylogenetic tree construction (NJ/UPGMA via Bio.Phylo.TreeConstruction)
+from features.phylogenetics_utils import DISTANCE_MODELS as PHYLO_DISTANCE_MODELS
+from features.phylogenetics_utils import PhylogeneticsError, build_tree
+
+# Import 3D structure fetch/parse/render utilities (RCSB PDB fetch, upload
+# parsing, RDKit 3D embedding for SMILES, py3Dmol HTML rendering)
+from features.structure_utils import (
+    StructureError,
+    fetch_pdb_by_id,
+    parse_uploaded_structure,
+    render_structure_html,
+    smiles_to_molblock,
+)
+
+# Import gene-expression heatmap utilities (parsing, normalization,
+# hierarchical clustering, Plotly rendering)
+from features.expression_utils import (
+    DISTANCE_METRICS as EXPR_DISTANCE_METRICS,
+    ExpressionError,
+    LINKAGE_METHODS as EXPR_LINKAGE_METHODS,
+    bundled_example_matrix,
+    cluster_matrix,
+    create_clustered_heatmap_figure,
+    create_dendrogram_figure,
+    normalize_matrix,
+    parse_expression_matrix,
+)
+
+# streamlit.components.v1.html renders the py3Dmol viewer's JS/HTML fragment
+import streamlit.components.v1 as components
+
+# For the UPGMA-only dendrogram render on the Phylogenetics page (see
+# comment at that call site for why NJ does not get the same treatment)
+import plotly.figure_factory as ff
+from scipy.cluster.hierarchy import linkage
+from scipy.spatial.distance import squareform
 
 # Import the shared design-system glyph set (generated — see design-system/icons.json).
 # icon() returns a bare <svg> string, section_header() a full heading block, inline()
@@ -491,6 +541,10 @@ with st.sidebar:
         ("Drug-Likeness Deck", "ruler"),
         ("Target Prediction", "receptor"),
         ("Protein & Biologic Studio", "peptide"),
+        ("Sequence Alignment", "alignment"),
+        ("Phylogenetics", "graph"),
+        ("Structure Viewer", "molecule"),
+        ("Expression Heatmap", None),
         ("Explainability Canvas", "calibration"),
         ("Knowledge Graph", "graph"),
         ("Lead Lab", "plate"),
@@ -1562,6 +1616,401 @@ elif page == "Protein & Biologic Studio":
     data (e.g. PDBbind/BindingDB) is available. No numbers are shown here to avoid
     presenting an untrained model's output as a real assessment.
     """)
+
+
+# =============================================================================
+# SEQUENCE ALIGNMENT PAGE
+# =============================================================================
+# Multiple sequence alignment via FAMSA (pyfamsa) — see features/alignment_utils.py.
+elif page == "Sequence Alignment":
+    st.markdown(
+        section_header(
+            "alignment", "Sequence Alignment",
+            "Multiple sequence alignment, computed by FAMSA — not ClustalW or MUSCLE",
+        ),
+        unsafe_allow_html=True,
+    )
+
+    st.caption(
+        f"**Engine: {MSA_ENGINE_NAME}** — a pip-installable, no-system-binary aligner. "
+        "ClustalW and MUSCLE are external binaries this deployment does not ship "
+        f"and cannot call, so results here are FAMSA's, not theirs. {MSA_ENGINE_CITATION}"
+    )
+
+    with st.expander("**About Multiple Sequence Alignment**"):
+        st.markdown("""
+        MSA arranges 2+ sequences so that homologous positions line up in the same
+        column, inserting gaps (`-`) where one sequence lacks a residue the others have.
+        It's the basis for conservation analysis, motif discovery, and — combined with
+        a distance model — phylogenetic tree building (see the **Phylogenetics** page,
+        which can consume this page's output directly).
+
+        **Input**: paste FASTA (`>id` headers) or upload a `.fasta`/`.fa`/`.txt` file.
+        At least 2 sequences are required.
+        """)
+
+    _example_family = {
+        "GLP-1/insulin peptide family (built-in)": "\n".join(
+            f">{name}\n{get_peptide(name)['sequence']}"
+            for name in ["Insulin B-chain (fragment)", "Semaglutide (fragment)", "Exenatide (fragment)", "Glucagon"]
+        ),
+        "Enter your own": "",
+    }
+    _msa_choice = st.selectbox("Load example", list(_example_family.keys()))
+
+    _uploaded_fasta = st.file_uploader("Or upload a FASTA file", type=["fasta", "fa", "txt"], key="msa_upload")
+    if _uploaded_fasta is not None:
+        _msa_default_text = _uploaded_fasta.read().decode("utf-8", errors="replace")
+    else:
+        _msa_default_text = _example_family[_msa_choice]
+
+    msa_input = st.text_area(
+        "FASTA input (2+ sequences)",
+        value=_msa_default_text,
+        height=180,
+        help="One or more '>id' / sequence pairs, or bare sequences one per line.",
+    )
+
+    if st.button("Align Sequences", type="primary"):
+        try:
+            msa_records = parse_fasta_multi(msa_input)
+            msa_result = align_sequences(msa_records)
+        except AlignmentError as exc:
+            st.error(f"Alignment failed: {exc}")
+        else:
+            st.session_state["biostudio_last_alignment"] = msa_result
+            st.markdown(f"### Alignment ({msa_result['engine']})")
+            col1, col2 = st.columns(2)
+            col1.metric("Sequences", len(msa_result["records"]))
+            col2.metric("Alignment length", msa_result["alignment_length"])
+            st.caption(msa_result["engine_citation"])
+
+            st.markdown("#### Aligned Sequences")
+            _align_lines = [
+                f"{r['id']:<28} {r['aligned_sequence']}" for r in msa_result["records"]
+            ]
+            _align_lines.append(f"{'Consensus':<28} {msa_result['consensus']}")
+            st.code("\n".join(_align_lines), language=None)
+
+            st.markdown("#### Per-Column Conservation")
+            _cons_df = pd.DataFrame({
+                "column": list(range(1, len(msa_result["conservation"]) + 1)),
+                "conservation": msa_result["conservation"],
+            })
+            st.bar_chart(_cons_df.set_index("column"))
+
+            st.markdown("#### Pairwise Percent Identity")
+            _ids = [r["id"] for r in msa_result["records"]]
+            _id_df = pd.DataFrame(msa_result["identity_matrix"], index=_ids, columns=_ids)
+            st.dataframe(_id_df.style.format("{:.1f}").background_gradient(cmap="Blues"), use_container_width=True)
+
+            st.info(
+                "This alignment is stored for this session — switch to the "
+                "**Phylogenetics** page and choose \"Use most recent alignment\" "
+                "to build a tree from it directly."
+            )
+
+
+# =============================================================================
+# PHYLOGENETICS PAGE
+# =============================================================================
+# Neighbour-joining and UPGMA tree construction via Bio.Phylo.TreeConstruction
+# — see features/phylogenetics_utils.py.
+elif page == "Phylogenetics":
+    st.markdown(
+        section_header(
+            "graph", "Phylogenetics",
+            "Neighbour-joining and UPGMA tree construction from an existing alignment",
+        ),
+        unsafe_allow_html=True,
+    )
+
+    with st.expander("**About Tree Construction**"):
+        st.markdown("""
+        Builds a tree from a **pairwise distance matrix** computed over an existing
+        alignment (equal-length sequences). Two methods are offered:
+
+        - **Neighbour-joining (NJ)**: produces an unrooted, additive tree that
+          minimizes total branch length — generally the more accurate topology for
+          divergent sequences.
+        - **UPGMA**: assumes a constant mutation rate (a molecular clock) and builds
+          a rooted, ultrametric tree — simpler, but can mislead when that assumption
+          doesn't hold.
+
+        Distance can be plain **identity** (fraction mismatched) or a protein
+        substitution matrix (e.g. BLOSUM62), which better reflects how conservative
+        or radical each substitution actually is.
+        """)
+
+    _last_alignment = st.session_state.get("biostudio_last_alignment")
+    _use_last = False
+    if _last_alignment is not None:
+        _use_last = st.checkbox(
+            f"Use most recent alignment from Sequence Alignment page "
+            f"({len(_last_alignment['records'])} sequences, {_last_alignment['engine']})",
+            value=True,
+        )
+
+    if _use_last and _last_alignment is not None:
+        phylo_records = [(r["id"], r["aligned_sequence"]) for r in _last_alignment["records"]]
+        st.caption("Using the alignment above — switch pages to realign different sequences.")
+    else:
+        _phylo_default = ""
+        phylo_input = st.text_area(
+            "Aligned FASTA (equal-length sequences — run Sequence Alignment first if yours aren't aligned)",
+            value=_phylo_default,
+            height=160,
+        )
+        try:
+            phylo_records = parse_fasta_multi(phylo_input) if phylo_input.strip() else []
+        except AlignmentError as exc:
+            st.warning(str(exc))
+            phylo_records = []
+
+    col1, col2 = st.columns(2)
+    with col1:
+        phylo_method = st.selectbox("Method", ["nj", "upgma"], format_func=lambda m: "Neighbour-joining (NJ)" if m == "nj" else "UPGMA")
+    with col2:
+        phylo_model = st.selectbox("Distance model", list(PHYLO_DISTANCE_MODELS), index=0)
+
+    if st.button("Build Tree", type="primary"):
+        if len(phylo_records) < 2:
+            st.error("Need at least 2 aligned sequences — provide input above or use a stored alignment.")
+        else:
+            try:
+                tree_result = build_tree(phylo_records, method=phylo_method, model=phylo_model)
+            except PhylogeneticsError as exc:
+                st.error(f"Tree construction failed: {exc}")
+            else:
+                st.markdown(f"### {tree_result['method'].upper()} Tree ({tree_result['model']} distance)")
+                st.markdown("#### Tree (ASCII)")
+                st.code(tree_result["ascii"], language=None)
+
+                st.markdown("#### Newick")
+                st.code(tree_result["newick"], language=None)
+                st.download_button(
+                    "Download Newick (.nwk)",
+                    data=tree_result["newick"],
+                    file_name="biostudio_tree.nwk",
+                    mime="text/plain",
+                )
+
+                if tree_result["method"] == "upgma":
+                    # UPGMA *is* average-linkage hierarchical clustering, so a
+                    # scipy dendrogram over the same distance matrix reproduces
+                    # the same topology exactly — this is not a decorative
+                    # stand-in for the tree, it's an equivalent rendering of it.
+                    # NJ has no such correspondence to a linkage dendrogram
+                    # (it produces an unrooted, non-ultrametric tree), so that
+                    # case is intentionally not given a fabricated dendrogram
+                    # here — the ASCII/Newick views above are the honest render.
+                    _dendro_fig = ff.create_dendrogram(
+                        np.array(tree_result["distance_matrix"]),
+                        orientation="left",
+                        labels=tree_result["tip_labels"],
+                        distfun=lambda m: squareform(m, checks=False),
+                        linkagefun=lambda d: linkage(d, method="average"),
+                    )
+                    _dendro_fig.update_layout(height=max(300, 40 * len(tree_result["tip_labels"])), margin=dict(l=10, r=10, t=20, b=40))
+                    st.markdown("#### Dendrogram")
+                    st.plotly_chart(_dendro_fig, use_container_width=True)
+                else:
+                    st.caption(
+                        "NJ produces an unrooted, non-ultrametric tree, which a "
+                        "linkage-style dendrogram cannot faithfully represent — "
+                        "the ASCII/Newick views above are the accurate rendering."
+                    )
+
+                st.markdown("#### Distance Matrix")
+                _dm_df = pd.DataFrame(
+                    tree_result["distance_matrix"],
+                    index=tree_result["tip_labels"],
+                    columns=tree_result["tip_labels"],
+                )
+                st.dataframe(_dm_df.style.format("{:.3f}"), use_container_width=True)
+
+
+# =============================================================================
+# STRUCTURE VIEWER PAGE
+# =============================================================================
+# 3D structure visualization via py3Dmol — RCSB PDB fetch, uploaded
+# .pdb/.cif, or a small molecule from SMILES (RDKit 3D embedding).
+elif page == "Structure Viewer":
+    st.markdown(
+        section_header(
+            "molecule", "Structure Viewer",
+            "3D structure rendering — RCSB PDB fetch, uploaded structure files, or SMILES",
+        ),
+        unsafe_allow_html=True,
+    )
+
+    st.caption(
+        "Rendered with **py3Dmol** (3Dmol.js), loaded from a public CDN at view time. "
+        "A failed fetch or an unparsable file is reported here as an error — never a "
+        "blank viewer that could be mistaken for an empty real structure."
+    )
+
+    _struct_source = st.radio(
+        "Source", ["Fetch by PDB ID", "Upload structure file", "Small molecule (SMILES)"],
+        horizontal=True,
+    )
+
+    _struct_content = None
+    _struct_fmt = None
+    _struct_error = None
+
+    if _struct_source == "Fetch by PDB ID":
+        _pdb_id_input = st.text_input("RCSB PDB ID", value="1CRN", max_chars=4, help="e.g. 1CRN, 6LU7, 4HHB")
+        _style_choice = st.selectbox("Style", ["cartoon", "stick", "sphere", "line"], index=0, key="pdb_style")
+        if st.button("Fetch Structure", type="primary"):
+            try:
+                _struct_content = fetch_pdb_by_id(_pdb_id_input)
+                _struct_fmt = "pdb"
+            except StructureError as exc:
+                _struct_error = str(exc)
+
+    elif _struct_source == "Upload structure file":
+        _style_choice = st.selectbox("Style", ["cartoon", "stick", "sphere", "line"], index=0, key="upload_style")
+        _struct_upload = st.file_uploader("Upload .pdb or .cif", type=["pdb", "ent", "cif", "mmcif"])
+        if _struct_upload is not None and st.button("Render Structure", type="primary"):
+            try:
+                _struct_content = parse_uploaded_structure(_struct_upload.read(), _struct_upload.name)
+                _struct_fmt = "pdb"
+            except StructureError as exc:
+                _struct_error = str(exc)
+
+    else:  # Small molecule (SMILES)
+        _sm_names = ["Enter your own"] + get_all_small_molecule_names()
+        _sm_choice = st.selectbox("Example small molecule", _sm_names)
+        _default_smiles = get_small_molecule(_sm_choice)["smiles"] if _sm_choice != "Enter your own" else ""
+        _smiles_input = st.text_input("SMILES", value=_default_smiles)
+        _style_choice = st.selectbox("Style", ["stick", "sphere", "line"], index=0, key="smiles_style")
+        if st.button("Generate 3D Structure", type="primary"):
+            try:
+                _struct_content = smiles_to_molblock(_smiles_input)
+                _struct_fmt = "mol"
+            except StructureError as exc:
+                _struct_error = str(exc)
+
+    if _struct_error:
+        st.error(_struct_error)
+    elif _struct_content and _struct_fmt:
+        try:
+            _viewer_html = render_structure_html(_struct_content, _struct_fmt, style=_style_choice)
+        except StructureError as exc:
+            st.error(f"Could not render viewer: {exc}")
+        else:
+            components.html(_viewer_html, width=680, height=500, scrolling=False)
+            with st.expander("View raw structure text"):
+                st.code(_struct_content[:5000] + ("\n... (truncated)" if len(_struct_content) > 5000 else ""), language=None)
+
+
+# =============================================================================
+# EXPRESSION HEATMAP PAGE
+# =============================================================================
+# Gene-expression heatmap with normalization and scipy hierarchical
+# clustering, rendered with Plotly — see features/expression_utils.py.
+elif page == "Expression Heatmap":
+    # No glyph in the design system's 22-icon set genuinely marks "gene
+    # expression heatmap" (closest is "composition", which specifically
+    # means base/GC composition, not this) — per the design system's own
+    # rule, no icon beats a wrong one, so this page follows Home/About and
+    # renders a plain heading rather than section_header()'s icon+title row.
+    st.markdown(
+        '<div style="margin:2rem 0 .9rem 0"><span style="font-size:1.15rem;font-weight:600;'
+        'color:var(--text-main);letter-spacing:-.01em">Expression Heatmap</span></div>'
+        '<div style="font-size:.85rem;color:var(--text-dim);margin:.3rem 0 0 0;max-width:70ch">'
+        'Genes x samples expression matrix &mdash; normalization, hierarchical clustering, Plotly heatmap</div>',
+        unsafe_allow_html=True,
+    )
+
+    with st.expander("**About This Page**"):
+        st.markdown("""
+        Upload a genes (rows) x samples (columns) expression matrix as CSV/TSV — the
+        first column is the gene ID, the header row is sample names. Choose a
+        normalization, then hierarchically cluster genes and/or samples (scipy) to
+        reveal co-expressed blocks. A small built-in example is loaded by default so
+        this page isn't an empty form.
+        """)
+
+    _use_example = st.checkbox("Use built-in example matrix", value=True)
+    if _use_example:
+        expr_df = bundled_example_matrix()
+        st.caption("12 genes x 6 samples — illustrative inflammatory/fibrosis markers, control vs. treated.")
+    else:
+        _expr_upload = st.file_uploader("Upload expression matrix (CSV/TSV)", type=["csv", "tsv", "txt"])
+        expr_df = None
+        if _expr_upload is not None:
+            try:
+                expr_df = parse_expression_matrix(_expr_upload.read(), _expr_upload.name)
+            except ExpressionError as exc:
+                st.error(f"Could not parse matrix: {exc}")
+
+    if expr_df is not None:
+        st.dataframe(expr_df, use_container_width=True)
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            _norm_method = st.selectbox(
+                "Normalization", ["none", "log2", "zscore", "log2_zscore"],
+                index=3,
+                help="log2: log2(x+1). zscore: per-gene (row) z-score. log2_zscore: both.",
+            )
+        with col2:
+            _cluster_rows = st.checkbox("Cluster genes (rows)", value=True)
+            _cluster_cols = st.checkbox("Cluster samples (columns)", value=True)
+        with col3:
+            _metric = st.selectbox("Distance metric", list(EXPR_DISTANCE_METRICS), index=0)
+            _method = st.selectbox("Linkage method", list(EXPR_LINKAGE_METHODS), index=0)
+
+        if st.button("Generate Heatmap", type="primary"):
+            try:
+                _norm_df, _dropped = normalize_matrix(expr_df, _norm_method)
+                if _dropped:
+                    st.warning(
+                        f"{len(_dropped)} gene(s) had zero variance across samples and were "
+                        f"excluded from z-score normalization: {', '.join(_dropped)}"
+                    )
+                _clustered = cluster_matrix(_norm_df, _cluster_rows, _cluster_cols, _metric, _method)
+            except ExpressionError as exc:
+                st.error(f"Could not build heatmap: {exc}")
+            else:
+                _fig = create_clustered_heatmap_figure(
+                    _clustered["matrix"],
+                    value_label=_norm_method if _norm_method != "none" else "Expression",
+                )
+                st.plotly_chart(_fig, use_container_width=True)
+
+                _dcol1, _dcol2 = st.columns(2)
+                if _cluster_rows and _norm_df.shape[0] >= 2:
+                    with _dcol1:
+                        st.markdown("##### Gene dendrogram")
+                        try:
+                            st.plotly_chart(
+                                create_dendrogram_figure(_norm_df, "rows", _metric, _method, "left"),
+                                use_container_width=True,
+                            )
+                        except ExpressionError as exc:
+                            st.caption(f"Dendrogram unavailable: {exc}")
+                if _cluster_cols and _norm_df.shape[1] >= 2:
+                    with _dcol2:
+                        st.markdown("##### Sample dendrogram")
+                        try:
+                            st.plotly_chart(
+                                create_dendrogram_figure(_norm_df, "cols", _metric, _method, "top"),
+                                use_container_width=True,
+                            )
+                        except ExpressionError as exc:
+                            st.caption(f"Dendrogram unavailable: {exc}")
+
+                st.download_button(
+                    "Download clustered matrix (CSV)",
+                    data=_clustered["matrix"].to_csv(),
+                    file_name="biostudio_clustered_expression.csv",
+                    mime="text/csv",
+                )
+    else:
+        st.info("Upload a matrix, or check \"Use built-in example matrix\" above, to continue.")
 
 
 # =============================================================================
