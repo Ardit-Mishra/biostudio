@@ -5,17 +5,18 @@ name: CI
 # card staying in sync with the manifest it describes. See
 # tests/test_admet_models.py for what each check actually verifies.
 #
-# NOT included here: the legacy suite in tests/test_drug_likeness.py and
-# tests/test_molecular_utils.py. Both currently fail (25 pre-existing
-# failures against utils/drug_likeness.py and utils/molecular_utils.py,
-# unrelated to this workflow and out of its scope) -- gating on them would
-# make this workflow red from its first run, which is worse than not gating
-# on them at all. Tracked as a follow-up, not hidden with continue-on-error.
+# This comment previously said the legacy suites in tests/test_drug_likeness.py
+# and tests/test_molecular_utils.py were excluded because of 25 pre-existing
+# failures. Both statements were stale: the workflow runs `pytest tests/`
+# wholesale and excludes nothing, and the suite now passes 184/184. Corrected
+# rather than left in place, because a comment describing behaviour the file
+# does not have is worse than no comment.
 
 on:
   pull_request:
   push:
     branches:
+      - main
       - ui/instrument-design-system
 
 jobs:
