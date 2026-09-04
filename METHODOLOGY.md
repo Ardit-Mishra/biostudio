@@ -322,27 +322,38 @@ An earlier prototype module (`models/neural_toxicity.py`) also exists in the cod
 
 **Method**: Per-endpoint XGBoost classifiers/regressor, implemented in `models/real_admet.py` (class `RealADMETPredictor`), exposed to the app through `comprehensive_toxicity_profile(mol)`.
 
-**Feature representation** (2,058 features per endpoint):
-- ECFP4 / Morgan fingerprint, radius=2, 2048 bits
-- 10 RDKit descriptors: MolWt, MolLogP, TPSA, NumHDonors, NumHAcceptors, NumRotatableBonds, NumAromaticRings, FractionCSP3, HeavyAtomCount, NumHeteroatoms
+**Feature representation** — identical for all seven endpoints, generated from
+`models/saved_models/admet_models_manifest.json`:
+
+<!-- ADMET-FEATURES:START -->
+| Component | Count |
+|---|---|
+| ECFP4/Morgan radius=2 nBits=2048 | 2,048 |
+| RDKit descriptors | 217 |
+| **Total features per molecule** | **2,265** |
+<!-- ADMET-FEATURES:END -->
+
+The full descriptor list is in each `*_meta.json` under `feature_spec.descriptors`; it is not reproduced here because a hand-maintained copy of 217 names is a drift source, not documentation.
 
 **Training data & split**: Each endpoint is trained on its corresponding Therapeutics Data Commons (TDC) benchmark dataset, using TDC's default scaffold split (seed 1), which groups structurally similar molecules together so the held-out test set contains scaffolds not seen during training.
 
 **Endpoints and held-out test performance** (source of truth: `models/saved_models/admet_models_manifest.json` — the only legitimate metrics in this codebase):
 
-| Endpoint | ADMET Class | App Label | Metric | Test Score | n_train | n_test |
-|---|---|---|---|---|---|---|
-| DILI | Toxicity | Hepatotoxicity (DILI) | AUROC | 0.925 | 379 | 96 |
-| hERG | Toxicity | Cardiotoxicity (hERG) | AUROC | 0.809 | 523 | 132 |
-| AMES | Toxicity | Mutagenicity (Ames) | AUROC | 0.845 | 5,821 | 1,457 |
-| BBB_Martins | Distribution | Blood-Brain Barrier | AUROC | 0.905 | 1,624 | 406 |
-| Pgp_Broccatelli | Absorption | P-glycoprotein Inhibition | AUROC | 0.926 | 973 | 245 |
-| CYP3A4_Veith | Metabolism | CYP3A4 Inhibition | AUPRC | 0.869 | 9,861 | 2,467 |
-| Caco2_Wang | Absorption | Caco-2 Permeability | MAE (↓ better) | 0.339 | 728 | 182 |
+<!-- ADMET-METRICS:START -->
+| Endpoint | Task | Class | Metric | Better | Score | Threshold | n_train | n_test |
+|---|---|---|---|---|---|---|---|---|
+| `DILI` | Hepatotoxicity (DILI) | Toxicity | AUROC | higher | **0.920** | 0.20 | 379 | 96 |
+| `hERG` | Cardiotoxicity (hERG) | Toxicity | AUROC | higher | **0.824** | 0.40 | 523 | 132 |
+| `AMES` | Mutagenicity (Ames) | Toxicity | AUROC | higher | **0.866** | 0.45 | 5821 | 1457 |
+| `BBB_Martins` | Blood-Brain Barrier | Distribution | AUROC | higher | **0.900** | 0.45 | 1624 | 406 |
+| `Pgp_Broccatelli` | P-glycoprotein Inhibition | Absorption | AUROC | higher | **0.927** | 0.35 | 973 | 245 |
+| `CYP3A4_Veith` | CYP3A4 Inhibition | Metabolism | AUPRC | higher | **0.880** | 0.55 | 9861 | 2467 |
+| `Caco2_Wang` | Caco-2 Permeability | Absorption | MAE | lower | **0.272** | n/a | 728 | 182 |
+<!-- ADMET-METRICS:END -->
 
 Each row is a separately trained, saved model (e.g. `DILI_xgb.json`) in `models/saved_models/`, evaluated on its own held-out TDC scaffold-split test set (never seen during training). Model files, split details, and full feature specs live in `admet_models_manifest.json` alongside each `*_meta.json`.
 
-**Regressions, stated not rounded away**: this table reflects a 2026-08-29 batch retrain. Five endpoints improved over the prior per-endpoint set (DILI +0.077, Pgp +0.019, hERG +0.031 AUROC; CYP3A4 +0.001 AUPRC; BBB +0.0003 AUROC). Two regressed: AMES −0.0015 AUROC (0.847 → 0.845, within noise) and Caco2_Wang's MAE got **worse** by +0.053 (0.286 → 0.339 — MAE is lower-is-better, so this is a real regression, not a typo). Both are shipped anyway for a consistent, single-script-trained batch; see `models/saved_models/README.md` for the full comparison and `models/real_admet.py` for a related serving-bug fix this retrain also corrects.
+**Generation history, stated not rounded away**: the table above is the CURRENT shipped set and is generated from the manifest; the block is checked against it by `tests/test_docs_metrics.py` on every run. Two earlier generations exist and are **historical, not current shipped performance**: a per-endpoint set, and a 2026-08-29 batch retrain (historical values: DILI 0.925, hERG 0.809, AMES 0.845, BBB 0.905, Pgp 0.926, CYP3A4 0.869 AUPRC, Caco-2 MAE 0.339). This document previously presented that middle generation as current. Relative to it the current set improves hERG (+0.015 AUROC), AMES (+0.021), CYP3A4 (+0.011 AUPRC) and Caco-2 (MAE 0.339 -> 0.272, lower is better, so an improvement), and gives back DILI (-0.005) and BBB (-0.002). See `models/saved_models/README.md` for the per-generation comparison.
 
 **Scope note**: These 7 endpoints span multiple ADMET classes — toxicity (DILI, hERG, AMES), distribution (BBB_Martins), absorption (Pgp_Broccatelli, Caco2_Wang), and metabolism (CYP3A4_Veith) — but are all surfaced together through `comprehensive_toxicity_profile(mol)`, which is the drop-in replacement for the earlier fabricated toxicity output described below. There is no trained or validated model for carcinogenicity anywhere in this codebase; where the app shows a carcinogenicity value, it comes from the rule-based heuristic documented under "Heuristic Toxicity Predictors" below, not from a trained model.
 
@@ -621,9 +632,11 @@ booster.load_model("models/saved_models/hERG_xgb.json")
 prob = booster.predict(xgb.DMatrix(features))   # binary:logistic -> probability
 ```
 
-- **Features**: ECFP4/Morgan fingerprint (2048 bits, radius 2) + 10 RDKit physicochemical
-  descriptors (MolWt, MolLogP, TPSA, HBD, HBA, rotatable bonds, aromatic rings, FractionCSP3,
-  heavy atoms, heteroatoms).
+- **Features**: see the generated feature contract under "Feature representation" above —
+  2,048-bit ECFP4/Morgan fingerprint plus 217 RDKit descriptors, 2,265 total per molecule.
+  The counts there are generated from `admet_models_manifest.json` and guarded by
+  `tests/test_docs_metrics.py`; they are deliberately not restated here, and the 217
+  descriptor names live in each `*_meta.json` under `feature_spec.descriptors`.
 - **Data / split**: public Therapeutics Data Commons (TDC) datasets, Bemis-Murcko **scaffold**
   split (train+valid vs. held-out test), official TDC metric per endpoint.
 - **7 endpoints**: DILI, hERG, AMES, BBB_Martins, Pgp_Broccatelli, CYP3A4_Veith, Caco2_Wang.
@@ -632,10 +645,11 @@ prob = booster.predict(xgb.DMatrix(features))   # binary:logistic -> probability
 - XGBoost: Chen & Guestrin (2016) [REFERENCES.md: 30]
 - Scaffold splitting to avoid analog leakage (Bemis & Murcko, 1996)
 
-**Reported performance**: real, single held-out evaluation per endpoint — see
-`models/saved_models/admet_models_manifest.json` (DILI AUROC 0.925, hERG 0.809, AMES AUROC 0.845,
-BBB 0.905, Pgp 0.926, CYP3A4 AUPRC 0.869, Caco-2 MAE 0.339). No synthetic training data. AMES and
-Caco-2 regressed slightly against the prior model set — see the note above the endpoint table.
+**Reported performance**: real, single held-out evaluation per endpoint. The current
+figures are in the generated table under "Endpoints and held-out test performance" above, and are
+derived from `models/saved_models/admet_models_manifest.json` — the only source of truth. They are
+deliberately not repeated here, because a second hand-maintained copy of the numbers is what caused
+this document to disagree with the manifest in the first place. No synthetic training data.
 
 > **Deprecated:** an earlier `MultiModelPredictor` ensemble (`models/ml_models.py`) was trained on a
 > self-generated synthetic dataset and is **no longer imported by the app**. Its reported "accuracy"
@@ -738,7 +752,7 @@ For production QSAR models, follow these standards [REFERENCES.md: 44,46]:
 
 This platform demonstrates **computational drug discovery workflows** with scientific rigor in documentation and methodology. However, users must understand:
 
-- ✅ **Drug-likeness methods** (Lipinski, Veber, QED, SA) are rule-based and production-ready
+- ✅ **Drug-likeness methods** (Lipinski, Veber, QED, SA) are established deterministic calculations that reproduce the published definitions exactly — validated standards, but not clinical or regulatory decision support
 - ✅ **ADMET models** (DILI, hERG, AMES, BBB, Pgp, CYP3A4, Caco-2) are real gradient-boosted
   (XGBoost) models trained on public TDC data with scaffold splits and held-out test metrics
 - ⚠️ **ADME/PK panel** and **target predictions** remain rule-based heuristics (descriptor

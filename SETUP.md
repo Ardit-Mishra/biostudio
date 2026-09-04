@@ -281,7 +281,7 @@ print(f'✓ Expected: 2078 features (30 descriptors + 2048 FP bits) — legacy e
 
 ### Step 5: Test Real ADMET Models (RealADMETPredictor)
 
-This verifies the platform's only legitimate ML: 7 held-out-validated XGBoost models loaded from `models/saved_models/`.
+This verifies the served models: 7 held-out-validated XGBoost models loaded from `models/saved_models/`. RandomForest and MLP comparators, trained on the same task, split and features, ship alongside them; the platform's other prediction modules are rule-based heuristics and are labelled as such.
 
 ```bash
 python -c "

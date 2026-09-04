@@ -26,8 +26,8 @@ This platform demonstrates computational drug discovery workflows with **varying
 
 | Model Type | Validation Status | Production Ready? |
 |-----------|------------------|-------------------|
-| Real ADMET Models (XGBoost, 7 endpoints) | ✅ **Validated** - Held-out TDC scaffold-split test scores | Yes |
-| Drug-Likeness (Lipinski, Veber, QED, SA) | ✅ **Validated** - Standard industry metrics | Yes |
+| Real ADMET Models (XGBoost, 7 endpoints) | ✅ **Validated** - Held-out TDC scaffold-split test scores | Research/educational screening only — no prospective, external or assay validation |
+| Drug-Likeness (Lipinski, Veber, QED, SA) | ✅ **Validated** - Standard industry metrics | Established deterministic calculations — not clinical or regulatory decision support |
 | Neural Network Toxicity Predictor | ❌ **NOT TRAINED** - frozen random weights (`np.random.randn`), no learning ever occurred | Deprecated/removed |
 | Protein-Ligand Compatibility | ⛔ **Disabled** - untrained random-weight demo (never fitted to any data) | No |
 | ADME/PK Heuristics | ⚠️ **Heuristic** - Rule-based scoring | No |
@@ -47,35 +47,54 @@ This platform demonstrates computational drug discovery workflows with **varying
 
 ### Category 0: Real Validated ML (XGBoost) ✅
 
-Seven gradient-boosted (XGBoost) ADMET models, trained and held-out-tested on **Therapeutics Data Commons (TDC)** scaffold splits (seed 1). These are the only legitimate ML models in the platform. Served by `models/real_admet.py` (`RealADMETPredictor.comprehensive_toxicity_profile()`). Full metrics: `models/saved_models/admet_models_manifest.json`.
+Seven ADMET endpoints, trained and held-out-tested on **Therapeutics Data Commons (TDC)** scaffold splits (seed 1). Served by `models/real_admet.py` (`RealADMETPredictor.comprehensive_toxicity_profile()`); metrics in `models/saved_models/admet_models_manifest.json`.
 
-| Endpoint | App Label | Metric | Test Score | Threshold | n_train / n_test |
-|---|---|---|---|---|---|
-| DILI | Hepatotoxicity (DILI) | AUROC | 0.925 | 0.40 | 379 / 96 |
-| hERG | Cardiotoxicity (hERG) | AUROC | 0.809 | 0.35 | 523 / 132 |
-| AMES | Mutagenicity (Ames) | AUROC | 0.845 ⚠ | 0.50 | 5,821 / 1,457 |
-| BBB_Martins | Blood-Brain Barrier | AUROC | 0.905 | 0.45 | 1,624 / 406 |
-| Pgp_Broccatelli | P-glycoprotein Inhibition | AUROC | 0.926 | 0.40 | 973 / 245 |
-| CYP3A4_Veith | CYP3A4 Inhibition | AUPRC | 0.869 | 0.55 | 9,861 / 2,467 |
-| Caco2_Wang | Caco-2 Permeability | MAE | 0.339 ⚠ | n/a (regression) | 728 / 182 |
+**What is served, and what else was trained.** The **XGBoost** model is the one served for every endpoint, and the table below reports its held-out scores. A **RandomForest** and an **MLP** were also trained for each endpoint on the identical task, split and features, and scored the same way — they are genuine trained comparators, not heuristics and not placeholders. Their artifacts ship alongside (`*_rf.joblib`, `*_mlp.joblib`) and the app surfaces the comparison. Keeping them is what makes "XGBoost was chosen" a checked claim rather than an assumed one; RandomForest in fact scores higher on some endpoints.
 
-**Features**: ECFP4/Morgan fingerprint (radius=2, 2048 bits) + 10 RDKit descriptors (MolWt, MolLogP, TPSA, NumHDonors, NumHAcceptors, NumRotatableBonds, NumAromaticRings, FractionCSP3, HeavyAtomCount, NumHeteroatoms) = 2,058 features.
+These trained models are distinct from the platform's rule-based heuristic modules, which were never fitted to data and carry no held-out metrics — see Categories 2 and 3 below.
 
-**Production Ready**: Yes, for screening/educational use — these are real held-out test metrics, not training-set numbers.
+<!-- ADMET-METRICS:START -->
+| Endpoint | Task | Class | Metric | Better | Score | Threshold | n_train | n_test |
+|---|---|---|---|---|---|---|---|---|
+| `DILI` | Hepatotoxicity (DILI) | Toxicity | AUROC | higher | **0.920** | 0.20 | 379 | 96 |
+| `hERG` | Cardiotoxicity (hERG) | Toxicity | AUROC | higher | **0.824** | 0.40 | 523 | 132 |
+| `AMES` | Mutagenicity (Ames) | Toxicity | AUROC | higher | **0.866** | 0.45 | 5821 | 1457 |
+| `BBB_Martins` | Blood-Brain Barrier | Distribution | AUROC | higher | **0.900** | 0.45 | 1624 | 406 |
+| `Pgp_Broccatelli` | P-glycoprotein Inhibition | Absorption | AUROC | higher | **0.927** | 0.35 | 973 | 245 |
+| `CYP3A4_Veith` | CYP3A4 Inhibition | Metabolism | AUPRC | higher | **0.880** | 0.55 | 9861 | 2467 |
+| `Caco2_Wang` | Caco-2 Permeability | Absorption | MAE | lower | **0.272** | n/a | 728 | 182 |
+<!-- ADMET-METRICS:END -->
 
-**⚠ Two regressions vs. the prior model set (2026-08-29 batch retrain)**: AMES −0.0015 AUROC
-(0.847→0.845, within noise) and Caco2_Wang +0.053 MAE, i.e. **worse** (0.286→0.339 — MAE is
-lower-is-better). Shipped anyway for a consistent, single-script-trained batch across all seven
-endpoints; see `models/saved_models/README.md` for the full before/after and `models/real_admet.py`
-for a feature-mismatch serving bug this retrain also fixed.
+**Features** — identical across all seven endpoints, generated from the manifest:
+
+<!-- ADMET-FEATURES:START -->
+| Component | Count |
+|---|---|
+| ECFP4/Morgan radius=2 nBits=2048 | 2,048 |
+| RDKit descriptors | 217 |
+| **Total features per molecule** | **2,265** |
+<!-- ADMET-FEATURES:END -->
+
+**Production Ready**: **No.** These are real held-out test metrics rather than training-set numbers, which makes them honest — not sufficient. Each figure comes from a single TDC scaffold split with no prospective, external, or assay validation, and several endpoints have small test sets (hERG n=132, DILI n=96). Suitable for research and educational screening and for ranking candidates; **not** suitable for production or regulatory decisions. This matches the scope stated in [README.md](README.md).
+
+**Generations.** The table above is generated from
+`models/saved_models/admet_models_manifest.json` and verified against it by
+`tests/test_docs_metrics.py`. Two earlier generations are **historical and are not current
+shipped performance**: a per-endpoint set, and a 2026-08-29 batch retrain that this document
+previously presented as current. Its thresholds also differed from the shipped ones. For the
+per-generation comparison see `models/saved_models/README.md`.
 
 ### Category 1: Validated Industry Standards ✅
 
 **Drug-likeness metrics** (Lipinski, Veber, QED, SA) are well-established, peer-reviewed methods used in pharmaceutical industry.
 
 **Validation**: Decades of pharmaceutical research  
-**Production Ready**: Yes  
-**Confidence**: High
+**Status**: Established deterministic calculations — the formulas are standard and reproduce the
+published definitions exactly. **Not clinical or regulatory decision support**: a correct Lipinski
+or QED value is a property of the molecule, not a judgement about whether a compound should be
+advanced.
+
+**Confidence**: High in the calculation; the interpretation remains the reader's.
 
 ### Category 2: Deprecated/Never-Trained Modules ❌⚠️
 
@@ -313,7 +332,7 @@ logp = Descriptors.MolLogP(mol)
 
 ### Hepatotoxicity
 
-**Status**: ⚠️ **Heuristic (Structural Alerts)** + ✅ **Real XGBoost (DILI, AUROC 0.925)** — legacy "Neural Network" module deprecated, never trained
+**Status**: ⚠️ **Heuristic (Structural Alerts)** + ✅ **Real XGBoost (DILI)** — legacy "Neural Network" module deprecated, never trained. Current DILI metric and threshold: see the generated table in Category 0.
 
 #### Heuristic Approach
 
@@ -333,13 +352,13 @@ logp = Descriptors.MolLogP(mol)
 
 **Status**: ❌ **NOT TRAINED** — `models/neural_toxicity.py` sets weights via `np.random.randn() * 0.01` once at initialization and never runs an optimizer or `.fit()`. No learning ever occurred; "5-layer feedforward network" describes an untrained, frozen-random-weight architecture, not a working model.
 
-**Real alternative**: DILI (hepatotoxicity) now has a real, held-out-validated XGBoost model — AUROC 0.925 (threshold 0.40) on a TDC scaffold split, n_test=96. See Category 0 above and `models/real_admet.py`.
+**Real alternative**: DILI (hepatotoxicity) has a real, held-out-validated XGBoost model on a TDC scaffold split. Its current AUROC, threshold and test-set size are in the generated table in Category 0 above; see also `models/real_admet.py`.
 
 ---
 
 ### hERG Cardiotoxicity
 
-**Status**: ⚠️ **Heuristic** + ✅ **Real XGBoost (AUROC 0.809)** — legacy "Neural Network" module deprecated, never trained
+**Status**: ⚠️ **Heuristic** + ✅ **Real XGBoost (hERG)** — legacy "Neural Network" module deprecated, never trained. Current hERG metric and threshold: see the generated table in Category 0.
 
 #### Heuristic Approach
 
@@ -359,13 +378,13 @@ logp = Descriptors.MolLogP(mol)
 
 **Status**: ❌ **NOT TRAINED** — fixed random weights (`np.random.randn`), no `fit`/backprop ever run. Module deprecated.
 
-**Real alternative**: Real, held-out-validated XGBoost model — hERG AUROC 0.809 (threshold 0.35) on a TDC scaffold split, n_test=132. See Category 0 above and `models/real_admet.py`.
+**Real alternative**: Real, held-out-validated XGBoost model for hERG on a TDC scaffold split. Its current AUROC, threshold and test-set size are in the generated table in Category 0 above; see also `models/real_admet.py`.
 
 ---
 
 ### Mutagenicity (Ames Test)
 
-**Status**: ⚠️ **Heuristic** + ✅ **Real XGBoost (AUROC 0.845, a ⚠ -0.0015 regression vs. the prior model — see Category 0)** — legacy "Neural Network" module deprecated, never trained
+**Status**: ⚠️ **Heuristic** + ✅ **Real XGBoost (Ames)** — legacy "Neural Network" module deprecated, never trained. Current Ames metric and threshold: see the generated table in Category 0.
 
 #### Heuristic Approach
 
@@ -380,7 +399,7 @@ logp = Descriptors.MolLogP(mol)
 
 **Status**: ❌ **NOT TRAINED** — fixed random weights (`np.random.randn`), no `fit`/backprop ever run. Module deprecated.
 
-**Real alternative**: Real, held-out-validated XGBoost model — AMES AUROC 0.845 (threshold 0.50) on a TDC scaffold split, n_test=1,457. See Category 0 above and `models/real_admet.py`.
+**Real alternative**: Real, held-out-validated XGBoost model for Ames mutagenicity on a TDC scaffold split. Its current AUROC, threshold and test-set size are in the generated table in Category 0 above; see also `models/real_admet.py`.
 
 **References**:
 [5] Kazius et al. (2005). J Med Chem, 48(1):312-20. DOI: 10.1021/jm040835a
@@ -600,7 +619,7 @@ Recommended datasets for model validation:
 This platform demonstrates **computational drug discovery workflows** with **varying levels of validation**:
 
 - ✅ **ADMET Toxicity/ADME (7 endpoints)**: real gradient-boosted (XGBoost) models validated on held-out TDC scaffold splits — see `models/saved_models/admet_models_manifest.json`
-- ✅ **Drug-likeness metrics**: Production-ready, validated standards
+- ✅ **Drug-likeness metrics**: Validated standards — established deterministic calculations, not clinical or regulatory decision support
 - ⚠️ **Remaining ADME/PK & Toxicity endpoints**: Heuristic methods for screening only
 - ❌ **`neural_toxicity.py` / `ml_models.py`**: Were never legitimately trained (untrained random weights / fit-on-fake-data) and are being **removed**, not merely "demonstration"
 - 🔬 **Future Work**: Extend real XGBoost coverage to remaining heuristic endpoints (kinase, GPCR, ion channel target-class predictions)

@@ -19,7 +19,12 @@ BioStudio demonstrates modular pharmaceutical data science workflows for small m
 
 This platform is intended for educational and research purposes.
 
-Current ADME/PK, toxicity, and target class predictors primarily use heuristic scoring functions derived from established molecular descriptors. For production or regulatory use, these components should be replaced with validated QSAR models trained on curated pharmaceutical datasets.
+The platform runs two clearly separated kinds of predictor, and the distinction matters when reading any output:
+
+- **Trained models (7 ADMET endpoints).** DILI, hERG, Ames, BBB, P-gp, CYP3A4 and Caco-2 are gradient-boosted models trained on Therapeutics Data Commons data and evaluated once on a held-out TDC scaffold split. Metrics, thresholds and test-set sizes are generated from `models/saved_models/admet_models_manifest.json` and published in [VALIDATION.md](VALIDATION.md).
+- **Heuristics (not trained models).** ADME/PK scoring (LogP, permeability, BBB descriptor rules, CYP450, clearance), structural-alert toxicity screens, and target-class likelihood are rule-based functions over molecular descriptors. They carry no held-out metrics because they were never fitted to data, and the app labels them as heuristic at the point of display.
+
+Neither kind is suitable for production or regulatory use. The heuristic modules would need replacing with validated QSAR models; the trained models would need prospective validation well beyond a single held-out split.
 
 Scientific foundations and methodological references are documented in `METHODOLOGY.md` and `REFERENCES.md`.
 
