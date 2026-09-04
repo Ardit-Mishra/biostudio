@@ -373,7 +373,7 @@ Expected:
 
 **Input**: SMILES string
 
-**Model**: `RealADMETPredictor` (`models/real_admet.py`) — 7 independently trained XGBoost models, one per endpoint, each on a TDC scaffold split (seed 1). Features: ECFP4/Morgan fingerprint (2048 bits) + 10 RDKit descriptors (2,058 total).
+**Model**: `RealADMETPredictor` (`models/real_admet.py`) — 7 independently trained XGBoost models, one per endpoint, each on a TDC scaffold split (seed 1). Features: ECFP4/Morgan fingerprint (2,048 bits) + 217 RDKit descriptors (2,265 total); see VALIDATION.md for the generated contract.
 
 **Endpoints & held-out test performance** (from `models/saved_models/admet_models_manifest.json`):
 
