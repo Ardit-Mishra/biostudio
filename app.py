@@ -1070,12 +1070,12 @@ elif page == "Toxicity Radar":
 
     with st.expander("**Model Selection Benchmark — why XGBoost, not a neural net or a chemical LLM**"):
         st.markdown("""
-        Before settling on gradient-boosted trees (XGBoost) for the seven production ADMET endpoints,
+        Before settling on gradient-boosted trees (XGBoost) for the seven served ADMET endpoints,
         four of them were also benchmarked against two deep-learning approaches on the *same* TDC
         endpoints and the *same* scaffold split, to check whether a heavier model earns its cost on
         this data rather than assuming it would.
 
-        **Compared**: XGBoost (production) vs. **ChemBERTa-77M-MLM** (a chemical language model,
+        **Compared**: XGBoost (served) vs. **ChemBERTa-77M-MLM** (a chemical language model,
         LoRA fine-tuned) vs. **Chemprop D-MPNN** (a message-passing graph neural network). All three
         trained CPU-only, $0 marginal cost, no GPU.
 
@@ -1097,10 +1097,10 @@ elif page == "Toxicity Radar":
 
         **Honest caveats, not smoothed over**:
         - The XGBoost column is a **single held-out evaluation** (scaffold seed 1, matching the
-          production models); the two deep-learning columns are a **mean ± std over 3 scaffold-split
+          served models); the two deep-learning columns are a **mean ± std over 3 scaffold-split
           seeds**. XGBoost has no reported variance here, so this isn't a perfectly like-for-like
           comparison — a fair XGBoost error bar would need the same 3-seed treatment.
-        - This benchmark covers **4 of the 7** production endpoints (BBB_Martins, hERG, AMES, DILI).
+        - This benchmark covers **4 of the 7** served endpoints (BBB_Martins, hERG, AMES, DILI).
           Pgp_Broccatelli, CYP3A4_Veith and Caco2_Wang were not run through the deep-learning tiers.
         - Exact training/inference wall-clock time wasn't instrumented in the training scripts, so
           no specific seconds are claimed here — the cost comparison above is about model size and
@@ -1112,26 +1112,46 @@ elif page == "Toxicity Radar":
         and serving cost.
         """)
 
-    # Prediction method selection
-    prediction_method = st.radio(
-        "Select Prediction Method",
-        ["XGBoost (Gradient-Boosted)", "Heuristic (Rule-Based)", "Both (Comparison)"],
-        index=0,
-        horizontal=True,
-        help=f"XGBoost models use ECFP4 fingerprints + {admet_feat.N_DESC} RDKit descriptors, held-out validated on TDC. Heuristic uses structural alerts."
-    )
+    # Method selection and SMILES entry share one keyed form.
+    #
+    # They were previously bare widgets, and every rerun rebuilt the radio
+    # with index=0. Choosing "Both (Comparison)" and then editing the SMILES
+    # silently reverted the method to XGBoost-only -- the user got a different
+    # analysis from the one they asked for, with nothing on screen saying so.
+    # A form defers the rerun until submit, and the explicit keys keep both
+    # values in session state, so editing one input cannot discard the other.
+    with st.form("toxicity_radar_form"):
+        prediction_method = st.radio(
+            "Select Prediction Method",
+            ["XGBoost (Gradient-Boosted)", "Heuristic (Rule-Based)", "Both (Comparison)"],
+            key="tox_prediction_method",
+            horizontal=True,
+            help=f"XGBoost models use ECFP4 fingerprints + {admet_feat.N_DESC} RDKit descriptors, held-out validated on TDC. Heuristic uses structural alerts."
+        )
+        smiles_input = st.text_input(
+            "Enter SMILES String",
+            value="CC(C)Cc1ccc(cc1)C(C)C(=O)O",
+            key="tox_smiles_input",
+        )
+        run_analysis = st.form_submit_button("Run Toxicity Analysis", type="primary")
 
-    # SMILES input
-    smiles_input = st.text_input("Enter SMILES String", "CC(C)Cc1ccc(cc1)C(C)C(=O)O")
-
-    # Analysis button
-    if st.button("Run Toxicity Analysis", type="primary"):
+    if run_analysis:
         # Validate SMILES
         is_valid, canonical_smiles = mol_processor.validate_smiles(smiles_input)
 
         if is_valid:
             # Convert to molecule
             mol = mol_processor.smiles_to_mol(canonical_smiles)
+
+            # Every result set below describes this parsed structure, not the
+            # raw text in the box. Without this line a defaulted or uncommitted
+            # input rendered confident numbers with nothing identifying which
+            # molecule they were for.
+            st.markdown(f"**Results for:** `{canonical_smiles}`")
+            st.caption(
+                "Canonical SMILES as parsed by RDKit. If this differs from what you "
+                "entered, the parsed structure is what was scored."
+            )
 
             # Real XGBoost ADMET predictions
             if prediction_method == "XGBoost (Gradient-Boosted)":
@@ -1196,7 +1216,18 @@ elif page == "Toxicity Radar":
                                 st.caption("Prediction unavailable for this structure.")
                                 continue
                             if res["task"] == "regression":
-                                st.metric(res.get("metric") or "Value", f"{res['value']:.3f}")
+                                # Label the value with the property predicted, not
+                                # with the model's evaluation metric. This read
+                                # "MAE -4.988", which put the held-out error name on
+                                # a molecule-level prediction; the two numbers are
+                                # unrelated quantities.
+                                st.metric(f"Predicted {label}", f"{res['value']:.3f}")
+                                st.caption(
+                                    f"Value is on the benchmark's own scale. "
+                                    f"{res.get('metric') or 'The metric'} below is the model's "
+                                    "held-out error across the whole test set, not an error "
+                                    "bar on this molecule."
+                                )
                             else:
                                 st.metric("Probability", f"{res['probability'] * 100:.1f}%")
                             st.caption(f"Model: {res['provenance']}")
@@ -1230,7 +1261,7 @@ elif page == "Toxicity Radar":
                     st.markdown("#### Mutagenicity (Ames Test)")
                     data = tox_profile['Mutagenicity (Ames)']
                     st.metric("Risk Level", data['Mutagenicity Risk'])
-                    st.markdown(f"**Probability:** {data['Ames Positive Probability']}")
+                    st.markdown(f"**Rule-based likelihood:** {data['Ames Positive Probability']}")
                     st.info(data['Recommendation'])
                 
                 with col2:
@@ -1291,7 +1322,7 @@ elif page == "Toxicity Radar":
                             st.caption(f"IC50: {heur_data['IC50 Estimate']}")
                         elif endpoint == 'Mutagenicity (Ames)':
                             st.metric("Risk", heur_data['Mutagenicity Risk'])
-                            st.caption(f"Prob: {heur_data['Ames Positive Probability']}")
+                            st.caption(f"Rule-based likelihood: {heur_data['Ames Positive Probability']}")
                         else:
                             st.metric("Risk", heur_data['Carcinogenicity Risk'])
                             st.caption(f"Category: {heur_data['Category']}")
