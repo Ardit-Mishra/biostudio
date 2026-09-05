@@ -1,0 +1,6 @@
+# requirements.txt is a generated lock: it is diffed across machines and read
+# inside a Linux container, so it must be byte-identical wherever it is checked
+# out. CRLF normalisation has already broken a lockfile and a set of fixture
+# hashes elsewhere in this portfolio; declaring the ending is cheaper than
+# diagnosing that a third time.
+requirements.txt text eol=lf

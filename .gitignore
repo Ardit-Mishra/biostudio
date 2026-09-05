@@ -123,3 +123,9 @@ site/
 
 # Downloaded TDC benchmark data (re-fetched by ml-training/biostudio/train_and_save_admet.py)
 models/tdc_data/
+
+# The runtime lock is requirements.txt, compiled from pyproject.toml (see that
+# file's header). uv.lock is not used by CI or the image, and `uv run` recreates
+# it here as a side effect; ignoring it stops a second, unused lockfile drifting
+# back into the repo.
+uv.lock

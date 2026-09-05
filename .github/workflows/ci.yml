@@ -8,9 +8,22 @@ name: CI
 # This comment previously said the legacy suites in tests/test_drug_likeness.py
 # and tests/test_molecular_utils.py were excluded because of 25 pre-existing
 # failures. Both statements were stale: the workflow runs `pytest tests/`
-# wholesale and excludes nothing, and the suite now passes 184/184. Corrected
+# wholesale and excludes nothing, and the complete suite passes. Corrected
 # rather than left in place, because a comment describing behaviour the file
-# does not have is worse than no comment.
+# does not have is worse than no comment. The old wording also quoted a fixed
+# pass count, which went stale the moment a test was added -- so no count is
+# repeated here.
+#
+# --no-project is load-bearing. pyproject.toml now declares real dependencies
+# (they were previously misfiled under [project.urls] and invisible), so
+# without it `uv run` would resolve and sync the project itself and only then
+# layer these requirements on top -- testing a graph that is not the committed
+# lock. With it, the environment is exactly two tiers: requirements.txt, the
+# runtime lock, plus requirements-dev.txt, which is test-only. The image
+# installs the runtime tier only -- it ships no test dependencies and
+# .dockerignore keeps tests/ out of it -- so CI exercises the same runtime
+# dependency graph the container runs, with the test tier layered on top
+# here and nowhere else.
 
 on:
   pull_request:
@@ -31,4 +44,4 @@ jobs:
 
       - name: Run ADMET model test suite
         run: >
-          uv run --python 3.12 --with-requirements requirements.txt --with-requirements requirements-dev.txt python -m pytest tests/ -v
+          uv run --no-project --python 3.12 --with-requirements requirements.txt --with-requirements requirements-dev.txt python -m pytest tests/ -v

@@ -1,7 +1,17 @@
 # Ardit BioCore - AI-Powered Molecular Intelligence Platform
-# Dockerfile for reproducible containerized environment
+# Dockerfile for a version-pinned containerized runtime
 
-FROM python:3.11-slim
+# 3.12 because that is what pyproject.toml requires-python declares, what CI
+# runs, and what the served ADMET models were trained under. 3.11 here meant
+# the image ran a different interpreter from every other environment.
+#
+# Pinned by digest, not by tag. `python:3.12-slim` is a moving target -- it is
+# rebuilt whenever its base or security patches change -- so a tag alone lets
+# the base drift under us. This digest is the multi-arch OCI index
+# (linux/amd64, linux/arm64v8 and six others), so pinning it does not tie the
+# build to one architecture. Re-resolve with:
+#   docker buildx imagetools inspect python:3.12-slim
+FROM python:3.12-slim@sha256:78387bc3881b8273120a12ebe6c1ab22b018ccc2c9adf565ae1ac9b536e184ea
 
 # Set working directory
 WORKDIR /app
@@ -12,46 +22,41 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Install system dependencies
+# Install system dependencies.
+#
+# libexpat1 is required by RDKit's drawing code: rdkit.Chem.Draw.rdMolDraw2D
+# links libexpat.so.1, so without it `from rdkit.Chem import Draw` raises
+# ImportError, app.py fails at its top-level imports, and the container
+# serves a traceback instead of the UI. This list was originally written for
+# the rdkit-pypi 2022.9.5 wheel, which did not need it; the omission only
+# became reachable once the image started installing current rdkit.
 RUN apt-get update && apt-get install -y \
     build-essential \
     gcc \
     g++ \
+    libexpat1 \
     libxrender1 \
     libxext6 \
     libsm6 \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Upgrade pip
-RUN pip install --upgrade pip
+# Copy dependency files first so the install layer is cached independently of
+# application code.
+COPY pyproject.toml requirements.txt ./
 
-# Copy dependency files
-COPY pyproject.toml ./
-
-# Install Python dependencies
-# CRITICAL: NumPy must be <2.0 for RDKit compatibility
-RUN pip install --no-cache-dir \
-    "numpy>=1.24,<2.0" \
-    rdkit-pypi>=2022.9.5 \
-    streamlit>=1.51.0 \
-    fastapi>=0.121.2 \
-    uvicorn>=0.38.0 \
-    scikit-learn>=1.7.2 \
-    xgboost>=3.1.1 \
-    umap-learn>=0.5.9 \
-    pandas>=2.3.3 \
-    scipy>=1.16.3 \
-    matplotlib>=3.10.7 \
-    seaborn>=0.13.2 \
-    plotly>=6.4.0 \
-    networkx>=3.5 \
-    pyvis>=0.3.2 \
-    biopython>=1.86 \
-    pydantic>=2.12.4 \
-    pillow>=12.0.0 \
-    joblib>=1.5.2 \
-    requests>=2.32.5
+# Install the exact runtime lock compiled from pyproject.toml: the same locked
+# runtime dependency graph CI installs. CI additionally installs
+# requirements-dev.txt (pytest and its test client); the image does not, and
+# .dockerignore keeps tests/ out of it. So the two environments hold identical
+# runtime dependencies and differ only by that test-only tier.
+#
+# This step was previously a hardcoded package list that had drifted from
+# requirements.txt: it installed rdkit-pypi (a community wheel abandoned at
+# 2022.9.5) instead of rdkit, and omitted py3Dmol and pyfamsa, both of which
+# the app imports. There is now one dependency source, so that divergence
+# cannot recur silently.
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
