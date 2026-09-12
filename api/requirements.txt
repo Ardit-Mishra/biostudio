@@ -26,10 +26,8 @@
 # xgboost-cpu, NOT xgboost: the default `xgboost` wheel bundles ~190MB of
 # CUDA runtime this CPU-only inference service never uses.
 #
-# Deliberately NOT listed here: an ASGI server (uvicorn/gunicorn). Supply
-# whichever one the deployment target expects (`pip install uvicorn` locally,
-# or the platform's own ASGI runner in production) so this file stays scoped
-# to what api/prediction_api.py itself imports.
+# The deployed API launches via uvicorn. Pin it here so this runtime contract
+# does not depend on a platform-specific implicit ASGI server.
 fastapi==0.121.2
 pydantic==2.12.4
 rdkit==2026.3.5
@@ -37,3 +35,4 @@ xgboost-cpu==3.2.0
 numpy==1.26.4
 pandas==3.0.5
 scikit-learn==1.9.0
+uvicorn==0.52.4

@@ -12,15 +12,19 @@ Requires `httpx` (Starlette's TestClient dependency) in addition to the main
 requirements.txt -- not part of api/requirements.txt, which is runtime-only.
 """
 import os
+import shutil
 import sys
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
+MODELDIR = Path(ROOT) / "models" / "saved_models"
 sys.path.insert(0, ROOT)
 
+import api.prediction_api as prediction_api  # noqa: E402
 from api.prediction_api import app, real_admet  # noqa: E402
 from models.real_admet import get_predictor  # noqa: E402
 
@@ -283,7 +287,22 @@ class TestHealthAndReadiness:
     def test_health_is_liveness_only(self):
         resp = client.get("/v1/health")
         assert resp.status_code == 200
-        assert resp.json() == {"status": "ok"}
+        body = resp.json()
+        assert body["status"] == "ok"
+        assert body["version"] == "2.0.0"
+        assert isinstance(body["uptime_seconds"], float)
+        assert body["uptime_seconds"] >= 0
+        assert body["commit_source"] in {"environment", "unavailable"}
+        assert isinstance(body["likely_cold_start"], bool)
+
+    def test_health_reports_an_environment_supplied_build_commit(self, monkeypatch):
+        monkeypatch.setattr(prediction_api, "BUILD_COMMIT", "abc123")
+        monkeypatch.setattr(prediction_api, "BUILD_COMMIT_SOURCE", "environment")
+
+        body = client.get("/v1/health").json()
+
+        assert body["commit"] == "abc123"
+        assert body["commit_source"] == "environment"
 
     def test_ready_reports_which_models_actually_loaded(self):
         resp = client.get("/v1/ready")
@@ -295,6 +314,25 @@ class TestHealthAndReadiness:
         else:
             assert resp.status_code == 503
             assert body["ready"] is False
+
+
+class TestOptionalEnsembleArtifacts:
+    def test_toxicity_endpoint_serves_xgboost_when_rf_and_mlp_files_are_absent(self, tmp_path, monkeypatch):
+        from models.real_admet import RealADMETPredictor
+
+        for path in MODELDIR.glob("*_xgb.json"):
+            shutil.copy2(path, tmp_path / path.name)
+        for path in MODELDIR.glob("*_meta.json"):
+            shutil.copy2(path, tmp_path / path.name)
+        shutil.copy2(MODELDIR / "admet_models_manifest.json", tmp_path / "admet_models_manifest.json")
+        predictor = RealADMETPredictor(model_dir=str(tmp_path))
+        monkeypatch.setattr(prediction_api, "real_admet", predictor)
+
+        response = client.post("/v1/predict/toxicity", json={"smiles": ASPIRIN})
+
+        assert response.status_code == 200
+        assert predictor.rf_models == {}
+        assert predictor.mlp_models == {}
 
 
 # =============================================================================

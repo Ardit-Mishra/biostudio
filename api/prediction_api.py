@@ -31,6 +31,7 @@ import os
 import re
 import sys
 import logging
+import time
 from typing import Annotated, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, Request
@@ -52,6 +53,9 @@ from models.real_admet import get_predictor as get_real_admet_predictor
 from models.real_admet import _TOX_MAP as _REAL_TOX_LABEL_TO_TDC_NAME
 
 _log = logging.getLogger(__name__)
+STARTED_AT = time.monotonic()
+BUILD_COMMIT = os.environ.get("GIT_COMMIT", "unknown")
+BUILD_COMMIT_SOURCE = "environment" if "GIT_COMMIT" in os.environ else "unavailable"
 
 app = FastAPI(
     title="AI-Powered Drug Discovery API",
@@ -324,7 +328,15 @@ def read_root() -> Dict:
 def health() -> Dict:
     """Liveness only: the process is up and answering requests. Says nothing
     about whether the real models actually loaded -- that's /v1/ready."""
-    return {"status": "ok"}
+    uptime_seconds = time.monotonic() - STARTED_AT
+    return {
+        "status": "ok",
+        "version": app.version,
+        "commit": BUILD_COMMIT,
+        "commit_source": BUILD_COMMIT_SOURCE,
+        "uptime_seconds": round(uptime_seconds, 3),
+        "likely_cold_start": uptime_seconds < 60,
+    }
 
 
 @app.get("/v1/ready")
@@ -507,4 +519,4 @@ app.add_api_route("/batch/predict", batch_predict_v1, methods=["POST"])
 # =============================================================================
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", "8000")))

@@ -22,6 +22,9 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
+ARG GIT_COMMIT=unknown
+ENV GIT_COMMIT=${GIT_COMMIT}
+
 # Install system dependencies.
 #
 # libexpat1 is required by RDKit's drawing code: rdkit.Chem.Draw.rdMolDraw2D
@@ -67,15 +70,13 @@ RUN mkdir -p .streamlit
 # Create Streamlit config
 RUN echo '[server]\nport = 5000\naddress = "0.0.0.0"\nheadless = true\n\n[browser]\ngatherUsageStats = false' > .streamlit/config.toml
 
-# Expose ports
-EXPOSE 5000 8000
+# The API host supplies PORT. Expose the documented fallback for local Docker
+# use only; the shell-form command expands the platform value at runtime.
+EXPOSE 8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:5000')"
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/health', timeout=5)"
 
-# Default command: Run Streamlit
-CMD ["streamlit", "run", "app.py", "--server.port", "5000", "--server.address", "0.0.0.0"]
-
-# Alternative: Run both Streamlit and FastAPI
-# CMD ["sh", "-c", "streamlit run app.py --server.port 5000 & uvicorn api.prediction_api:app --host 0.0.0.0 --port 8000"]
+# Shell form is required so Render's $PORT is expanded at container runtime.
+CMD uvicorn api.prediction_api:app --host 0.0.0.0 --port ${PORT:-8000}

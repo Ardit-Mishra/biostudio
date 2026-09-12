@@ -43,6 +43,7 @@ from packaging.version import Version
 ROOT = Path(__file__).resolve().parents[1]
 PYPROJECT = ROOT / "pyproject.toml"
 LOCK = ROOT / "requirements.txt"
+API_REQUIREMENTS = ROOT / "api" / "requirements.txt"
 DOCKERFILE = ROOT / "Dockerfile"
 CI = ROOT / ".github" / "workflows" / "ci.yml"
 MANIFEST = ROOT / "models" / "saved_models" / "admet_models_manifest.json"
@@ -226,6 +227,21 @@ def test_dockerfile_base_image_satisfies_requires_python():
         f"{python_requirement()}. The container would be the one environment "
         "on a different interpreter."
     )
+
+
+def test_api_runtime_declares_its_asgi_server_and_docker_uses_platform_port():
+    api_requirements = API_REQUIREMENTS.read_text(encoding="utf-8")
+    dockerfile = DOCKERFILE.read_text(encoding="utf-8")
+
+    assert re.search(r"^uvicorn==[^\s]+$", api_requirements, re.MULTILINE)
+    assert re.search(r"^ARG\s+GIT_COMMIT", dockerfile, re.MULTILINE)
+    assert re.search(r"^ENV\s+GIT_COMMIT=", dockerfile, re.MULTILINE)
+    assert re.search(
+        r"^CMD\s+uvicorn\s+api\.prediction_api:app\s+--host\s+0\.0\.0\.0\s+--port\s+\$\{PORT:-8000\}",
+        dockerfile,
+        re.MULTILINE,
+    )
+    assert "/v1/health" in dockerfile
 
 
 def dockerfile_run_steps() -> list[str]:
