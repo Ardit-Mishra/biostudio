@@ -18,6 +18,9 @@ on:
     branches:
       - main
       - ui/instrument-design-system
+  # Lets the suite be re-run from the Actions tab without an empty commit.
+  # GenomeSight's workflow already carries this; this one did not.
+  workflow_dispatch:
 
 jobs:
   admet-model-tests:
