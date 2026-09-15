@@ -7,11 +7,24 @@ authors = [
     {name = "Ardit Mishra", email = "amishra7599@gmail.com"}
 ]
 
-[project.urls]
-Homepage = "https://github.com/Ardit-Mishra/biostudio"
-Repository = "https://github.com/Ardit-Mishra/biostudio"
-Issues = "https://github.com/Ardit-Mishra/biostudio/issues"
-requires-python = ">=3.11,<3.12"
+# Runtime dependencies. These sit in [project], NOT [project.urls] -- they were
+# indented under the urls table at some point, which is valid TOML and silently
+# catastrophic: PEP 621 then reads [project] as declaring no dependencies at
+# all, so `pip install .` installs nothing and `uv lock` produces a lockfile
+# holding only this package. That is what happened; uv.lock went from 1302
+# lines to 8 in 2ba537c without anything failing, because the Dockerfile
+# hardcodes its own install list and CI installs from requirements.txt. Nothing
+# reads this table, so nothing complained.
+#
+# rdkit-pypi is not listed. It is the legacy community fork of rdkit, which now
+# publishes official wheels; declaring both invites two RDKit builds in one
+# environment. requirements.txt already lists only rdkit, and this table is
+# meant to mirror it.
+#
+# requires-python is ">=3.11" rather than the ">=3.11,<3.12" that was sitting in
+# the urls table: the Docker image is python:3.11-slim and CI runs 3.12, so the
+# old bound excluded the interpreter the tests actually run on.
+requires-python = ">=3.11"
 dependencies = [
     "biopython>=1.86",
     "fastapi>=0.121.2",
@@ -27,7 +40,6 @@ dependencies = [
     "pyfamsa>=0.7.0",
     "pyvis>=0.3.2",
     "rdkit>=2025.9.1",
-    "rdkit-pypi>=2022.9.5",
     "requests>=2.32.5",
     "scikit-learn>=1.7.2",
     "scipy>=1.16.3",
@@ -37,6 +49,11 @@ dependencies = [
     "uvicorn>=0.38.0",
     "xgboost>=3.1.1",
 ]
+
+[project.urls]
+Homepage = "https://github.com/Ardit-Mishra/biostudio"
+Repository = "https://github.com/Ardit-Mishra/biostudio"
+Issues = "https://github.com/Ardit-Mishra/biostudio/issues"
 
 [[tool.uv.index]]
 explicit = true

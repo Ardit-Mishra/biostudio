@@ -29,6 +29,13 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v10.0.1
 
+      - name: Check uv.lock is current with pyproject.toml
+        # Cheap freshness gate. It does not catch a manifest that declares
+        # nothing (uv locks an empty project happily -- see
+        # tests/test_packaging_manifest.py for that guard), but it does stop the
+        # lockfile drifting from the dependency table it is supposed to pin.
+        run: uv lock --check
+
       - name: Run ADMET model test suite
         run: >
           uv run --python 3.12 --with-requirements requirements.txt --with-requirements requirements-dev.txt python -m pytest tests/ -v
