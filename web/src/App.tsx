@@ -1,293 +1,178 @@
-import { FormEvent, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { FlaskConical, Moon, RotateCw, Sun } from "lucide-react";
+
+import { AssayTranslationMap } from "@/components/AssayTranslationMap";
+import { EvidenceInspector } from "@/components/EvidenceInspector";
+import { IntegrityPanel } from "@/components/IntegrityPanel";
+import { VerdictBanner } from "@/components/VerdictBanner";
+import { compileStudy, type Compilation } from "@/lib/decision-twin";
 import {
-  AlertTriangle,
-  ArrowRight,
-  BookOpen,
-  Check,
-  ChevronRight,
-  CircleHelp,
-  ClipboardCheck,
-  CloudSun,
-  Database,
-  FlaskConical,
-  LoaderCircle,
-  Moon,
-  Search,
-  ShieldCheck,
-  Sun,
-  Trash2,
-  X,
-} from "lucide-react";
+  EXEMPLAR_EVIDENCE,
+  EXEMPLAR_QUESTION,
+  EXEMPLAR_STUDY_ID,
+  EXEMPLAR_TITLE,
+} from "@/exemplar";
 
-type SourceName = "europe_pmc" | "open_targets";
-type SourceArtifact = {
-  citation: { source: SourceName; source_id: string; retrieved_at: string };
-  title: string;
-  excerpt?: string | null;
-  structured_record: Record<string, unknown>;
-};
-type EvidenceRecord = {
-  id: string;
-  claim: string;
-  citation: SourceArtifact["citation"];
-  excerpt?: string | null;
-  structured_record?: Record<string, unknown> | null;
-  assay_context: {
-    target_id: string;
-    biological_system: string;
-    readout: string;
-    unit: string;
-  };
-  outcome_direction: "supports" | "contradicts" | "unknown";
-};
-type Lane = {
-  stage: "biochemical" | "cellular" | "in_vivo" | "human" | "unclassified";
-  status: "supporting" | "contradicting" | "conflicting" | "inconclusive" | "missing" | "unclassified";
-  evidence_ids: string[];
-  gaps: string[];
-};
-type Compilation = {
-  status: "advance" | "hold" | "insufficient_evidence";
-  reasons: string[];
-  snapshot_digest: string;
-  evidence_count: number;
-  assay_translation_map: { lanes: Lane[] };
-};
+type Theme = "light" | "dark";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
-const initialLanes: Lane[] = [
-  { stage: "biochemical", status: "missing", evidence_ids: [], gaps: ["No biochemical evidence was supplied."] },
-  { stage: "cellular", status: "missing", evidence_ids: [], gaps: ["No cellular evidence was supplied."] },
-  { stage: "in_vivo", status: "missing", evidence_ids: [], gaps: ["No in vivo evidence was supplied."] },
-  { stage: "human", status: "missing", evidence_ids: [], gaps: ["No human evidence was supplied."] },
-  { stage: "unclassified", status: "missing", evidence_ids: [], gaps: [] },
-];
+function useTheme(): [Theme, () => void] {
+  const [theme, setTheme] = useState<Theme>(() => {
+    try {
+      const stored = localStorage.getItem("biostudio-theme");
+      if (stored === "light" || stored === "dark") return stored;
+    } catch {
+      /* private window or blocked storage — fall through to the OS preference */
+    }
+    return window.matchMedia?.("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  });
 
-function App() {
-  const [dark, setDark] = useState(false);
-  const [query, setQuery] = useState("EGFR AND NSCLC");
-  const [targetId, setTargetId] = useState("ENSG00000146648");
-  const [artifacts, setArtifacts] = useState<SourceArtifact[]>([]);
-  const [selected, setSelected] = useState<SourceArtifact | null>(null);
-  const [evidence, setEvidence] = useState<EvidenceRecord[]>([]);
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", theme === "dark");
+    try {
+      localStorage.setItem("biostudio-theme", theme);
+    } catch {
+      /* the toggle still works for this session without persistence */
+    }
+  }, [theme]);
+
+  return [theme, () => setTheme((t) => (t === "dark" ? "light" : "dark"))];
+}
+
+export default function App() {
+  const [theme, toggleTheme] = useTheme();
   const [compilation, setCompilation] = useState<Compilation | null>(null);
-  const [isSearching, setIsSearching] = useState(false);
-  const [isCompiling, setIsCompiling] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(true);
 
-  const lanes = compilation?.assay_translation_map.lanes ?? initialLanes;
-  const metrics = useMemo(() => ({
-    sources: new Set(evidence.map((record) => record.citation.source)).size,
-    evidence: evidence.length,
-    gaps: lanes.filter((lane) => lane.status === "missing").length,
-  }), [evidence, lanes]);
-
-  async function findSources() {
-    setIsSearching(true);
-    setMessage(null);
-    setCompilation(null);
-    const requests: Promise<Response>[] = [];
-    if (query.trim()) {
-      requests.push(fetch(`${API_BASE_URL}/v2/sources/europe-pmc/search?query=${encodeURIComponent(query.trim())}&page_size=6`));
-    }
-    if (targetId.trim()) {
-      requests.push(fetch(`${API_BASE_URL}/v2/sources/open-targets/targets/${encodeURIComponent(targetId.trim())}`));
-    }
+  const run = useCallback(async () => {
+    setPending(true);
+    setError(null);
     try {
-      const responses = await Promise.all(requests);
-      const payloads = await Promise.all(responses.map(async (response) => {
-        if (!response.ok) throw new Error("A public source could not be reached.");
-        return response.json() as Promise<{ records: SourceArtifact[] }>;
-      }));
-      setArtifacts(payloads.flatMap((payload) => payload.records));
-      setSelected(null);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "A public source could not be reached.");
+      setCompilation(
+        await compileStudy({
+          study_id: EXEMPLAR_STUDY_ID,
+          evidence: EXEMPLAR_EVIDENCE,
+        }),
+      );
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Compilation failed.");
+      setCompilation(null);
     } finally {
-      setIsSearching(false);
+      setPending(false);
     }
-  }
+  }, []);
 
-  function addEvidence(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!selected) return;
-    const form = new FormData(event.currentTarget);
-    const claim = String(form.get("claim") ?? "").trim();
-    const stage = String(form.get("stage") ?? "cellular");
-    const readout = String(form.get("readout") ?? "").trim();
-    const unit = String(form.get("unit") ?? "").trim();
-    const direction = String(form.get("direction") ?? "unknown") as EvidenceRecord["outcome_direction"];
-    if (!claim || !readout || !unit) {
-      setMessage("Claim, readout, and unit are required to add study evidence.");
-      return;
-    }
-    const record: EvidenceRecord = {
-      id: `ev-${String(evidence.length + 1).padStart(3, "0")}`,
-      claim,
-      citation: selected.citation,
-      excerpt: selected.excerpt,
-      structured_record: selected.structured_record,
-      assay_context: {
-        target_id: targetId.trim() || "unresolved-target",
-        biological_system: stage,
-        readout,
-        unit,
-      },
-      outcome_direction: direction,
-    };
-    setEvidence((current) => [...current, record]);
-    setSelected(null);
-    setCompilation(null);
-    setMessage(null);
-    event.currentTarget.reset();
-  }
+  useEffect(() => {
+    void run();
+  }, [run]);
 
-  async function compile() {
-    if (!evidence.length) return;
-    setIsCompiling(true);
-    setMessage(null);
-    try {
-      const response = await fetch(`${API_BASE_URL}/v2/decision-twins/compile`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ study_id: "operator-draft", evidence, model_assessments: [] }),
-      });
-      if (!response.ok) throw new Error("The Decision Twin could not compile this evidence draft.");
-      setCompilation(await response.json() as Compilation);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "The Decision Twin could not compile this evidence draft.");
-    } finally {
-      setIsCompiling(false);
-    }
-  }
+  const lanes = compilation?.assay_translation_map.lanes ?? [];
 
   return (
-    <main className={dark ? "app dark" : "app"}>
-      <header className="topbar">
-        <a className="brand" href="/" aria-label="BioStudio home">
-          <span className="brand-mark"><FlaskConical size={20} strokeWidth={1.8} /></span>
-          <span>BioStudio</span>
-        </a>
-        <div className="topbar-actions">
-          <span className="research-status"><span /> Research workspace</span>
-          <button className="icon-button" onClick={() => setDark((value) => !value)} aria-label="Toggle color theme">
-            {dark ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
+    <div className="min-h-screen bg-ground">
+      <header className="border-b border-line bg-surface">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-5 py-4 sm:px-6">
+          <div className="flex items-center gap-3">
+            <div className="grid size-9 shrink-0 place-items-center rounded-lg border border-[var(--ds-accent)]/40 bg-accent-soft text-[var(--ds-accent-ink)]">
+              <FlaskConical className="size-4.5" aria-hidden="true" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-mono text-[12.5px] font-semibold tracking-[0.14em] text-ink">
+                BIOSTUDIO
+              </p>
+              <p className="text-[12px] text-ink-muted">
+                Research-decision integrity
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void run()}
+              disabled={pending}
+              className="inline-flex min-h-9 items-center gap-2 rounded-md border border-line px-3 font-mono text-[12px] text-ink-muted transition-colors hover:border-line-strong hover:text-ink disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-accent)]"
+            >
+              <RotateCw
+                className={`size-3.5 ${pending ? "animate-spin" : ""}`}
+                aria-hidden="true"
+              />
+              Recompile
+            </button>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+              className="grid size-9 place-items-center rounded-md border border-line text-ink-muted transition-colors hover:border-line-strong hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-accent)]"
+            >
+              {theme === "dark" ? (
+                <Sun className="size-4" aria-hidden="true" />
+              ) : (
+                <Moon className="size-4" aria-hidden="true" />
+              )}
+            </button>
+          </div>
         </div>
       </header>
 
-      <section className="workspace">
-        <aside className="rail" aria-label="Workspace navigation">
-          <button className="rail-item active"><ClipboardCheck size={18} /><span>Decision Twin</span></button>
-          <button className="rail-item" disabled><Database size={18} /><span>Evidence library</span></button>
-          <button className="rail-item" disabled><CloudSun size={18} /><span>Model runs</span></button>
-        </aside>
-
-        <div className="content">
-          <section className="heading-row">
-            <div>
-              <p className="kicker">Target-to-candidate triage</p>
-              <h1>Decision Twin</h1>
-              <p className="lede">Trace what supports a decision, what contradicts it, and where the evidence has not arrived yet.</p>
-            </div>
-            <div className="metrics" aria-label="Study metrics">
-              <Metric label="Evidence" value={metrics.evidence} />
-              <Metric label="Sources" value={metrics.sources} />
-              <Metric label="Open gaps" value={metrics.gaps} />
-            </div>
-          </section>
-
-          {message && <div className="notice error"><AlertTriangle size={17} />{message}<button onClick={() => setMessage(null)} aria-label="Dismiss message"><X size={16} /></button></div>}
-
-          <section className="map-panel" aria-labelledby="map-title">
-            <div className="panel-heading">
-              <div><p className="kicker">Evidence translation</p><h2 id="map-title">Assay Translation Map</h2></div>
-              <OutcomePill status={compilation?.status} />
-            </div>
-            <div className="translation-map">
-              {lanes.map((lane, index) => <LaneCard lane={lane} index={index} key={lane.stage} />)}
-            </div>
-            {compilation && (
-              <div className="decision-readout">
-                <div><ShieldCheck size={18} /><span>{compilation.reasons.join(" ")}</span></div>
-                <code title={compilation.snapshot_digest}>snapshot {compilation.snapshot_digest.slice(0, 12)}</code>
-              </div>
-            )}
-          </section>
-
-          <section className="work-grid">
-            <div className="work-panel">
-              <div className="panel-heading compact"><div><p className="kicker">Public records</p><h2>Source finder</h2></div><BookOpen size={19} /></div>
-              <div className="source-fields">
-                <label>Literature query<input value={query} onChange={(event) => setQuery(event.target.value)} /></label>
-                <label>Ensembl target ID<input value={targetId} onChange={(event) => setTargetId(event.target.value)} /></label>
-              </div>
-              <button className="primary-button" onClick={findSources} disabled={isSearching || (!query.trim() && !targetId.trim())}>
-                {isSearching ? <LoaderCircle className="spin" size={17} /> : <Search size={17} />} Find records
-              </button>
-              <div className="artifact-list">
-                {artifacts.map((artifact) => (
-                  <button className={selected?.citation.source_id === artifact.citation.source_id ? "artifact selected" : "artifact"} key={`${artifact.citation.source}:${artifact.citation.source_id}`} onClick={() => setSelected(artifact)}>
-                    <span className="artifact-source">{artifact.citation.source.replace("_", " ")}</span>
-                    <strong>{artifact.title}</strong>
-                    <small>{artifact.citation.source_id}</small>
-                    <ChevronRight size={16} />
-                  </button>
-                ))}
-                {!artifacts.length && <p className="empty-copy">No records loaded in this workspace.</p>}
-              </div>
-            </div>
-
-            <div className="work-panel">
-              <div className="panel-heading compact"><div><p className="kicker">Operator annotation</p><h2>Study evidence</h2></div><FlaskConical size={19} /></div>
-              {selected ? (
-                <form onSubmit={addEvidence} className="evidence-form">
-                  <div className="selected-record"><Check size={16} /><span>{selected.citation.source_id}</span><button type="button" onClick={() => setSelected(null)} aria-label="Clear selected source"><X size={15} /></button></div>
-                  <label>Claim<textarea name="claim" required placeholder="State only what the source supports." /></label>
-                  <div className="form-split">
-                    <label>Assay layer<select name="stage" defaultValue="cellular"><option value="biochemical">Biochemical</option><option value="cellular">Cellular</option><option value="in_vivo">In vivo</option><option value="human">Human</option></select></label>
-                    <label>Direction<select name="direction" defaultValue="unknown"><option value="supports">Supports</option><option value="contradicts">Contradicts</option><option value="unknown">Unknown</option></select></label>
-                  </div>
-                  <div className="form-split"><label>Readout<input name="readout" required placeholder="e.g. viability" /></label><label>Unit<input name="unit" required placeholder="e.g. nM" /></label></div>
-                  <button className="secondary-button" type="submit">Add evidence <ArrowRight size={16} /></button>
-                </form>
-              ) : (
-                <div className="annotation-empty"><CircleHelp size={20} /><p>Select a public record before adding a study annotation.</p></div>
-              )}
-            </div>
-          </section>
-
-          <section className="draft-panel">
-            <div className="panel-heading compact"><div><p className="kicker">Current draft</p><h2>{evidence.length ? `${evidence.length} evidence record${evidence.length === 1 ? "" : "s"}` : "No evidence records"}</h2></div>
-              {evidence.length > 0 && <button className="text-button destructive" onClick={() => { setEvidence([]); setCompilation(null); }}> <Trash2 size={15} /> Clear draft</button>}
-            </div>
-            {evidence.length > 0 && <div className="draft-list">{evidence.map((record) => <div className="draft-row" key={record.id}><code>{record.id}</code><span>{record.claim}</span><span className={`direction ${record.outcome_direction}`}>{record.outcome_direction}</span></div>)}</div>}
-            <button className="compile-button" onClick={compile} disabled={!evidence.length || isCompiling}>
-              {isCompiling ? <LoaderCircle className="spin" size={17} /> : <ClipboardCheck size={17} />} Compile Decision Twin
-            </button>
-          </section>
+      <main className="mx-auto max-w-6xl px-5 py-8 sm:px-6 sm:py-10">
+        <div className="max-w-3xl">
+          <p className="font-mono text-[10.5px] uppercase tracking-[0.16em] text-[var(--ds-accent-ink)]">
+            Public exemplar study
+          </p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+            {EXEMPLAR_TITLE}
+          </h1>
+          <p className="mt-3 text-[15px] leading-relaxed text-ink-muted">
+            {EXEMPLAR_QUESTION}
+          </p>
+          <p className="mt-3 font-mono text-[11.5px] text-ink-faint">
+            {EXEMPLAR_STUDY_ID}
+          </p>
         </div>
-      </section>
-    </main>
+
+        {error && (
+          <p
+            role="alert"
+            className="mt-8 rounded-lg border border-[var(--ds-conflicting)] bg-[var(--ds-conflicting-soft)] px-4 py-3 text-[14px] text-ink"
+          >
+            {error}{" "}
+            <span className="text-ink-muted">
+              The Decision Twin API must be running for this study to compile.
+            </span>
+          </p>
+        )}
+
+        {pending && !compilation && (
+          <p className="mt-8 font-mono text-[12.5px] text-ink-muted">
+            Compiling the study from its evidence&hellip;
+          </p>
+        )}
+
+        {compilation && (
+          <div className="mt-8 space-y-10">
+            <VerdictBanner compilation={compilation} />
+
+            <AssayTranslationMap lanes={lanes} />
+
+            <div className="grid gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+              <EvidenceInspector evidence={EXEMPLAR_EVIDENCE} lanes={lanes} />
+              <IntegrityPanel compilation={compilation} />
+            </div>
+          </div>
+        )}
+      </main>
+
+      <footer className="border-t border-line">
+        <div className="mx-auto max-w-6xl px-5 py-6 text-[12px] leading-relaxed text-ink-faint sm:px-6">
+          Educational and research use. BioStudio reports whether public evidence
+          is consistent enough to justify a next research step; it does not
+          discover drugs, replace experimental validation, or make clinical
+          recommendations.
+        </div>
+      </footer>
+    </div>
   );
 }
-
-function Metric({ label, value }: { label: string; value: number }) {
-  return <div className="metric"><strong>{value}</strong><span>{label}</span></div>;
-}
-
-function OutcomePill({ status }: { status?: Compilation["status"] }) {
-  if (!status) return <span className="outcome-pill neutral">Awaiting evidence</span>;
-  return <span className={`outcome-pill ${status}`}>{status.replace("_", " ")}</span>;
-}
-
-function LaneCard({ lane, index }: { lane: Lane; index: number }) {
-  return <article className={`lane ${lane.status}`}>
-    <div className="lane-top"><span>{String(index + 1).padStart(2, "0")}</span><span className="lane-status">{lane.status}</span></div>
-    <h3>{lane.stage.replace("_", " ")}</h3>
-    {lane.evidence_ids.length ? <div className="lane-records">{lane.evidence_ids.map((id) => <code key={id}>{id}</code>)}</div> : <p className="lane-empty">No record</p>}
-    {lane.gaps.map((gap) => <p className="lane-gap" key={gap}>{gap}</p>)}
-  </article>;
-}
-
-export default App;
