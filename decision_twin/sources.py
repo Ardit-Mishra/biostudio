@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import re
 from typing import Any, Protocol
 
 import requests
@@ -18,6 +19,12 @@ class HTTPSession(Protocol):
     """The limited HTTP surface used by source connectors."""
 
     def get(self, url: str, *, params: dict[str, Any], timeout: float) -> Any: ...
+
+
+class GraphQLSession(Protocol):
+    """The limited GraphQL HTTP surface used by source connectors."""
+
+    def post(self, url: str, *, json: dict[str, Any], timeout: float) -> Any: ...
 
 
 class EuropePMCClient:
@@ -100,3 +107,90 @@ class EuropePMCClient:
             excerpt=abstract,
             structured_record=structured_record,
         )
+
+
+class OpenTargetsClient:
+    """Retrieve fixed target annotations from the Open Targets GraphQL API."""
+
+    GRAPHQL_URL = "https://api.platform.opentargets.org/api/v4/graphql"
+    _ENSEMBL_GENE_ID = re.compile(r"ENSG\d{11}")
+    TARGET_QUERY = """
+        query TargetSummary($ensemblId: String!) {
+          target(ensemblId: $ensemblId) {
+            id
+            approvedSymbol
+            approvedName
+            biotype
+            tractability {
+              label
+              modality
+              value
+            }
+          }
+        }
+    """
+
+    def __init__(self, session: GraphQLSession | None = None, timeout_seconds: float = 15.0) -> None:
+        self._session = session or requests.Session()
+        self._timeout_seconds = timeout_seconds
+
+    def target_summary(self, ensembl_id: str) -> list[SourceArtifact]:
+        """Return one target annotation artifact, or no record for an unknown target."""
+        normalized_id = ensembl_id.strip()
+        if not self._ENSEMBL_GENE_ID.fullmatch(normalized_id):
+            raise ValueError("ensembl_id must be a valid Ensembl gene identifier")
+
+        try:
+            response = self._session.post(
+                self.GRAPHQL_URL,
+                json={
+                    "query": self.TARGET_QUERY,
+                    "variables": {"ensemblId": normalized_id},
+                },
+                timeout=self._timeout_seconds,
+            )
+            response.raise_for_status()
+            payload = response.json()
+        except Exception as error:
+            raise SourceLookupError("Open Targets lookup failed") from error
+
+        if not isinstance(payload, dict) or payload.get("errors"):
+            raise SourceLookupError("Open Targets returned an invalid response")
+        try:
+            target = payload["data"]["target"]
+        except (KeyError, TypeError) as error:
+            raise SourceLookupError("Open Targets returned an invalid response") from error
+        if target is None:
+            return []
+        if not isinstance(target, dict):
+            raise SourceLookupError("Open Targets returned an invalid target record")
+
+        target_id = str(target.get("id") or "").strip()
+        if not target_id:
+            raise SourceLookupError("Open Targets returned an uncitable target record")
+
+        symbol = str(target.get("approvedSymbol") or "").strip()
+        approved_name = str(target.get("approvedName") or "").strip()
+        title = f"{symbol}: {approved_name}" if symbol and approved_name else symbol or approved_name or target_id
+        structured_record = {
+            key: value
+            for key, value in {
+                "target_id": target_id,
+                "approved_symbol": symbol or None,
+                "approved_name": approved_name or None,
+                "biotype": str(target.get("biotype") or "").strip() or None,
+                "tractability": target.get("tractability") if isinstance(target.get("tractability"), list) else None,
+            }.items()
+            if value is not None
+        }
+        return [
+            SourceArtifact(
+                citation=Citation(
+                    source="open_targets",
+                    source_id=target_id,
+                    retrieved_at=datetime.now(timezone.utc),
+                ),
+                title=title,
+                structured_record=structured_record,
+            )
+        ]
