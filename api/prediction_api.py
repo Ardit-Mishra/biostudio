@@ -51,6 +51,8 @@ from models.toxicity_predictors import ToxicityPredictor
 from models.target_predictors import TargetClassPredictor
 from models.real_admet import get_predictor as get_real_admet_predictor
 from models.real_admet import _TOX_MAP as _REAL_TOX_LABEL_TO_TDC_NAME
+from decision_twin.compiler import compile_decision, snapshot_digest
+from decision_twin.models import DecisionTwinRequest
 
 _log = logging.getLogger(__name__)
 STARTED_AT = time.monotonic()
@@ -496,6 +498,34 @@ def batch_predict_v1(batch: BatchMoleculeInput) -> List[Dict]:
                 "error": f"{type(exc).__name__}: {exc}",
             })
     return results
+
+
+# =============================================================================
+# DECISION TWIN V2 -- source-backed research-decision integrity
+# =============================================================================
+@app.post("/v2/decision-twins/compile")
+def compile_decision_twin_v2(request: DecisionTwinRequest) -> Dict:
+    """Compile an inspectable research recommendation from supplied evidence.
+
+    Source retrieval and agent orchestration arrive in later slices. This
+    endpoint establishes the stable contract they must satisfy: callers bring
+    retained, cited evidence and receive a deterministic recommendation plus a
+    digest of the exact inputs used to make it.
+    """
+    outcome = compile_decision(
+        study_id=request.study_id,
+        evidence=request.evidence,
+        model_assessments=request.model_assessments,
+    )
+    return {
+        **outcome.model_dump(mode="json"),
+        "snapshot_digest": snapshot_digest(
+            study_id=request.study_id,
+            evidence=request.evidence,
+            model_assessments=request.model_assessments,
+        ),
+        "evidence_count": len(request.evidence),
+    }
 
 
 # =============================================================================
