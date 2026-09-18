@@ -166,3 +166,11 @@ def test_v2_compile_endpoint_returns_an_inspectable_hold_decision():
     assert body["status"] == "hold"
     assert len(body["snapshot_digest"]) == 64
     assert body["evidence_count"] == 2
+    assert [lane["stage"] for lane in body["assay_translation_map"]["lanes"]] == [
+        "biochemical",
+        "cellular",
+        "in_vivo",
+        "human",
+        "unclassified",
+    ]
+    assert body["assay_translation_map"]["lanes"][1]["status"] == "conflicting"

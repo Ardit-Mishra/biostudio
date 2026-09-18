@@ -51,6 +51,7 @@ from models.toxicity_predictors import ToxicityPredictor
 from models.target_predictors import TargetClassPredictor
 from models.real_admet import get_predictor as get_real_admet_predictor
 from models.real_admet import _TOX_MAP as _REAL_TOX_LABEL_TO_TDC_NAME
+from decision_twin.assay_map import build_assay_translation_map
 from decision_twin.compiler import compile_decision, snapshot_digest
 from decision_twin.models import DecisionTwinRequest
 from decision_twin.sources import EuropePMCClient, OpenTargetsClient, SourceLookupError
@@ -572,6 +573,7 @@ def compile_decision_twin_v2(request: DecisionTwinRequest) -> Dict:
             model_assessments=request.model_assessments,
         ),
         "evidence_count": len(request.evidence),
+        "assay_translation_map": build_assay_translation_map(request.evidence).model_dump(mode="json"),
     }
 
 
