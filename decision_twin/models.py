@@ -62,6 +62,17 @@ class EvidenceRecord(BaseModel):
         return self
 
 
+class SourceArtifact(BaseModel):
+    """A source result retained before an operator turns it into a study claim."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    citation: Citation
+    title: ShortText
+    excerpt: ExcerptText | None = None
+    structured_record: dict[str, Any] = Field(min_length=1)
+
+
 class AssayComparison(BaseModel):
     """The defensible relationship between two source-backed observations."""
 
