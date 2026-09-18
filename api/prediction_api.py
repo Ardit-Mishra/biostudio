@@ -34,7 +34,7 @@ import logging
 import time
 from typing import Annotated, Dict, List, Optional
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, StringConstraints
@@ -53,6 +53,7 @@ from models.real_admet import get_predictor as get_real_admet_predictor
 from models.real_admet import _TOX_MAP as _REAL_TOX_LABEL_TO_TDC_NAME
 from decision_twin.compiler import compile_decision, snapshot_digest
 from decision_twin.models import DecisionTwinRequest
+from decision_twin.sources import EuropePMCClient, SourceLookupError
 
 _log = logging.getLogger(__name__)
 STARTED_AT = time.monotonic()
@@ -503,6 +504,30 @@ def batch_predict_v1(batch: BatchMoleculeInput) -> List[Dict]:
 # =============================================================================
 # DECISION TWIN V2 -- source-backed research-decision integrity
 # =============================================================================
+@app.get("/v2/sources/europe-pmc/search")
+def search_europe_pmc_v2(
+    query: Annotated[str, Query(min_length=1, max_length=500)],
+    page_size: Annotated[int, Query(ge=1, le=EuropePMCClient.MAX_PAGE_SIZE)] = 10,
+) -> Dict:
+    """Return bounded, citable Europe PMC records without creating study evidence.
+
+    This is a retrieval boundary only. A later study-assembly workflow must
+    explicitly add a claim, assay context, and outcome direction before a
+    source artifact can become an EvidenceRecord.
+    """
+    try:
+        records = EuropePMCClient().search(query, page_size=page_size)
+    except SourceLookupError:
+        _log.warning("Europe PMC source lookup failed", exc_info=True)
+        raise HTTPException(status_code=502, detail="Europe PMC is temporarily unavailable") from None
+
+    return {
+        "source": "europe_pmc",
+        "count": len(records),
+        "records": [record.model_dump(mode="json") for record in records],
+    }
+
+
 @app.post("/v2/decision-twins/compile")
 def compile_decision_twin_v2(request: DecisionTwinRequest) -> Dict:
     """Compile an inspectable research recommendation from supplied evidence.
