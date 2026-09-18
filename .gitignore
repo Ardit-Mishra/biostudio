@@ -129,3 +129,9 @@ models/tdc_data/
 # it here as a side effect; ignoring it stops a second, unused lockfile drifting
 # back into the repo.
 uv.lock
+
+# Node dependencies. The repo gained JS projects (web/) after this file was
+# written for a Python-only tree, so nothing excluded them -- `git add web/`
+# wanted to commit every file under web/node_modules.
+node_modules/
+dist/
