@@ -105,3 +105,71 @@ def test_search_converts_upstream_failure_into_a_source_boundary_error():
 
     with pytest.raises(SourceLookupError, match="Europe PMC"):
         EuropePMCClient(session=session).search("EGFR")
+
+
+def test_a_long_abstract_is_trimmed_to_the_excerpt_contract_and_marked():
+    """Regression: a real-length abstract used to 500 the search endpoint.
+
+    SourceArtifact.excerpt is capped at 2000 characters because the contract is a
+    short citable excerpt, not a redistributed abstract. The connector passed
+    Europe PMC's abstractText straight through, so any ordinary query returning a
+    long abstract raised a pydantic ValidationError and the endpoint answered 500.
+    Every fixture in this file was short, so nothing failed until a live search
+    ran. The trim has to stay at the connector boundary, and it has to be visible
+    -- a reader must be able to tell the excerpt was cut.
+    """
+    abstract = "Osimertinib resistance in EGFR-mutant NSCLC is multifactorial. " * 60
+    assert len(abstract) > 2_000
+
+    session = _Session(
+        _Response(
+            {
+                "resultList": {
+                    "result": [
+                        {
+                            "source": "MED",
+                            "id": "40000001",
+                            "title": "Acquired resistance mechanisms to osimertinib",
+                            "abstractText": abstract,
+                            "journalTitle": "Journal of Thoracic Oncology",
+                            "pubYear": "2025",
+                        }
+                    ]
+                }
+            }
+        )
+    )
+
+    artifacts = EuropePMCClient(session=session).search("osimertinib resistance")
+
+    assert len(artifacts) == 1
+    excerpt = artifacts[0].excerpt
+    assert excerpt is not None
+    assert len(excerpt) <= 2_000, "excerpt must satisfy the ExcerptText contract"
+    assert excerpt.endswith("…"), "a trimmed excerpt must say so"
+    assert excerpt.startswith("Osimertinib resistance in EGFR-mutant NSCLC")
+
+
+def test_a_short_abstract_is_retained_verbatim():
+    """Trimming must not touch excerpts that already satisfy the contract."""
+    session = _Session(
+        _Response(
+            {
+                "resultList": {
+                    "result": [
+                        {
+                            "source": "MED",
+                            "id": "40000002",
+                            "title": "A concise report",
+                            "abstractText": "EGFR L858R confers osimertinib sensitivity in vitro.",
+                        }
+                    ]
+                }
+            }
+        )
+    )
+
+    artifacts = EuropePMCClient(session=session).search("egfr l858r")
+
+    assert artifacts[0].excerpt == "EGFR L858R confers osimertinib sensitivity in vitro."
+    assert "…" not in artifacts[0].excerpt

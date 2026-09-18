@@ -11,6 +11,39 @@ import requests
 from decision_twin.models import Citation, SourceArtifact
 
 
+# SourceArtifact.excerpt is ExcerptText, capped at 2000 characters, because the
+# contract is a short citable excerpt rather than a redistributed full abstract.
+# Europe PMC routinely returns abstracts well past that, so passing one straight
+# through raised a pydantic ValidationError and the endpoint answered 500 -- for
+# an ordinary query, not an edge case. The fixtures in the unit tests were all
+# short, so nothing caught it until the live search ran.
+#
+# Truncation is the correct behaviour here, not a workaround, but it must be
+# visible: a reader has to be able to tell an excerpt was cut rather than assume
+# they are looking at the whole abstract.
+EXCERPT_LIMIT = 2_000
+EXCERPT_ELLIPSIS = " …"
+
+
+def _as_excerpt(text: str | None) -> str | None:
+    """Trim source text to the excerpt contract, marking any truncation."""
+    if text is None:
+        return None
+    cleaned = text.strip()
+    if not cleaned:
+        return None
+    if len(cleaned) <= EXCERPT_LIMIT:
+        return cleaned
+    budget = EXCERPT_LIMIT - len(EXCERPT_ELLIPSIS)
+    cut = cleaned[:budget]
+    # Prefer a word boundary so the excerpt does not end mid-token, but only if
+    # one is close enough that we are not discarding a large tail of the budget.
+    boundary = cut.rfind(" ")
+    if boundary > budget * 0.8:
+        cut = cut[:boundary]
+    return cut.rstrip() + EXCERPT_ELLIPSIS
+
+
 class SourceLookupError(RuntimeError):
     """An approved source could not provide a trustworthy response."""
 
@@ -104,7 +137,7 @@ class EuropePMCClient:
                 retrieved_at=datetime.now(timezone.utc),
             ),
             title=title,
-            excerpt=abstract,
+            excerpt=_as_excerpt(abstract),
             structured_record=structured_record,
         )
 
