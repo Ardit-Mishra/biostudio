@@ -34,7 +34,7 @@ import logging
 import time
 from typing import Annotated, Dict, List, Optional
 
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import FastAPI, HTTPException, Path, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, StringConstraints
@@ -53,7 +53,7 @@ from models.real_admet import get_predictor as get_real_admet_predictor
 from models.real_admet import _TOX_MAP as _REAL_TOX_LABEL_TO_TDC_NAME
 from decision_twin.compiler import compile_decision, snapshot_digest
 from decision_twin.models import DecisionTwinRequest
-from decision_twin.sources import EuropePMCClient, SourceLookupError
+from decision_twin.sources import EuropePMCClient, OpenTargetsClient, SourceLookupError
 
 _log = logging.getLogger(__name__)
 STARTED_AT = time.monotonic()
@@ -523,6 +523,28 @@ def search_europe_pmc_v2(
 
     return {
         "source": "europe_pmc",
+        "count": len(records),
+        "records": [record.model_dump(mode="json") for record in records],
+    }
+
+
+@app.get("/v2/sources/open-targets/targets/{ensembl_id}")
+def get_open_targets_target_v2(
+    ensembl_id: Annotated[str, Path(pattern=r"^ENSG\d{11}$")],
+) -> Dict:
+    """Return one bounded target annotation from Open Targets.
+
+    The path accepts a single Ensembl gene identifier, not a caller-authored
+    GraphQL query. The returned artifact is source data, not a study claim.
+    """
+    try:
+        records = OpenTargetsClient().target_summary(ensembl_id)
+    except SourceLookupError:
+        _log.warning("Open Targets source lookup failed", exc_info=True)
+        raise HTTPException(status_code=502, detail="Open Targets is temporarily unavailable") from None
+
+    return {
+        "source": "open_targets",
         "count": len(records),
         "records": [record.model_dump(mode="json") for record in records],
     }
