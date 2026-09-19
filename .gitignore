@@ -11,6 +11,10 @@ downloads/
 eggs/
 .eggs/
 lib/
+!web/
+!web/src/
+!web/src/lib/
+web/src/lib/*
 !web/src/lib/decision-twin.ts
 !web/src/lib/annotation.ts
 lib64/
