@@ -470,3 +470,47 @@ p { text-wrap: pretty; }
   .landing-search-row input { flex-basis: 100%; padding: 4px 4px 10px; }
   .landing-search-row button { width: 100%; }
 }
+
+/* ---------------------------------------------------------------------------
+   Decision Record export.
+   --------------------------------------------------------------------------- */
+.export-panel { border-top: 1px solid var(--ds-border); padding-top: 44px; }
+.export-intro { max-width: 62ch; }
+.export-intro h2 { margin: 10px 0 0; font-size: clamp(20px, 3vw, 26px); letter-spacing: -.015em; }
+.export-intro p { margin-top: 12px; color: var(--ds-ink-muted); font-size: 14.5px; line-height: 1.65; }
+.export-intro code { font: 500 12.5px var(--ds-font-mono); color: var(--ds-ink); }
+
+.export-list { list-style: none; margin: 26px 0 0; padding: 0; display: grid; gap: 10px; }
+@media (min-width: 720px) { .export-list { grid-template-columns: 1fr 1fr; } }
+.export-list button {
+  display: flex; align-items: center; gap: 13px; width: 100%; text-align: left;
+  padding: 14px 15px; border: 1px solid var(--ds-border); border-radius: 9px;
+  background: var(--ds-surface); color: var(--ds-ink); cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+.export-list button:hover { border-color: var(--ds-accent); background: var(--ds-accent-soft); }
+.export-list button:focus-visible { outline: 2px solid var(--ds-accent); outline-offset: 3px; }
+.export-list svg:first-child { flex: none; color: var(--ds-accent); }
+.export-list span { flex: 1; min-width: 0; }
+.export-list strong { display: block; font-size: 14px; font-weight: 600; }
+.export-list em { display: block; margin-top: 3px; font-style: normal; font-size: 12.5px; color: var(--ds-ink-muted); }
+.export-arrow { flex: none; color: var(--ds-ink-faint); }
+
+/* The printed dossier is the point of the PDF button: paper gets the whole
+   record as a document, not a screenshot of an application. */
+.print-only { display: none; }
+@media print {
+  .bio-header, .bio-footer, .export-list, .export-intro,
+  .annotation-workbench, .study-flow > section:not(.export-panel),
+  .study-flow > div, .study-intro { display: none !important; }
+  .export-panel { border: 0; padding: 0; }
+  .print-only { display: block; }
+  .decision-record-print pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+    font: 400 10.5pt/1.5 var(--ds-font-mono);
+    color: #000;
+  }
+  body, .bio-shell { background: #fff !important; color: #000 !important; }
+  @page { size: letter; margin: 0.6in; }
+}

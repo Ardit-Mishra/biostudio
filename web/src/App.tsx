@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlaskConical, Moon, Orbit, RotateCw, Sun } from "lucide-react";
 
+import { DecisionRecordExport } from "@/components/DecisionRecordExport";
 import { EvidenceAnnotationWorkbench } from "@/components/EvidenceAnnotationWorkbench";
 import { EvidenceFocusCard } from "@/components/EvidenceFocusCard";
 import { EvidenceSignalPlot } from "@/components/EvidenceSignalPlot";
@@ -66,6 +67,35 @@ function useTheme(): [Theme, () => void] {
   return [theme, () => setTheme((t) => (t === "dark" ? "light" : "dark"))];
 }
 
+/**
+ * A study survived exactly as long as the tab did. Only the theme was persisted,
+ * so an accidental reload destroyed every annotation a researcher had written --
+ * and annotating is the slow, human part of the work. Saving the study is not a
+ * feature so much as the absence of a way to lose an afternoon.
+ */
+const STUDY_KEY = "biostudio-study-v1";
+
+interface SavedStudy {
+  mode: StudyMode;
+  evidence: EvidenceRecord[];
+  seedQuery: string;
+}
+
+function loadStudy(): SavedStudy | null {
+  try {
+    const raw = localStorage.getItem(STUDY_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as SavedStudy;
+    // Anything could be in storage -- an older shape, a hand-edited value.
+    // Restore only what is structurally a study, and otherwise start clean.
+    if (!Array.isArray(parsed?.evidence)) return null;
+    if (parsed.mode !== "example" && parsed.mode !== "own") return null;
+    return { mode: parsed.mode, evidence: parsed.evidence, seedQuery: String(parsed.seedQuery ?? "") };
+  } catch {
+    return null;
+  }
+}
+
 /** A study id the API will accept, derived from what the researcher asked. */
 function studyIdFor(query: string): string {
   const slug = query
@@ -81,9 +111,10 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>(() =>
     window.location.hash === "#study" ? "study" : "landing",
   );
-  const [mode, setMode] = useState<StudyMode>("example");
-  const [evidence, setEvidence] = useState<EvidenceRecord[]>([]);
-  const [seedQuery, setSeedQuery] = useState("");
+  const saved = useRef(loadStudy()).current;
+  const [mode, setMode] = useState<StudyMode>(saved?.mode ?? "example");
+  const [evidence, setEvidence] = useState<EvidenceRecord[]>(saved?.evidence ?? []);
+  const [seedQuery, setSeedQuery] = useState(saved?.seedQuery ?? "");
   const [compilation, setCompilation] = useState<Compilation | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -94,6 +125,16 @@ export default function App() {
   // click can be overwritten by the third one's reply and the page shows a
   // verdict that is not the latest. Only the newest run may write state.
   const runSeq = useRef(0);
+
+  // Persist on every change rather than on a Save button: there is no server,
+  // so an unsaved study is a lost study.
+  useEffect(() => {
+    try {
+      localStorage.setItem(STUDY_KEY, JSON.stringify({ mode, evidence, seedQuery }));
+    } catch {
+      /* quota or a private window -- the session still works, it just will not survive */
+    }
+  }, [mode, evidence, seedQuery]);
 
   const studyId = useMemo(
     () => (mode === "example" ? EXEMPLAR_STUDY_ID : studyIdFor(seedQuery)),
@@ -302,6 +343,19 @@ export default function App() {
                   <EvidenceAnnotationWorkbench
                     onEvidenceAdded={addEvidence}
                     initialQuery={seedQuery}
+                  />
+                  <DecisionRecordExport
+                    record={{
+                      studyId,
+                      title: isExample ? EXEMPLAR_TITLE : seedQuery || "Untitled study",
+                      question: isExample
+                        ? EXEMPLAR_QUESTION
+                        : "Is the public evidence consistent enough to justify the next research step?",
+                      searchQuery: seedQuery,
+                      isExample,
+                      evidence,
+                      compilation,
+                    }}
                   />
                 </div>
               )}
