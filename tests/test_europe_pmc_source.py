@@ -173,3 +173,27 @@ def test_a_short_abstract_is_retained_verbatim():
 
     assert artifacts[0].excerpt == "EGFR L858R confers osimertinib sensitivity in vitro."
     assert "…" not in artifacts[0].excerpt
+
+
+def test_search_normalizes_abstract_markup_into_readable_excerpt_text():
+    """Europe PMC formatting must not leak raw tags into every research client."""
+    session = _Session(
+        _Response(
+            {
+                "resultList": {
+                    "result": [
+                        {
+                            "source": "MED",
+                            "id": "40000003",
+                            "title": "A formatted abstract",
+                            "abstractText": "<h4>Background</h4> EGFR &amp; MET were measured.<br/>Results were retained.",
+                        }
+                    ]
+                }
+            }
+        )
+    )
+
+    artifacts = EuropePMCClient(session=session).search("egfr met")
+
+    assert artifacts[0].excerpt == "Background EGFR & MET were measured. Results were retained."

@@ -39,6 +39,9 @@ The following commits are local and ordered:
    POST /v2/decision-twins/compile.
 7. df2a6c5 - Europe PMC abstracts are clipped to the evidence excerpt
    contract rather than causing a validation error.
+8. Current worktree slice - Europe PMC abstracts are parsed into
+   readable text before clipping, so harmless source presentation markup does
+   not leak into clients.
 
 All source routes return source artifacts only. They never create a research
 claim, trigger an agent, mutate a study, or execute a model.
@@ -53,6 +56,12 @@ claim, trigger an agent, mutate a study, or execute a model.
 - The typed API client is implemented at web/src/lib/decision-twin.ts and calls
   only the deterministic compile endpoint. The development proxy and the
   documented FastAPI command both use port 8000; keep them aligned.
+- The Evidence Annotation Workbench lets an operator search Europe PMC, inspect
+  a source artifact, and supply a claim plus target, biological system,
+  readout, unit, and direction before it can enter the in-browser study. It
+  holds no credentials, makes no writes, and does not persist or upload the
+  annotation. `web/src/lib/annotation.ts` owns the guard that prevents an
+  artifact from being promoted automatically.
 
 ## Validation
 
@@ -68,6 +77,7 @@ Frontend:
 
 ~~~powershell
 Set-Location web
+npm test
 npm run build
 npm run dev -- --host 127.0.0.1 --port 5173
 ~~~
@@ -96,3 +106,7 @@ uv run --no-project --python 3.12 --with-requirements requirements.txt uvicorn a
 - `npm run build` completed successfully on 2026-09-19.
 - The Impeccable detector was run once across the Decision Twin surface and
   returned an empty findings list.
+- The focused frontend contract suite is 4 passing tests: incomplete source
+  annotations remain inert, operator-authored claims retain citations,
+  source-list previews are short without mutating their retained excerpts, and
+  the client uses the API's bounded `page_size` search contract.

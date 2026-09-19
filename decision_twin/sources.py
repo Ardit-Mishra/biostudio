@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from html.parser import HTMLParser
 import re
 from typing import Any, Protocol
 
@@ -25,11 +26,30 @@ EXCERPT_LIMIT = 2_000
 EXCERPT_ELLIPSIS = " …"
 
 
+class _ExcerptTextParser(HTMLParser):
+    """Retain readable source text while discarding presentation markup."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.parts: list[str] = []
+
+    def handle_data(self, data: str) -> None:
+        self.parts.append(data)
+
+
+def _plain_excerpt_text(text: str) -> str:
+    """Collapse Europe PMC's lightweight abstract HTML into human-readable text."""
+    parser = _ExcerptTextParser()
+    parser.feed(text)
+    parser.close()
+    return " ".join(" ".join(parser.parts).split())
+
+
 def _as_excerpt(text: str | None) -> str | None:
     """Trim source text to the excerpt contract, marking any truncation."""
     if text is None:
         return None
-    cleaned = text.strip()
+    cleaned = _plain_excerpt_text(text)
     if not cleaned:
         return None
     if len(cleaned) <= EXCERPT_LIMIT:

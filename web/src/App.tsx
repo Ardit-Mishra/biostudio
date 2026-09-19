@@ -2,10 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import { FlaskConical, Moon, RotateCw, Sun } from "lucide-react";
 
 import { AssayTranslationMap } from "@/components/AssayTranslationMap";
+import { EvidenceAnnotationWorkbench } from "@/components/EvidenceAnnotationWorkbench";
 import { EvidenceInspector } from "@/components/EvidenceInspector";
 import { IntegrityPanel } from "@/components/IntegrityPanel";
 import { VerdictBanner } from "@/components/VerdictBanner";
-import { compileStudy, type Compilation } from "@/lib/decision-twin";
+import { compileStudy, type Compilation, type EvidenceRecord } from "@/lib/decision-twin";
 import {
   EXEMPLAR_EVIDENCE,
   EXEMPLAR_QUESTION,
@@ -43,6 +44,7 @@ function useTheme(): [Theme, () => void] {
 export default function App() {
   const [theme, toggleTheme] = useTheme();
   const [compilation, setCompilation] = useState<Compilation | null>(null);
+  const [evidence, setEvidence] = useState<EvidenceRecord[]>(EXEMPLAR_EVIDENCE);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(true);
 
@@ -53,7 +55,7 @@ export default function App() {
       setCompilation(
         await compileStudy({
           study_id: EXEMPLAR_STUDY_ID,
-          evidence: EXEMPLAR_EVIDENCE,
+          evidence,
         }),
       );
     } catch (cause) {
@@ -62,13 +64,16 @@ export default function App() {
     } finally {
       setPending(false);
     }
-  }, []);
+  }, [evidence]);
 
   useEffect(() => {
     void run();
   }, [run]);
 
   const lanes = compilation?.assay_translation_map.lanes ?? [];
+  const addEvidence = useCallback((record: EvidenceRecord) => {
+    setEvidence((current) => [...current, record]);
+  }, []);
 
   return (
     <div className="min-h-screen bg-ground">
@@ -133,6 +138,8 @@ export default function App() {
           </p>
         </div>
 
+        <EvidenceAnnotationWorkbench onEvidenceAdded={addEvidence} />
+
         {error && (
           <p
             role="alert"
@@ -158,7 +165,7 @@ export default function App() {
             <AssayTranslationMap lanes={lanes} />
 
             <div className="grid gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-              <EvidenceInspector evidence={EXEMPLAR_EVIDENCE} lanes={lanes} />
+              <EvidenceInspector evidence={evidence} lanes={lanes} />
               <IntegrityPanel compilation={compilation} />
             </div>
           </div>
