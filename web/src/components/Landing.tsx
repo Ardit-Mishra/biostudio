@@ -45,6 +45,12 @@ export function Landing({ onOpenStudy }: { onOpenStudy: () => void }) {
               <path d="M 790 287 C 824 287, 830 286, 837 283" />
               <path className="landing-map-broken" d="M 790 426 C 820 390, 828 330, 837 295" />
             </g>
+            <g className="landing-map-pulses">
+              <path d="M 146 130 C 240 130, 300 184, 385 228" />
+              <path d="M 146 278 C 250 278, 292 260, 385 252" />
+              <path d="M 490 250 C 570 250, 600 170, 693 142" />
+              <path d="M 490 250 C 570 250, 604 274, 693 286" />
+            </g>
             <g className="landing-source-node" transform="translate(110 130)"><circle r="35"/><text y="5" textAnchor="middle">LIT</text><text y="61" textAnchor="middle">Literature</text></g>
             <g className="landing-source-node" transform="translate(110 278)"><circle r="35"/><text y="5" textAnchor="middle">TGT</text><text y="61" textAnchor="middle">Target</text></g>
             <g className="landing-source-node" transform="translate(110 426)"><circle r="35"/><text y="5" textAnchor="middle">CMP</text><text y="61" textAnchor="middle">Compound</text></g>
