@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlaskConical, Moon, Orbit, RotateCw, Sun } from "lucide-react";
 
 import { EvidenceAnnotationWorkbench } from "@/components/EvidenceAnnotationWorkbench";
@@ -89,6 +89,12 @@ export default function App() {
   const [pending, setPending] = useState(false);
   const [focusedEvidenceId, setFocusedEvidenceId] = useState<string | null>(null);
 
+  // Compiles are fired by a button a reader can hammer, and responses are not
+  // guaranteed to arrive in the order they were sent. Without this, the twelfth
+  // click can be overwritten by the third one's reply and the page shows a
+  // verdict that is not the latest. Only the newest run may write state.
+  const runSeq = useRef(0);
+
   const studyId = useMemo(
     () => (mode === "example" ? EXEMPLAR_STUDY_ID : studyIdFor(seedQuery)),
     [mode, seedQuery],
@@ -104,15 +110,19 @@ export default function App() {
       setPending(false);
       return;
     }
+    const seq = ++runSeq.current;
     setPending(true);
     setError(null);
     try {
-      setCompilation(await compileStudy({ study_id: studyId, evidence }));
+      const result = await compileStudy({ study_id: studyId, evidence });
+      if (seq !== runSeq.current) return;
+      setCompilation(result);
     } catch (cause) {
+      if (seq !== runSeq.current) return;
       setError(cause instanceof Error ? cause.message : "Compilation failed.");
       setCompilation(null);
     } finally {
-      setPending(false);
+      if (seq === runSeq.current) setPending(false);
     }
   }, [evidence, studyId]);
 

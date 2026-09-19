@@ -190,19 +190,25 @@ export async function getChEMBLCompound(
   return payload.records ?? [];
 }
 
-/** Build a citation URL for a resolved source id. Never guess a host. */
+/**
+ * Build a citation URL for a resolved source id. Never guess a host.
+ *
+ * The id is encoded rather than interpolated raw: it arrives from an external
+ * source, and a value containing a slash or a query character would otherwise
+ * reshape the path it is pasted into.
+ */
 export function citationUrl(citation: Citation): string | null {
   if (citation.source === "europe_pmc") {
-    const id = citation.source_id;
+    const id = encodeURIComponent(citation.source_id);
     return id.startsWith("PMC")
       ? `https://europepmc.org/article/PMC/${id}`
       : `https://europepmc.org/article/MED/${id}`;
   }
   if (citation.source === "open_targets") {
-    return `https://platform.opentargets.org/target/${citation.source_id}`;
+    return `https://platform.opentargets.org/target/${encodeURIComponent(citation.source_id)}`;
   }
   if (citation.source === "chembl") {
-    return `https://www.ebi.ac.uk/chembl/explore/compound/${citation.source_id}`;
+    return `https://www.ebi.ac.uk/chembl/explore/compound/${encodeURIComponent(citation.source_id)}`;
   }
   return null;
 }

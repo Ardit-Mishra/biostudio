@@ -101,11 +101,36 @@ async def _http_exception_handler(request: Request, exc: StarletteHTTPException)
     return _error_response(exc.status_code, str(exc.detail))
 
 
+def _serializable_errors(errors: List[Dict]) -> List[Dict]:
+    """Make pydantic's error list safe to put in a JSON response.
+
+    When a `model_validator` raises, pydantic records the original exception
+    object under `ctx["error"]`. JSONResponse cannot serialize an exception, so
+    the handler below used to raise `TypeError: Object of type ValueError is not
+    JSON serializable` -- inside the error handler itself. That fell through to
+    the unhandled-exception handler, and a plain client mistake came back as
+    500 "Internal server error".
+
+    It was not a corner case: every EvidenceRecord posted without a
+    structured_record or an excerpt hit it, which is the single most likely
+    mistake a caller assembling a study can make. Stringify anything in `ctx`
+    rather than dropping it -- the validator's message is the actionable part.
+    """
+    cleaned: List[Dict] = []
+    for error in errors:
+        item = {key: value for key, value in error.items() if key != "ctx"}
+        ctx = error.get("ctx")
+        if ctx:
+            item["ctx"] = {key: str(value) for key, value in ctx.items()}
+        cleaned.append(item)
+    return cleaned
+
+
 @app.exception_handler(RequestValidationError)
 async def _validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     # 422: the request body itself doesn't satisfy the schema (bad type,
     # SMILES charset/length violation, missing field, etc).
-    return _error_response(422, "Request validation failed", details=exc.errors())
+    return _error_response(422, "Request validation failed", details=_serializable_errors(exc.errors()))
 
 
 @app.exception_handler(Exception)
@@ -516,6 +541,12 @@ def search_europe_pmc_v2(
     explicitly add a claim, assay context, and outcome direction before a
     source artifact can become an EvidenceRecord.
     """
+    # Query(min_length=1) counts characters, not content, so "   " reaches the
+    # connector and trips its own ValueError -- which surfaced as a 500 for what
+    # is plainly a bad request. Reject it here, where the contract is stated.
+    if not query.strip():
+        raise HTTPException(status_code=422, detail="query must not be blank")
+
     try:
         records = EuropePMCClient().search(query, page_size=page_size)
     except SourceLookupError:

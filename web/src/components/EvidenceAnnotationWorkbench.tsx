@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { ArrowRight, BookOpenText, FlaskConical, Search } from "lucide-react";
 
 import {
@@ -64,25 +64,31 @@ export function EvidenceAnnotationWorkbench({
   const [draft, setDraft] = useState<EvidenceAnnotationDraft>(EMPTY_DRAFT);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Same ordering hazard as compile: a slow earlier search must not overwrite
+  // the results of a later one.
+  const searchSeq = useRef(0);
 
   const runSearch = useCallback(
     async (rawQuery: string, searchMode: SearchMode) => {
       const normalized = rawQuery.trim();
       if (!normalized) return;
 
+      const seq = ++searchSeq.current;
       setPending(true);
       setError(null);
       try {
-        setRecords(
+        const found =
           searchMode === "literature"
             ? await searchEuropePmc(normalized, 5)
-            : await getChEMBLCompound(normalized),
-        );
+            : await getChEMBLCompound(normalized);
+        if (seq !== searchSeq.current) return;
+        setRecords(found);
       } catch (cause) {
+        if (seq !== searchSeq.current) return;
         setRecords([]);
         setError(cause instanceof Error ? cause.message : "Source lookup failed.");
       } finally {
-        setPending(false);
+        if (seq === searchSeq.current) setPending(false);
       }
     },
     [],
