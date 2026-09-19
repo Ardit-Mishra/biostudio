@@ -49,6 +49,8 @@ export const EXEMPLAR_EVIDENCE: EvidenceRecord[] = [
       conditions: { line_of_therapy: "consolidation", design: "randomized_trial" },
     },
     outcome_direction: "supports",
+    direction_rationale:
+      "A randomized trial reports a progression-free survival benefit in EGFR-mutated stage III disease — a human outcome, in the population an osimertinib-directed step would target.",
   },
   {
     id: "ev-cellular-t790m-resistance",
@@ -72,6 +74,8 @@ export const EXEMPLAR_EVIDENCE: EvidenceRecord[] = [
       conditions: { exposure: "chronic", selection: "acquired_resistance" },
     },
     outcome_direction: "contradicts",
+    direction_rationale:
+      "The record characterises acquired resistance arising under chronic osimertinib exposure in T790M-positive disease, so the same target stops responding in the cellular setting it describes.",
   },
   {
     id: "ev-cellular-tead-resistance",
@@ -93,5 +97,7 @@ export const EXEMPLAR_EVIDENCE: EvidenceRecord[] = [
       conditions: { exposure: "chronic", selection: "acquired_resistance" },
     },
     outcome_direction: "contradicts",
+    direction_rationale:
+      "TEAD upregulation is reported as a mechanism by which NSCLC models escape osimertinib, which is a route to loss of effect rather than evidence of benefit.",
   },
 ];

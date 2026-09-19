@@ -54,7 +54,14 @@ from models.real_admet import _TOX_MAP as _REAL_TOX_LABEL_TO_TDC_NAME
 from decision_twin.assay_map import build_assay_translation_map
 from decision_twin.compiler import compile_decision, snapshot_digest
 from decision_twin.models import DecisionTwinRequest
-from decision_twin.sources import ChEMBLClient, EuropePMCClient, OpenTargetsClient, SourceLookupError
+from decision_twin.study_types import STUDY_TYPES, narrow
+from decision_twin.sources import (
+    ChEMBLClient,
+    EuropePMCClient,
+    OpenAlexClient,
+    OpenTargetsClient,
+    SourceLookupError,
+)
 
 _log = logging.getLogger(__name__)
 STARTED_AT = time.monotonic()
@@ -534,6 +541,7 @@ def batch_predict_v1(batch: BatchMoleculeInput) -> List[Dict]:
 def search_europe_pmc_v2(
     query: Annotated[str, Query(min_length=1, max_length=500)],
     page_size: Annotated[int, Query(ge=1, le=EuropePMCClient.MAX_PAGE_SIZE)] = 10,
+    study_type: Annotated[str, Query(max_length=40)] = "any",
 ) -> Dict:
     """Return bounded, citable Europe PMC records without creating study evidence.
 
@@ -547,14 +555,57 @@ def search_europe_pmc_v2(
     if not query.strip():
         raise HTTPException(status_code=422, detail="query must not be blank")
 
+    # Narrowing by study design is narrowing by level of evidence, so an
+    # unrecognised key is refused rather than ignored: silently returning
+    # everything would let a caller believe they were looking at randomized
+    # trials when they were looking at the whole index.
     try:
-        records = EuropePMCClient().search(query, page_size=page_size)
+        effective_query = narrow(query, study_type)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from None
+
+    try:
+        records = EuropePMCClient().search(effective_query, page_size=page_size)
     except SourceLookupError:
         _log.warning("Europe PMC source lookup failed", exc_info=True)
         raise HTTPException(status_code=502, detail="Europe PMC is temporarily unavailable") from None
 
     return {
         "source": "europe_pmc",
+        "study_type": study_type,
+        "query": effective_query,
+        "count": len(records),
+        "records": [record.model_dump(mode="json") for record in records],
+    }
+
+
+@app.get("/v2/sources/study-types")
+def list_study_types_v2() -> Dict:
+    """The selectable levels of evidence, each with what it cannot support.
+
+    Served rather than hard-coded in the client so the caveats cannot drift
+    apart from the filter that applies them.
+    """
+    return {"count": len(STUDY_TYPES), "study_types": [t.model_dump() for t in STUDY_TYPES]}
+
+
+@app.get("/v2/sources/openalex/search")
+def search_openalex_v2(
+    query: Annotated[str, Query(min_length=1, max_length=500)],
+    page_size: Annotated[int, Query(ge=1, le=OpenAlexClient.MAX_PAGE_SIZE)] = 10,
+) -> Dict:
+    """Return bounded OpenAlex works. A retrieval boundary, not study evidence."""
+    if not query.strip():
+        raise HTTPException(status_code=422, detail="query must not be blank")
+
+    try:
+        records = OpenAlexClient().search(query, page_size=page_size)
+    except SourceLookupError:
+        _log.warning("OpenAlex source lookup failed", exc_info=True)
+        raise HTTPException(status_code=502, detail="OpenAlex is temporarily unavailable") from None
+
+    return {
+        "source": "openalex",
         "count": len(records),
         "records": [record.model_dump(mode="json") for record in records],
     }

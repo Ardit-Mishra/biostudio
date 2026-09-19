@@ -3,6 +3,8 @@
 from decision_twin.assay_map import build_assay_translation_map
 from decision_twin.models import AssayContext, Citation, EvidenceRecord
 
+RATIONALE = "The cited record reports this outcome for the stated assay context."
+
 
 def _evidence(
     evidence_id: str,
@@ -30,6 +32,7 @@ def _evidence(
             else None
         ),
         outcome_direction=direction,
+        direction_rationale=None if direction == "unknown" else RATIONALE,
     )
 
 

@@ -10,6 +10,8 @@ from fastapi.testclient import TestClient
 
 import api.prediction_api as prediction_api
 
+RATIONALE = "The cited record reports this outcome for the stated assay context."
+
 client = TestClient(prediction_api.app, raise_server_exceptions=False)
 
 
@@ -30,6 +32,7 @@ def _record(**over):
             "unit": "nM",
         },
         "outcome_direction": "supports",
+        "direction_rationale": RATIONALE,
     }
     base.update(over)
     return base

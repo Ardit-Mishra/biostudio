@@ -1,11 +1,12 @@
 import { Download, FileJson, FileSpreadsheet, FileText, Printer } from "lucide-react";
 
+import { PrintableDecisionRecord } from "@/components/PrintableDecisionRecord";
+
 import {
   downloadText,
   filenameFor,
   toCsv,
   toJson,
-  toMarkdown,
   toRis,
   type DecisionRecordInput,
 } from "@/lib/decision-record";
@@ -95,11 +96,9 @@ export function DecisionRecordExport({ record }: { record: DecisionRecordInput }
         })}
       </ul>
 
-      {/* The printed document. Hidden on screen, laid out for paper: the reader
-          gets the whole dossier rather than a screenshot of an app. */}
-      <div className="print-only decision-record-print">
-        <pre>{toMarkdown(record)}</pre>
-      </div>
+      {/* The printed document. Hidden on screen, typeset for paper -- printing
+          the markdown export put "## Question" and raw pipe tables on the page. */}
+      <PrintableDecisionRecord record={record} />
     </section>
   );
 }

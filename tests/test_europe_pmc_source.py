@@ -197,3 +197,38 @@ def test_search_normalizes_abstract_markup_into_readable_excerpt_text():
     artifacts = EuropePMCClient(session=session).search("egfr met")
 
     assert artifacts[0].excerpt == "Background EGFR & MET were measured. Results were retained."
+
+
+def test_escaped_markup_in_a_title_does_not_reach_the_reader():
+    """Regression: titles arrive with escaped markup and rendered literally.
+
+    Europe PMC returns e.g. "Acquired &lt;i&gt;EML4-ALK&lt;/i&gt; fusion". One
+    parser pass with convert_charrefs=True decodes the entities but never
+    re-tokenises the result, so "<i>" survived as visible characters in the UI.
+    Abstracts went through the reader; titles did not go through it at all.
+    """
+    session = _Session(
+        _Response(
+            {
+                "resultList": {
+                    "result": [
+                        {
+                            "source": "MED",
+                            "id": "40000003",
+                            "title": "Acquired &lt;i&gt;EML4-ALK&lt;/i&gt; fusion and &lt;i&gt;BRAF&lt;/i&gt; mutation",
+                            "abstractText": "An abstract with &lt;sup&gt;13&lt;/sup&gt;C labelling &amp; markup.",
+                        }
+                    ]
+                }
+            }
+        )
+    )
+
+    artifact = EuropePMCClient(session=session).search("egfr")[0]
+
+    assert artifact.title == "Acquired EML4-ALK fusion and BRAF mutation"
+    assert "<" not in artifact.title and "&lt;" not in artifact.title
+    assert artifact.excerpt is not None
+    assert "<" not in artifact.excerpt and "&lt;" not in artifact.excerpt
+    # An ampersand is content, not markup, and must survive.
+    assert "&" in artifact.excerpt

@@ -14,6 +14,8 @@ from decision_twin.compiler import compile_decision, snapshot_digest
 from decision_twin.models import AssayContext, Citation, EvidenceRecord
 from decision_twin.normalization import compare_evidence
 
+RATIONALE = "The cited record reports this outcome for the stated assay context."
+
 
 client = TestClient(app)
 
@@ -44,6 +46,7 @@ def _evidence(*, evidence_id: str, direction: str, assay: AssayContext | None = 
         structured_record={"assay_id": evidence_id, "activity_direction": direction},
         assay_context=assay or _assay(),
         outcome_direction=direction,
+        direction_rationale=None if direction == "unknown" else RATIONALE,
     )
 
 
@@ -127,6 +130,7 @@ def test_missing_assay_context_is_not_silently_pooled_with_measured_evidence():
         citation=_citation(),
         structured_record={"assay_id": "ev-contextless"},
         outcome_direction="supports",
+        direction_rationale=RATIONALE,
     )
 
     comparison = compare_evidence(_evidence(evidence_id="ev-measured", direction="supports"), contextless)
@@ -187,3 +191,37 @@ def test_v2_compile_endpoint_returns_an_inspectable_hold_decision():
         "unclassified",
     ]
     assert body["assay_translation_map"]["lanes"][1]["status"] == "conflicting"
+
+
+def test_a_stated_direction_must_carry_its_reason():
+    """The direction is the field with the most influence on the recommendation.
+
+    Opposing directions on comparable evidence force a hold, so a direction set
+    from a dropdown with no recorded reasoning would put the least justified
+    value in the most load-bearing place. A record may not say "contradicts"
+    while staying silent about what in it contradicts.
+    """
+    import pytest
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError, match="direction_rationale is required"):
+        EvidenceRecord(
+            id="ev-unjustified",
+            claim="An observation bounded to its record.",
+            citation=_citation(),
+            excerpt="Retained excerpt.",
+            outcome_direction="contradicts",
+        )
+
+
+def test_an_undirected_record_needs_no_rationale():
+    """Declining to take a position is not an assertion, so it needs no defence."""
+    record = EvidenceRecord(
+        id="ev-undirected",
+        claim="An observation bounded to its record.",
+        citation=_citation(),
+        excerpt="Retained excerpt.",
+        outcome_direction="unknown",
+    )
+
+    assert record.direction_rationale is None

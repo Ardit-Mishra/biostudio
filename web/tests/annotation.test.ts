@@ -27,6 +27,7 @@ const completeDraft: EvidenceAnnotationDraft = {
   readout: "progression_free_survival",
   unit: "months",
   outcome_direction: "supports",
+  direction_rationale: "The cited record reports this outcome for the stated assay context.",
 };
 
 describe("operator evidence annotation", () => {

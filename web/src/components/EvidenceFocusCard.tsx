@@ -32,6 +32,14 @@ export function EvidenceFocusCard({
       <p className="focus-citation">{record.citation.source.replace(/_/g, " ")} · {record.citation.source_id}</p>
       <h3 className="focus-source-title">{record.source_title ?? record.excerpt ?? "Resolved public source record"}</h3>
       <p className="focus-claim"><span>Operator interpretation</span>{record.claim}</p>
+      {/* The direction is what can force a hold, so on screen as on paper the
+          reason sits next to it rather than living only in the form. */}
+      {record.direction_rationale && (
+        <p className="focus-why">
+          <span>Why it {record.outcome_direction}</span>
+          {record.direction_rationale}
+        </p>
+      )}
       {record.excerpt && <p className="focus-excerpt">“{record.excerpt}”</p>}
       {context && (
         <dl className="focus-context">

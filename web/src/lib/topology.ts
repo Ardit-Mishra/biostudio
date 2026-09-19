@@ -46,6 +46,7 @@ export interface EvidenceTopology {
 
 const SOURCE_LABEL: Record<SourceName, string> = {
   chembl: "ChEMBL",
+  openalex: "OpenAlex",
   europe_pmc: "Europe PMC",
   open_targets: "Open Targets",
 };

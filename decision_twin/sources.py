@@ -37,12 +37,28 @@ class _ExcerptTextParser(HTMLParser):
         self.parts.append(data)
 
 
-def _plain_excerpt_text(text: str) -> str:
-    """Collapse Europe PMC's lightweight abstract HTML into human-readable text."""
-    parser = _ExcerptTextParser()
-    parser.feed(text)
-    parser.close()
-    return " ".join(" ".join(parser.parts).split())
+def _plain_excerpt_text(text: str, _passes: int = 2) -> str:
+    """Collapse Europe PMC's lightweight markup into human-readable text.
+
+    Two passes, because one is not enough. The parser runs with
+    convert_charrefs=True, so a title like "Acquired &lt;i&gt;EML4-ALK&lt;/i&gt;"
+    comes out of the first pass as the *text* "<i>EML4-ALK</i>" -- the entities
+    are decoded but the result is never re-tokenised, so the tags survive as
+    visible characters. Feeding that back through strips them.
+
+    Bounded rather than looped to a fixed point: source text is untrusted, and a
+    deliberately nested payload should not be able to spin here.
+    """
+    cleaned = text
+    for _ in range(max(1, _passes)):
+        parser = _ExcerptTextParser()
+        parser.feed(cleaned)
+        parser.close()
+        collapsed = " ".join(" ".join(parser.parts).split())
+        if collapsed == cleaned:
+            break
+        cleaned = collapsed
+    return cleaned
 
 
 def _as_excerpt(text: str | None) -> str | None:
@@ -133,7 +149,10 @@ class EuropePMCClient:
             return None
 
         source_id = str(raw_result.get("pmid") or raw_result.get("id") or "").strip()
-        title = str(raw_result.get("title") or "").strip()
+        # Titles arrive with escaped markup too ("&lt;i&gt;EML4-ALK&lt;/i&gt;"),
+        # and React renders that literally. Route them through the same
+        # reader as abstracts rather than trusting source HTML anywhere.
+        title = _plain_excerpt_text(str(raw_result.get("title") or ""))
         if not source_id or not title:
             return None
 
@@ -332,3 +351,106 @@ class ChEMBLClient:
                 structured_record=structured_record,
             )
         ]
+
+
+class OpenAlexClient:
+    """Retrieve bounded literature records from OpenAlex.
+
+    Europe PMC is the biomedical index; OpenAlex is the general scholarly one.
+    They are kept as separate lanes rather than merged because they disagree in
+    useful ways: OpenAlex covers chemistry, materials and methods literature
+    that never reaches MEDLINE, and it carries open-access locations that Europe
+    PMC does not always resolve. A record found in only one of them is a fact
+    about coverage, and silently blending the two would hide it.
+
+    The polite pool is used (a mailto in the query) because OpenAlex asks
+    callers to identify themselves; it needs no key and no account.
+    """
+
+    SEARCH_URL = "https://api.openalex.org/works"
+    MAX_PAGE_SIZE = 25
+    CONTACT = "biostudio@arditmishra.com"
+
+    def __init__(self, session: HTTPSession | None = None, timeout_seconds: float = 20.0) -> None:
+        if session is None:
+            source_session = requests.Session()
+            source_session.headers.update({
+                "Accept": "application/json",
+                "User-Agent": f"BioStudio-DecisionTwin/0.1 (mailto:{self.CONTACT})",
+            })
+            self._session: HTTPSession = source_session
+        else:
+            self._session = session
+        self._timeout_seconds = timeout_seconds
+
+    def search(self, query: str, *, page_size: int = 10) -> list[SourceArtifact]:
+        normalized_query = query.strip()
+        if not normalized_query:
+            raise ValueError("query must not be empty")
+        if not 1 <= page_size <= self.MAX_PAGE_SIZE:
+            raise ValueError(f"page_size must be between 1 and {self.MAX_PAGE_SIZE}")
+
+        try:
+            response = self._session.get(
+                self.SEARCH_URL,
+                params={
+                    "search": normalized_query,
+                    "per-page": page_size,
+                    "mailto": self.CONTACT,
+                },
+                timeout=self._timeout_seconds,
+            )
+            response.raise_for_status()
+            payload = response.json()
+        except Exception as error:
+            raise SourceLookupError("OpenAlex search failed") from error
+
+        if not isinstance(payload, dict):
+            raise SourceLookupError("OpenAlex returned an invalid payload")
+        results = payload.get("results")
+        if not isinstance(results, list):
+            return []
+        return [
+            artifact
+            for raw_result in results
+            if (artifact := self._to_artifact(raw_result)) is not None
+        ]
+
+    def _to_artifact(self, raw_result: object) -> SourceArtifact | None:
+        if not isinstance(raw_result, dict):
+            return None
+        # OpenAlex ids are full URLs; the trailing segment is the citable id.
+        work_id = str(raw_result.get("id") or "").rstrip("/").rsplit("/", 1)[-1].strip()
+        title = str(raw_result.get("display_name") or "").strip()
+        if not work_id or not title:
+            return None
+
+        doi = str(raw_result.get("doi") or "").strip() or None
+        structured_record = {
+            key: value
+            for key, value in {
+                "openalex_id": work_id,
+                "doi": doi,
+                "publication_year": str(raw_result.get("publication_year") or "").strip() or None,
+                "type": str(raw_result.get("type") or "").strip() or None,
+                "cited_by_count": raw_result.get("cited_by_count"),
+                "open_access_url": (raw_result.get("best_oa_location") or {}).get("pdf_url")
+                if isinstance(raw_result.get("best_oa_location"), dict)
+                else None,
+            }.items()
+            if value is not None
+        }
+        return SourceArtifact(
+            citation=Citation(
+                source="openalex",
+                source_id=work_id,
+                retrieved_at=datetime.now(timezone.utc),
+            ),
+            title=title,
+            # OpenAlex returns abstracts as an inverted index, not prose. Rather
+            # than reconstruct a lossy approximation and present it as the
+            # abstract, no excerpt is claimed -- structured_record carries the
+            # retained support instead.
+            excerpt=None,
+            structured_record=structured_record,
+        )

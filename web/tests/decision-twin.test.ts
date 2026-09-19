@@ -14,7 +14,7 @@ describe("Decision Twin source client", () => {
     await searchEuropePmc("EGFR resistance", 5);
 
     expect(fetch).toHaveBeenCalledWith(
-      "/v2/sources/europe-pmc/search?query=EGFR%20resistance&page_size=5",
+      "/v2/sources/europe-pmc/search?query=EGFR%20resistance&page_size=5&study_type=any",
     );
   });
 

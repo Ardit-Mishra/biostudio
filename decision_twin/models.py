@@ -16,7 +16,10 @@ from typing_extensions import Annotated
 ShortText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
 ClaimText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=4_000)]
 ExcerptText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2_000)]
-SourceName = Literal["bindingdb", "chembl", "europe_pmc", "open_targets", "pubchem", "pubmed", "uniprot"]
+SourceName = Literal[
+    "bindingdb", "chembl", "europe_pmc", "openalex", "open_targets",
+    "pubchem", "pubmed", "uniprot",
+]
 
 
 class Citation(BaseModel):
@@ -55,11 +58,32 @@ class EvidenceRecord(BaseModel):
     structured_record: dict[str, Any] | None = None
     assay_context: AssayContext | None = None
     outcome_direction: Literal["supports", "contradicts", "unknown"] = "unknown"
+    #: Why this record points the way it does, in the operator's own words.
+    #: A direction is an assertion about the evidence, and this product does not
+    #: accept an unjustified assertion anywhere else -- a record may not say
+    #: "contradicts" while staying silent about what in it contradicts.
+    direction_rationale: ClaimText | None = None
 
     @model_validator(mode="after")
     def has_retained_support(self) -> "EvidenceRecord":
         if not self.excerpt and not self.structured_record:
             raise ValueError("EvidenceRecord requires a structured_record or excerpt")
+        return self
+
+    @model_validator(mode="after")
+    def a_direction_must_be_justified(self) -> "EvidenceRecord":
+        """A stated direction carries a reason; an undirected record need not.
+
+        The compiler turns opposing directions into a hold, so the direction is
+        the single field with the most influence on the recommendation. Letting
+        it be set from a dropdown with no recorded reasoning would put the least
+        justified value in the most load-bearing place.
+        """
+        if self.outcome_direction != "unknown" and not self.direction_rationale:
+            raise ValueError(
+                "direction_rationale is required when outcome_direction is "
+                "'supports' or 'contradicts'"
+            )
         return self
 
 

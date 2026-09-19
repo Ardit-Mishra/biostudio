@@ -5,12 +5,18 @@ import {
   createEvidenceFromAnnotation,
   excerptPreview,
   isAnnotationReady,
+  missingFromAnnotation,
   type EvidenceAnnotationDraft,
 } from "@/lib/annotation";
 import {
   citationUrl,
   getChEMBLCompound,
+  listStudyTypes,
   searchEuropePmc,
+  searchOpenAlex,
+  LITERATURE_SOURCES,
+  type LiteratureSource,
+  type StudyType,
   type EvidenceRecord,
   type SourceArtifact,
 } from "@/lib/decision-twin";
@@ -26,6 +32,7 @@ const EMPTY_DRAFT: EvidenceAnnotationDraft = {
   unit: "",
   genetic_context: "",
   outcome_direction: "unknown",
+  direction_rationale: "",
 };
 
 function draftFor(artifact: SourceArtifact): EvidenceAnnotationDraft {
@@ -59,6 +66,9 @@ export function EvidenceAnnotationWorkbench({
 }) {
   const [query, setQuery] = useState(initialQuery || "EGFR osimertinib resistance");
   const [mode, setMode] = useState<SearchMode>("literature");
+  const [literatureSource, setLiteratureSource] = useState<LiteratureSource>("europe_pmc");
+  const [studyType, setStudyType] = useState("any");
+  const [studyTypes, setStudyTypes] = useState<StudyType[]>([]);
   const [records, setRecords] = useState<SourceArtifact[]>([]);
   const [selected, setSelected] = useState<SourceArtifact | null>(null);
   const [draft, setDraft] = useState<EvidenceAnnotationDraft>(EMPTY_DRAFT);
@@ -78,9 +88,11 @@ export function EvidenceAnnotationWorkbench({
       setError(null);
       try {
         const found =
-          searchMode === "literature"
-            ? await searchEuropePmc(normalized, 5)
-            : await getChEMBLCompound(normalized);
+          searchMode !== "literature"
+            ? await getChEMBLCompound(normalized)
+            : literatureSource === "openalex"
+              ? await searchOpenAlex(normalized, 5)
+              : await searchEuropePmc(normalized, 5, studyType);
         if (seq !== searchSeq.current) return;
         setRecords(found);
       } catch (cause) {
@@ -91,8 +103,18 @@ export function EvidenceAnnotationWorkbench({
         if (seq === searchSeq.current) setPending(false);
       }
     },
-    [],
+    // Both are read inside, so both must be dependencies. Leaving this empty
+    // pinned the callback to the first render and sent study_type=any forever,
+    // however the reader set the picker -- a filter that silently does nothing
+    // is worse than no filter, because the results look narrowed.
+    [literatureSource, studyType],
   );
+
+  useEffect(() => {
+    // Served by the API so the caveats cannot drift from the filter that
+    // applies them. A failure here leaves the picker on "Any design".
+    void listStudyTypes().then(setStudyTypes).catch(() => setStudyTypes([]));
+  }, []);
 
   // Arriving from the landing search should land on results, not on an empty
   // box the researcher has to submit a second time.
@@ -143,6 +165,70 @@ export function EvidenceAnnotationWorkbench({
               <FlaskConical className="size-3.5" aria-hidden="true" /> Compound
             </button>
           </div>
+
+          {mode === "literature" && (
+            <div className="source-refine">
+              <div className="refine-row" role="group" aria-label="Literature database">
+                <span className="refine-label">Database</span>
+                {LITERATURE_SOURCES.map((source) => (
+                  <button
+                    key={source.key}
+                    type="button"
+                    aria-pressed={literatureSource === source.key}
+                    onClick={() => { setLiteratureSource(source.key); setRecords([]); }}
+                    className={literatureSource === source.key ? "is-active" : ""}
+                    title={source.blurb}
+                  >
+                    {source.label}
+                  </button>
+                ))}
+              </div>
+              <p className="refine-why">
+                {LITERATURE_SOURCES.find((x) => x.key === literatureSource)?.blurb}{" "}
+                The lanes are searched separately, never merged: a record found in
+                only one of them is a fact about coverage.
+              </p>
+
+              {literatureSource === "europe_pmc" && studyTypes.length > 0 && (
+                <>
+                  <div className="refine-row">
+                    <label className="refine-label" htmlFor="study-type">
+                      Study design
+                    </label>
+                    <select
+                      id="study-type"
+                      name="study-type"
+                      value={studyType}
+                      onChange={(event) => { setStudyType(event.target.value); setRecords([]); }}
+                      className="refine-select"
+                    >
+                      {studyTypes.map((type) => (
+                        <option key={type.key} value={type.key}>{type.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {/* Choosing a design is choosing a level of evidence, so the
+                      limit of that level is shown at the moment of choosing. */}
+                  {(() => {
+                    const chosen = studyTypes.find((t) => t.key === studyType);
+                    if (!chosen) return null;
+                    return (
+                      <dl className="refine-caveat">
+                        <div>
+                          <dt>Can support</dt>
+                          <dd>{chosen.supports}</dd>
+                        </div>
+                        <div className="cannot">
+                          <dt>Cannot support</dt>
+                          <dd>{chosen.cannot_support}</dd>
+                        </div>
+                      </dl>
+                    );
+                  })()}
+                </>
+              )}
+            </div>
+          )}
 
           <form className="mt-5 flex gap-2" onSubmit={search}>
             <label className="sr-only" htmlFor="source-query">{mode === "literature" ? "Search Europe PMC" : "Look up a ChEMBL compound"}</label>
@@ -251,7 +337,37 @@ export function EvidenceAnnotationWorkbench({
                     <option value="contradicts">Contradicts</option>
                   </select>
                 </label>
+
+                {draft.outcome_direction !== "unknown" && (
+                  <label className="sm:col-span-2">
+                    <span className="text-[12px] font-medium text-ink">
+                      Why does it {draft.outcome_direction === "supports" ? "support" : "contradict"}?
+                    </span>
+                    <textarea
+                      name="direction-rationale"
+                      autoComplete="off"
+                      value={draft.direction_rationale}
+                      onChange={(event) =>
+                        setDraft(updateDraft(draft, "direction_rationale", event.target.value))
+                      }
+                      rows={2}
+                      placeholder="Name what in this record points that way — the measured outcome, the population, the comparison…"
+                      className="mt-1.5 w-full resize-y rounded-md border border-line bg-surface px-3 py-2.5 text-[13.5px] leading-relaxed text-ink outline-none placeholder:text-ink-faint focus:border-[var(--ds-accent)] focus:ring-2 focus:ring-[var(--ds-accent-soft)]"
+                    />
+                    <span className="mt-1.5 block text-[11.5px] leading-snug text-ink-muted">
+                      Required. Opposing directions on comparable records are what
+                      force a hold, so the direction must not be the least
+                      justified field in the study.
+                    </span>
+                  </label>
+                )}
               </div>
+
+              {!isAnnotationReady(draft) && (
+                <p className="mt-5 text-[12.5px] leading-relaxed text-ink-muted">
+                  Still needed: {missingFromAnnotation(draft).join(", ")}.
+                </p>
+              )}
 
               <button
                 type="button"
