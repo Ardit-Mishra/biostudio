@@ -1,18 +1,20 @@
 @import "tailwindcss";
 
 /*
- * BioStudio Decision Twin — "Laboratory Instrument"
+ * BioStudio Decision Twin — "Evidence cartography"
  *
- * Shared with GenomeSight and PeptideMHC so the portfolio reads as one system
- * rather than three unrelated apps. Ground is a cool slate, never pure black;
- * the accent is AlphaFold's high-confidence pLDDT blue, borrowed from this
- * field's own instruments instead of a generic brand colour.
+ * Deliberately NOT the portfolio's shared instrument language. GenomeSight and
+ * PeptideMHC are compact measurement workbenches; this is a research map that
+ * should read like a document you can trace. Hence a paper-leaning ground and a
+ * teal accent rather than the pLDDT blue those two share. If the four apps are
+ * ever meant to read as one system again, this block is the decision to revisit.
  *
- * The rule that shapes everything here: the accent is for measurement and
- * interaction, and NEVER for status. A decision status has to be readable
+ * The rule that shapes everything here: the accent is for interaction and
+ * wayfinding, and NEVER for status. A decision status has to be readable
  * without knowing the brand colour, because the whole product is an argument
- * about not overstating what the evidence supports. Five states, each with its
- * own hue and its own fill treatment:
+ * about not overstating what the evidence supports. Each state carries its own
+ * hue AND its own fill treatment, so the meaning survives a grayscale print and
+ * the most common forms of colour blindness:
  *
  *   supporting     green, solid      evidence points the same way
  *   contradicting  ochre, solid      evidence points the other way — information,
@@ -25,7 +27,8 @@
  *
  * "missing" being hollow is the load-bearing detail. A dashboard that paints
  * absent evidence the same way it paints weak evidence is lying by omission,
- * and this product exists to not do that.
+ * and this product exists to not do that. The same rule governs the topology:
+ * a dotted path marks an unfilled translation step, never weak evidence.
  */
 
 @theme inline {
@@ -104,8 +107,11 @@
   --ds-conflicting-soft: #3d1c19;
 }
 
-/* Evidence cartography: a document-like research map, deliberately separate
-   from the compact model workbench language used by Peptide-MHC. */
+/* Component classes. Written as plain CSS rather than utility soup because
+   these carry meaning the class list cannot: a broken path, a hollow lane, a
+   status stroke. The rationale for each sits with the rule, not in the JSX. */
+h1, h2, h3 { text-wrap: balance; }
+p { text-wrap: pretty; }
 .bio-shell { background: var(--ds-ground); color: var(--ds-ink); }
 .bio-header { border-bottom: 1px solid var(--ds-border); background: color-mix(in srgb, var(--ds-surface) 92%, transparent); }
 .bio-header-inner { width: min(1180px, calc(100% - 40px)); min-height: 76px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 20px; }

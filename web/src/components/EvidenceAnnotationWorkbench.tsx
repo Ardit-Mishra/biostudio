@@ -99,10 +99,10 @@ export function EvidenceAnnotationWorkbench({
           <p className="workbench-intro">Retrieve a public record, inspect it, then supply the biological context yourself. Retrieval never promotes itself to evidence.</p>
 
           <div className="source-mode" role="group" aria-label="Public source to search">
-            <button type="button" onClick={() => { setMode("literature"); setQuery("EGFR osimertinib resistance"); setRecords([]); }} className={mode === "literature" ? "is-active" : ""}>
+            <button type="button" aria-pressed={mode === "literature"} onClick={() => { setMode("literature"); setQuery("EGFR osimertinib resistance"); setRecords([]); }} className={mode === "literature" ? "is-active" : ""}>
               <BookOpenText className="size-3.5" aria-hidden="true" /> Literature
             </button>
-            <button type="button" onClick={() => { setMode("compound"); setQuery("CHEMBL3353410"); setRecords([]); }} className={mode === "compound" ? "is-active" : ""}>
+            <button type="button" aria-pressed={mode === "compound"} onClick={() => { setMode("compound"); setQuery("CHEMBL3353410"); setRecords([]); }} className={mode === "compound" ? "is-active" : ""}>
               <FlaskConical className="size-3.5" aria-hidden="true" /> Compound
             </button>
           </div>
@@ -111,9 +111,12 @@ export function EvidenceAnnotationWorkbench({
             <label className="sr-only" htmlFor="source-query">{mode === "literature" ? "Search Europe PMC" : "Look up a ChEMBL compound"}</label>
             <input
               id="source-query"
+              name="source-query"
+              autoComplete="off"
+              spellCheck={false}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder={mode === "literature" ? "Target, disease, compound, or assay" : "ChEMBL compound ID, e.g. CHEMBL3353410"}
+              placeholder={mode === "literature" ? "Target, disease, compound, or assay…" : "ChEMBL compound ID, e.g. CHEMBL3353410"}
               className="min-w-0 flex-1 rounded-md border border-line bg-surface px-3 py-2.5 text-[14px] text-ink shadow-sm outline-none placeholder:text-ink-faint focus:border-[var(--ds-accent)] focus:ring-2 focus:ring-[var(--ds-accent-soft)]"
             />
             <button
@@ -122,7 +125,7 @@ export function EvidenceAnnotationWorkbench({
               className="inline-flex shrink-0 items-center gap-2 rounded-md bg-[var(--ds-accent)] px-3.5 py-2.5 text-[13px] font-medium text-[var(--ds-on-accent)] transition-colors hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-55 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-accent)]"
             >
               <Search className="size-3.5" aria-hidden="true" />
-              {pending ? "Searching" : mode === "literature" ? "Search" : "Resolve"}
+              {pending ? "Searching…" : mode === "literature" ? "Search" : "Resolve"}
             </button>
           </form>
 
@@ -184,21 +187,24 @@ export function EvidenceAnnotationWorkbench({
                 <label className="sm:col-span-2">
                   <span className="text-[12px] font-medium text-ink">What does this record support or challenge?</span>
                   <textarea
+                    name="claim"
+                    autoComplete="off"
                     value={draft.claim}
                     onChange={(event) => setDraft(updateDraft(draft, "claim", event.target.value))}
                     rows={3}
-                    placeholder="Write a bounded claim in your own words."
+                    placeholder="Write a bounded claim in your own words…"
                     className="mt-1.5 w-full resize-y rounded-md border border-line bg-surface px-3 py-2.5 text-[13.5px] leading-relaxed text-ink outline-none placeholder:text-ink-faint focus:border-[var(--ds-accent)] focus:ring-2 focus:ring-[var(--ds-accent-soft)]"
                   />
                 </label>
-                <Field label="Target ID" value={draft.target_id} onChange={(value) => setDraft(updateDraft(draft, "target_id", value))} placeholder="e.g. ENSG00000146648" />
-                <Field label="Biological system" value={draft.biological_system} onChange={(value) => setDraft(updateDraft(draft, "biological_system", value))} placeholder="e.g. human or cell_line" />
-                <Field label="Readout" value={draft.readout} onChange={(value) => setDraft(updateDraft(draft, "readout", value))} placeholder="e.g. progression_free_survival" />
-                <Field label="Unit" value={draft.unit} onChange={(value) => setDraft(updateDraft(draft, "unit", value))} placeholder="e.g. months or nM" />
-                <Field label="Genetic context (optional)" value={draft.genetic_context ?? ""} onChange={(value) => setDraft(updateDraft(draft, "genetic_context", value))} placeholder="e.g. EGFR T790M" />
+                <Field label="Target ID" name="target-id" value={draft.target_id} onChange={(value) => setDraft(updateDraft(draft, "target_id", value))} placeholder="e.g. ENSG00000146648" />
+                <Field label="Biological system" name="biological-system" value={draft.biological_system} onChange={(value) => setDraft(updateDraft(draft, "biological_system", value))} placeholder="e.g. human or cell_line" />
+                <Field label="Readout" name="readout" value={draft.readout} onChange={(value) => setDraft(updateDraft(draft, "readout", value))} placeholder="e.g. progression_free_survival" />
+                <Field label="Unit" name="unit" value={draft.unit} onChange={(value) => setDraft(updateDraft(draft, "unit", value))} placeholder="e.g. months or nM" />
+                <Field label="Genetic context (optional)" name="genetic-context" value={draft.genetic_context ?? ""} onChange={(value) => setDraft(updateDraft(draft, "genetic_context", value))} placeholder="e.g. EGFR T790M" />
                 <label>
                   <span className="text-[12px] font-medium text-ink">Observed direction</span>
                   <select
+                    name="outcome-direction"
                     value={draft.outcome_direction}
                     onChange={(event) => setDraft(updateDraft(draft, "outcome_direction", event.target.value))}
                     className="mt-1.5 h-[42px] w-full rounded-md border border-line bg-surface px-3 text-[13.5px] text-ink outline-none focus:border-[var(--ds-accent)] focus:ring-2 focus:ring-[var(--ds-accent-soft)]"
@@ -229,11 +235,13 @@ export function EvidenceAnnotationWorkbench({
 
 function Field({
   label,
+  name,
   value,
   onChange,
   placeholder,
 }: {
   label: string;
+  name: string;
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
@@ -242,6 +250,9 @@ function Field({
     <label>
       <span className="text-[12px] font-medium text-ink">{label}</span>
       <input
+        name={name}
+        autoComplete="off"
+        spellCheck={false}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}

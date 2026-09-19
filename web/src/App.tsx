@@ -27,7 +27,12 @@ function useTheme(): [Theme, () => void] {
     } catch {
       /* private window or blocked storage — fall through to the OS preference */
     }
-    return "light";
+    // Fall through to the OS preference rather than forcing light. Someone who
+    // has told their system they want dark should not have to say it again
+    // here, and the dark palette below is fully specified, not an afterthought.
+    return window.matchMedia?.("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
   });
 
   useEffect(() => {
