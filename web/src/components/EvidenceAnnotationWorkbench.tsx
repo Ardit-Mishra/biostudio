@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { ArrowRight, BookOpenText, FlaskConical, Search } from "lucide-react";
 
 import {
@@ -45,10 +45,19 @@ function updateDraft(
 
 export function EvidenceAnnotationWorkbench({
   onEvidenceAdded,
+  initialQuery = "",
+  autoSearch = false,
+  primary = false,
 }: {
   onEvidenceAdded: (record: EvidenceRecord) => void;
+  /** Seeded from whatever the researcher typed on the landing page. */
+  initialQuery?: string;
+  /** Run that query on mount, so arriving from the hero lands on results. */
+  autoSearch?: boolean;
+  /** This is the whole screen, not a panel at the bottom of a finished study. */
+  primary?: boolean;
 }) {
-  const [query, setQuery] = useState("EGFR osimertinib resistance");
+  const [query, setQuery] = useState(initialQuery || "EGFR osimertinib resistance");
   const [mode, setMode] = useState<SearchMode>("literature");
   const [records, setRecords] = useState<SourceArtifact[]>([]);
   const [selected, setSelected] = useState<SourceArtifact | null>(null);
@@ -56,25 +65,41 @@ export function EvidenceAnnotationWorkbench({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function search(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const normalized = query.trim();
-    if (!normalized) return;
+  const runSearch = useCallback(
+    async (rawQuery: string, searchMode: SearchMode) => {
+      const normalized = rawQuery.trim();
+      if (!normalized) return;
 
-    setPending(true);
-    setError(null);
-    try {
-      setRecords(
-        mode === "literature"
-          ? await searchEuropePmc(normalized, 5)
-          : await getChEMBLCompound(normalized),
-      );
-    } catch (cause) {
-      setRecords([]);
-      setError(cause instanceof Error ? cause.message : "Source lookup failed.");
-    } finally {
-      setPending(false);
-    }
+      setPending(true);
+      setError(null);
+      try {
+        setRecords(
+          searchMode === "literature"
+            ? await searchEuropePmc(normalized, 5)
+            : await getChEMBLCompound(normalized),
+        );
+      } catch (cause) {
+        setRecords([]);
+        setError(cause instanceof Error ? cause.message : "Source lookup failed.");
+      } finally {
+        setPending(false);
+      }
+    },
+    [],
+  );
+
+  // Arriving from the landing search should land on results, not on an empty
+  // box the researcher has to submit a second time.
+  useEffect(() => {
+    if (autoSearch && initialQuery.trim()) void runSearch(initialQuery, "literature");
+    // Intentionally mount-only: re-running on every keystroke would hammer the
+    // source and fight the researcher's own edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function search(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void runSearch(query, mode);
   }
 
   function selectRecord(record: SourceArtifact) {
@@ -94,9 +119,15 @@ export function EvidenceAnnotationWorkbench({
     <section className="annotation-workbench" aria-labelledby="source-workbench-heading">
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         <div>
-          <p className="section-index">04 / OPERATOR ANNOTATION</p>
-          <h2 id="source-workbench-heading" className="workbench-title">Bring a source in carefully.</h2>
-          <p className="workbench-intro">Retrieve a public record, inspect it, then supply the biological context yourself. Retrieval never promotes itself to evidence.</p>
+          <p className="section-index">{primary ? "01 / SEARCH THE PUBLIC RECORD" : "04 / OPERATOR ANNOTATION"}</p>
+          <h2 id="source-workbench-heading" className="workbench-title">
+            {primary ? "Start from a record, not a hunch." : "Bring a source in carefully."}
+          </h2>
+          <p className="workbench-intro">
+            {primary
+              ? "Search Europe PMC or resolve a ChEMBL compound, inspect what comes back, then supply the biological context yourself. The study compiles as soon as you add the first record."
+              : "Retrieve a public record, inspect it, then supply the biological context yourself. Retrieval never promotes itself to evidence."}
+          </p>
 
           <div className="source-mode" role="group" aria-label="Public source to search">
             <button type="button" aria-pressed={mode === "literature"} onClick={() => { setMode("literature"); setQuery("EGFR osimertinib resistance"); setRecords([]); }} className={mode === "literature" ? "is-active" : ""}>

@@ -1,6 +1,28 @@
-import { ArrowDownRight, ArrowUpRight, Beaker, BookOpenText, Dna, FlaskConical, GitCompareArrows, Network } from "lucide-react";
+import { FormEvent, useState } from "react";
+import { ArrowDownRight, ArrowUpRight, Beaker, BookOpenText, Dna, FlaskConical, GitCompareArrows, Network, Search } from "lucide-react";
 
-export function Landing({ onOpenStudy }: { onOpenStudy: () => void }) {
+/** Queries that return real records, offered so the box is never a blank stare. */
+const STARTERS = [
+  "KRAS G12C pancreatic",
+  "SOD1 ALS antisense",
+  "PCSK9 LDL lowering",
+];
+
+export function Landing({
+  onSearch,
+  onOpenExample,
+}: {
+  onSearch: (query: string) => void;
+  onOpenExample: () => void;
+}) {
+  const [query, setQuery] = useState("");
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const trimmed = query.trim();
+    if (trimmed) onSearch(trimmed);
+  }
+
   return (
     <main className="landing-main">
       <section className="landing-hero" aria-labelledby="landing-title">
@@ -12,9 +34,38 @@ export function Landing({ onOpenStudy }: { onOpenStudy: () => void }) {
             was measured, where it was measured, what agrees, and exactly where
             the translation path breaks.
           </p>
+          <form className="landing-search" onSubmit={submit}>
+            <label className="sr-only" htmlFor="landing-query">
+              Target, disease, compound, or assay to search in the public record
+            </label>
+            <div className="landing-search-row">
+              <Search className="size-4" aria-hidden="true" />
+              <input
+                id="landing-query"
+                name="landing-query"
+                autoComplete="off"
+                spellCheck={false}
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Target, disease, compound, or assay&hellip;"
+              />
+              <button type="submit" disabled={!query.trim()}>
+                Search public records
+              </button>
+            </div>
+            <div className="landing-starters">
+              <span>Try</span>
+              {STARTERS.map((starter) => (
+                <button key={starter} type="button" onClick={() => onSearch(starter)}>
+                  {starter}
+                </button>
+              ))}
+            </div>
+          </form>
+
           <div className="landing-actions">
-            <button type="button" onClick={onOpenStudy} className="landing-primary">
-              Open the live Decision Twin <ArrowDownRight className="size-4" aria-hidden="true" />
+            <button type="button" onClick={onOpenExample} className="landing-secondary">
+              Or open a worked example <ArrowUpRight className="size-3.5" aria-hidden="true" />
             </button>
             <a href="#how-it-holds" className="landing-secondary">How the evidence stays honest <ArrowDownRight className="size-3.5" aria-hidden="true" /></a>
           </div>
@@ -84,7 +135,7 @@ export function Landing({ onOpenStudy }: { onOpenStudy: () => void }) {
 
       <section className="landing-study-link" aria-label="Open the public study exemplar">
         <div><p className="section-index">LIVE PUBLIC EXAMPLE</p><h2>EGFR / osimertinib in non-small-cell lung cancer</h2><p>Inspect a study where human evidence and acquired-resistance observations force a transparent hold instead of a false yes.</p></div>
-        <button type="button" onClick={onOpenStudy} aria-label="Open the EGFR Decision Twin study"><ArrowUpRight className="size-6" aria-hidden="true" /></button>
+        <button type="button" onClick={onOpenExample} aria-label="Open the EGFR worked example"><ArrowUpRight className="size-6" aria-hidden="true" /></button>
       </section>
     </main>
   );

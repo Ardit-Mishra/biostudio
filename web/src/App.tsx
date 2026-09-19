@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { FlaskConical, Moon, Orbit, RotateCw, Sun } from "lucide-react";
 
 import { EvidenceAnnotationWorkbench } from "@/components/EvidenceAnnotationWorkbench";
@@ -19,6 +19,25 @@ import {
 
 type Theme = "light" | "dark";
 
+/**
+ * Two people have to be served by the same screen, and they want opposite
+ * things on arrival:
+ *
+ *   a researcher on a deadline  wants to type their own target and get on with
+ *                               it, and should never have to read someone
+ *                               else's study first
+ *   someone judging the tool    wants one click to a finished, non-obvious
+ *                               result, clearly labelled as an example
+ *
+ * So the landing carries a real search box AND an explicit worked example, and
+ * the study screen states which of the two you are looking at. The previous
+ * build had one door that opened into a pre-loaded EGFR study with no
+ * explanation, which served neither: the researcher had to scroll past it, and
+ * the evaluator could not tell whether the app had done anything.
+ */
+type Screen = "landing" | "study";
+type StudyMode = "example" | "own";
+
 function useTheme(): [Theme, () => void] {
   const [theme, setTheme] = useState<Theme>(() => {
     try {
@@ -29,7 +48,7 @@ function useTheme(): [Theme, () => void] {
     }
     // Fall through to the OS preference rather than forcing light. Someone who
     // has told their system they want dark should not have to say it again
-    // here, and the dark palette below is fully specified, not an afterthought.
+    // here, and the dark palette is fully specified, not an afterthought.
     return window.matchMedia?.("(prefers-color-scheme: dark)").matches
       ? "dark"
       : "light";
@@ -47,60 +66,143 @@ function useTheme(): [Theme, () => void] {
   return [theme, () => setTheme((t) => (t === "dark" ? "light" : "dark"))];
 }
 
+/** A study id the API will accept, derived from what the researcher asked. */
+function studyIdFor(query: string): string {
+  const slug = query
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
+  return `study-${slug || "untitled"}-${new Date().toISOString().slice(0, 10)}`;
+}
+
 export default function App() {
   const [theme, toggleTheme] = useTheme();
-  const [compilation, setCompilation] = useState<Compilation | null>(null);
-  const [evidence, setEvidence] = useState<EvidenceRecord[]>(EXEMPLAR_EVIDENCE);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(true);
-  const [focusedEvidenceId, setFocusedEvidenceId] = useState<string | null>(EXEMPLAR_EVIDENCE[0]?.id ?? null);
-  const [screen, setScreen] = useState<"landing" | "study">(() =>
+  const [screen, setScreen] = useState<Screen>(() =>
     window.location.hash === "#study" ? "study" : "landing",
+  );
+  const [mode, setMode] = useState<StudyMode>("example");
+  const [evidence, setEvidence] = useState<EvidenceRecord[]>([]);
+  const [seedQuery, setSeedQuery] = useState("");
+  const [compilation, setCompilation] = useState<Compilation | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const [focusedEvidenceId, setFocusedEvidenceId] = useState<string | null>(null);
+
+  const studyId = useMemo(
+    () => (mode === "example" ? EXEMPLAR_STUDY_ID : studyIdFor(seedQuery)),
+    [mode, seedQuery],
   );
 
   const run = useCallback(async () => {
+    // The compiler requires at least one record. An empty study is a normal
+    // state here -- it is where every researcher-authored study begins -- so it
+    // gets its own screen rather than a validation error from the API.
+    if (evidence.length === 0) {
+      setCompilation(null);
+      setError(null);
+      setPending(false);
+      return;
+    }
     setPending(true);
     setError(null);
     try {
-      setCompilation(
-        await compileStudy({
-          study_id: EXEMPLAR_STUDY_ID,
-          evidence,
-        }),
-      );
+      setCompilation(await compileStudy({ study_id: studyId, evidence }));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Compilation failed.");
       setCompilation(null);
     } finally {
       setPending(false);
     }
-  }, [evidence]);
+  }, [evidence, studyId]);
 
   useEffect(() => {
     void run();
   }, [run]);
 
-  const lanes = compilation?.assay_translation_map.lanes ?? [];
-  const addEvidence = useCallback((record: EvidenceRecord) => {
-    setEvidence((current) => [...current, record]);
+  const goHome = useCallback(() => {
+    window.location.hash = "";
+    setScreen("landing");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
-  const openStudy = useCallback(() => {
+
+  const openExample = useCallback(() => {
+    setMode("example");
+    setEvidence(EXEMPLAR_EVIDENCE);
+    setFocusedEvidenceId(EXEMPLAR_EVIDENCE[0]?.id ?? null);
     window.location.hash = "study";
     setScreen("study");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
+  const startOwnStudy = useCallback((query: string) => {
+    setMode("own");
+    setEvidence([]);
+    setCompilation(null);
+    setFocusedEvidenceId(null);
+    setSeedQuery(query);
+    window.location.hash = "study";
+    setScreen("study");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  const addEvidence = useCallback((record: EvidenceRecord) => {
+    setEvidence((current) => [...current, record]);
+    setFocusedEvidenceId((current) => current ?? record.id);
+  }, []);
+
+  const lanes = compilation?.assay_translation_map.lanes ?? [];
+  const isExample = mode === "example";
+  const empty = evidence.length === 0;
+
   return (
     <div className="min-h-screen bio-shell">
       <header className="bio-header">
         <div className="bio-header-inner">
-          <div className="bio-brand">
-            <div className="bio-mark"><Orbit className="size-[19px]" aria-hidden="true" /><FlaskConical className="size-3" aria-hidden="true" /></div>
-            <div><p>BIOSTUDIO</p><span>Evidence cartography</span></div>
-          </div>
+          {/* The wordmark is the way home, as it is on every site. It was a
+              plain <div> before, so the only way back to the landing page was
+              the browser's back button. An <a> keeps Cmd/Ctrl-click working. */}
+          <a
+            href="#"
+            className="bio-brand"
+            onClick={(event) => {
+              event.preventDefault();
+              goHome();
+            }}
+            aria-label="BioStudio home"
+          >
+            <div className="bio-mark">
+              <Orbit className="size-[19px]" aria-hidden="true" />
+              <FlaskConical className="size-3" aria-hidden="true" />
+            </div>
+            <div>
+              <p>BIOSTUDIO</p>
+              <span>Evidence cartography</span>
+            </div>
+          </a>
 
           <div className="flex items-center gap-2">
-            {screen === "study" ? <button type="button" onClick={() => void run()} disabled={pending} className="header-button"><RotateCw className={`size-3.5 ${pending ? "animate-spin" : ""}`} aria-hidden="true" />Recompile</button> : <button type="button" onClick={openStudy} className="header-button">Open study</button>}
+            {screen === "study" && (
+              <>
+                <button type="button" onClick={goHome} className="header-button">
+                  New search
+                </button>
+                {!empty && (
+                  <button
+                    type="button"
+                    onClick={() => void run()}
+                    disabled={pending}
+                    className="header-button"
+                  >
+                    <RotateCw
+                      className={`size-3.5 ${pending ? "animate-spin" : ""}`}
+                      aria-hidden="true"
+                    />
+                    Recompile
+                  </button>
+                )}
+              </>
+            )}
             <button
               type="button"
               onClick={toggleTheme}
@@ -117,41 +219,86 @@ export default function App() {
         </div>
       </header>
 
-      {screen === "landing" ? <Landing onOpenStudy={openStudy} /> : <main className="bio-main">
-        <div className="study-intro">
-          <p className="section-index">PUBLIC EXAMPLE / {EXEMPLAR_STUDY_ID}</p>
-          <h1>{EXEMPLAR_TITLE}</h1>
-          <p>{EXEMPLAR_QUESTION}</p>
-        </div>
-
-        {error && (
-          <p role="alert" className="compile-error">
-            {error}{" "}
-            <span className="text-ink-muted">
-              The Decision Twin API must be running for this study to compile.
-            </span>
-          </p>
-        )}
-
-        {pending && !compilation && (
-          <p className="compile-loading">
-            Compiling the study from its evidence&hellip;
-          </p>
-        )}
-
-        {compilation && (
-          <div className="study-flow">
-            <VerdictBanner compilation={compilation} />
-            <EvidenceTopology evidence={evidence} lanes={lanes} focusedEvidenceId={focusedEvidenceId} onFocusEvidence={setFocusedEvidenceId} />
-            <div className="analysis-grid">
-              <EvidenceSignalPlot evidence={evidence} lanes={lanes} focusedEvidenceId={focusedEvidenceId} onFocusEvidence={setFocusedEvidenceId} />
-              <EvidenceFocusCard evidence={evidence} lanes={lanes} focusedEvidenceId={focusedEvidenceId} />
-            </div>
-            <div className="atlas-grid"><SourceAtlas /><IntegrityPanel compilation={compilation} /></div>
-            <EvidenceAnnotationWorkbench onEvidenceAdded={addEvidence} />
+      {screen === "landing" ? (
+        <Landing onSearch={startOwnStudy} onOpenExample={openExample} />
+      ) : (
+        <main className="bio-main">
+          <div className="study-intro">
+            <p className="section-index">
+              {isExample ? `WORKED EXAMPLE / ${EXEMPLAR_STUDY_ID}` : `YOUR STUDY / ${studyId}`}
+            </p>
+            <h1>{isExample ? EXEMPLAR_TITLE : seedQuery || "Untitled study"}</h1>
+            <p>
+              {isExample
+                ? EXEMPLAR_QUESTION
+                : "Search the public record, annotate what you retain, and the decision compiles from exactly what you added."}
+            </p>
           </div>
-        )}
-      </main>}
+
+          {error && (
+            <p role="alert" className="compile-error">
+              {error}{" "}
+              <span className="text-ink-muted">
+                The Decision Twin API must be running for this study to compile.
+              </span>
+            </p>
+          )}
+
+          {/* An empty study puts retrieval first. Nothing else on this page can
+              say anything true yet, so nothing else is shown. */}
+          {empty ? (
+            <div className="study-flow">
+              <EvidenceAnnotationWorkbench
+                onEvidenceAdded={addEvidence}
+                initialQuery={seedQuery}
+                autoSearch={Boolean(seedQuery)}
+                primary
+              />
+            </div>
+          ) : (
+            <>
+              {pending && !compilation && (
+                <p className="compile-loading">
+                  Compiling the study from its evidence&hellip;
+                </p>
+              )}
+
+              {compilation && (
+                <div className="study-flow">
+                  <VerdictBanner compilation={compilation} />
+                  <EvidenceTopology
+                    evidence={evidence}
+                    lanes={lanes}
+                    focusedEvidenceId={focusedEvidenceId}
+                    onFocusEvidence={setFocusedEvidenceId}
+                  />
+                  <div className="analysis-grid">
+                    <EvidenceSignalPlot
+                      evidence={evidence}
+                      lanes={lanes}
+                      focusedEvidenceId={focusedEvidenceId}
+                      onFocusEvidence={setFocusedEvidenceId}
+                    />
+                    <EvidenceFocusCard
+                      evidence={evidence}
+                      lanes={lanes}
+                      focusedEvidenceId={focusedEvidenceId}
+                    />
+                  </div>
+                  <div className="atlas-grid">
+                    <SourceAtlas />
+                    <IntegrityPanel compilation={compilation} />
+                  </div>
+                  <EvidenceAnnotationWorkbench
+                    onEvidenceAdded={addEvidence}
+                    initialQuery={seedQuery}
+                  />
+                </div>
+              )}
+            </>
+          )}
+        </main>
+      )}
 
       <footer className="bio-footer">
         <div>

@@ -115,7 +115,11 @@ p { text-wrap: pretty; }
 .bio-shell { background: var(--ds-ground); color: var(--ds-ink); }
 .bio-header { border-bottom: 1px solid var(--ds-border); background: color-mix(in srgb, var(--ds-surface) 92%, transparent); }
 .bio-header-inner { width: min(1180px, calc(100% - 40px)); min-height: 76px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
-.bio-brand { display: flex; align-items: center; gap: 11px; }
+.bio-brand { display: flex; align-items: center; gap: 11px; color: inherit; text-decoration: none; border-radius: 6px; }
+/* It is a link now, so it has to look like one on hover and take focus. */
+.bio-brand:hover .bio-mark { border-color: var(--ds-accent); background: var(--ds-accent-soft); }
+.bio-brand:hover p { color: var(--ds-accent-ink); }
+.bio-brand:focus-visible { outline: 2px solid var(--ds-accent); outline-offset: 4px; }
 .bio-brand p { font: 650 13px/1 var(--ds-font-mono); letter-spacing: .15em; }
 .bio-brand span { display: block; margin-top: 5px; color: var(--ds-ink-faint); font-size: 12px; }
 .bio-mark { position: relative; display: grid; width: 35px; height: 35px; place-items: center; color: var(--ds-accent); border: 1px solid color-mix(in srgb, var(--ds-accent) 55%, var(--ds-border)); border-radius: 50%; }
@@ -377,4 +381,92 @@ p { text-wrap: pretty; }
 @media (max-width: 720px) {
   .landing-hero { display: block; }
   .landing-map { width: 100%; margin: 34px 0 0; padding: 0; }
+}
+
+
+/* ---------------------------------------------------------------------------
+   Landing search.
+
+   The primary action on the page. A researcher arriving with a question should
+   be able to ask it in the first thing they see, without first reading a study
+   about a target they do not work on.
+   --------------------------------------------------------------------------- */
+.landing-search { margin-top: 30px; max-width: 640px; }
+.landing-search-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 6px 6px 14px;
+  border: 1px solid var(--ds-border-strong);
+  border-radius: 10px;
+  background: var(--ds-surface);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+.landing-search-row:focus-within {
+  border-color: var(--ds-accent);
+  box-shadow: 0 0 0 3px var(--ds-accent-soft);
+}
+.landing-search-row > svg { flex: none; color: var(--ds-ink-faint); }
+.landing-search-row input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ds-ink);
+  font-size: 15px;
+  padding: 10px 0;
+  outline: none;
+}
+.landing-search-row input::placeholder { color: var(--ds-ink-faint); }
+.landing-search-row button {
+  flex: none;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 7px;
+  border: 0;
+  background: var(--ds-accent);
+  color: var(--ds-on-accent);
+  font-size: 13.5px;
+  font-weight: 550;
+  cursor: pointer;
+  transition: filter 160ms ease, background 160ms ease;
+}
+.landing-search-row button:hover:not(:disabled) { filter: brightness(0.94); }
+.landing-search-row button:disabled { background: var(--ds-border-strong); cursor: not-allowed; }
+.landing-search-row button:focus-visible { outline: 2px solid var(--ds-accent); outline-offset: 3px; }
+
+.landing-starters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.landing-starters span {
+  font: 500 10.5px/1 var(--ds-font-mono);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--ds-ink-faint);
+}
+.landing-starters button {
+  border: 1px solid var(--ds-border);
+  background: transparent;
+  color: var(--ds-ink-muted);
+  border-radius: 999px;
+  padding: 5px 11px;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: border-color 160ms ease, color 160ms ease, background 160ms ease;
+}
+.landing-starters button:hover {
+  border-color: var(--ds-accent);
+  color: var(--ds-accent-ink);
+  background: var(--ds-accent-soft);
+}
+.landing-starters button:focus-visible { outline: 2px solid var(--ds-accent); outline-offset: 2px; }
+
+@media (max-width: 560px) {
+  .landing-search-row { flex-wrap: wrap; padding: 10px; }
+  .landing-search-row input { flex-basis: 100%; padding: 4px 4px 10px; }
+  .landing-search-row button { width: 100%; }
 }
