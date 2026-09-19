@@ -540,8 +540,13 @@ def batch_predict_v1(batch: BatchMoleculeInput) -> List[Dict]:
 @app.get("/v2/sources/europe-pmc/search")
 def search_europe_pmc_v2(
     query: Annotated[str, Query(min_length=1, max_length=500)],
+    # Required, with no default. A default of "any" meant a caller who never
+    # thought about study design silently received an unranked mix and had no
+    # way to know it -- which is the literature version of averaging a cell line
+    # against a patient. "any" is still a legitimate answer; it is just no longer
+    # the answer given on the caller's behalf.
+    study_type: Annotated[str, Query(max_length=40)],
     page_size: Annotated[int, Query(ge=1, le=EuropePMCClient.MAX_PAGE_SIZE)] = 10,
-    study_type: Annotated[str, Query(max_length=40)] = "any",
 ) -> Dict:
     """Return bounded, citable Europe PMC records without creating study evidence.
 

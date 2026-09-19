@@ -41,7 +41,7 @@ def test_search_endpoint_exposes_normalized_artifacts_but_not_decision_claims(mo
     source_client = _Client(records=[_artifact()])
     monkeypatch.setattr(prediction_api, "EuropePMCClient", lambda: source_client)
 
-    response = client.get("/v2/sources/europe-pmc/search", params={"query": "EGFR AND NSCLC", "page_size": 5})
+    response = client.get("/v2/sources/europe-pmc/search", params={"query": "EGFR AND NSCLC", "page_size": 5, "study_type": "any"})
 
     assert response.status_code == 200, response.text
     body = response.json()
@@ -61,7 +61,7 @@ def test_search_endpoint_reports_a_source_outage_without_leaking_transport_detai
         lambda: _Client(error=SourceLookupError("Europe PMC lookup failed: private network detail")),
     )
 
-    response = client.get("/v2/sources/europe-pmc/search", params={"query": "EGFR"})
+    response = client.get("/v2/sources/europe-pmc/search", params={"query": "EGFR", "study_type": "any"})
 
     assert response.status_code == 502
     assert response.json() == {
@@ -71,6 +71,6 @@ def test_search_endpoint_reports_a_source_outage_without_leaking_transport_detai
 
 def test_search_endpoint_rejects_an_unbounded_page_size_before_contacting_the_source():
     """The HTTP surface preserves the connector's bounded retrieval policy."""
-    response = client.get("/v2/sources/europe-pmc/search", params={"query": "EGFR", "page_size": 21})
+    response = client.get("/v2/sources/europe-pmc/search", params={"query": "EGFR", "page_size": 21, "study_type": "any"})
 
     assert response.status_code == 422

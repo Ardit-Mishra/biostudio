@@ -1,4 +1,5 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
+import { listStudyTypes, type StudyType } from "@/lib/decision-twin";
 import { ArrowDownRight, ArrowUpRight, Beaker, BookOpenText, Dna, FlaskConical, GitCompareArrows, Network, Search } from "lucide-react";
 
 /** Queries that return real records, offered so the box is never a blank stare. */
@@ -12,15 +13,25 @@ export function Landing({
   onSearch,
   onOpenExample,
 }: {
-  onSearch: (query: string) => void;
+  onSearch: (query: string, studyType: string) => void;
   onOpenExample: () => void;
 }) {
   const [query, setQuery] = useState("");
+  // No default. Choosing a design is choosing a level of evidence, and a
+  // default would make that choice on the reader's behalf without telling them.
+  const [studyType, setStudyType] = useState("");
+  const [studyTypes, setStudyTypes] = useState<StudyType[]>([]);
+
+  useEffect(() => {
+    void listStudyTypes().then(setStudyTypes).catch(() => setStudyTypes([]));
+  }, []);
+
+  const chosen = studyTypes.find((t) => t.key === studyType);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmed = query.trim();
-    if (trimmed) onSearch(trimmed);
+    if (trimmed && studyType) onSearch(trimmed, studyType);
   }
 
   return (
@@ -49,14 +60,47 @@ export function Landing({
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Target, disease, compound, or assay&hellip;"
               />
-              <button type="submit" disabled={!query.trim()}>
+              <button type="submit" disabled={!query.trim() || !studyType}>
                 Search public records
               </button>
             </div>
+            <div className="landing-design">
+              <label htmlFor="landing-design">Study design</label>
+              <select
+                id="landing-design"
+                name="landing-design"
+                required
+                value={studyType}
+                onChange={(event) => setStudyType(event.target.value)}
+              >
+                <option value="" disabled>
+                  Choose a level of evidence&hellip;
+                </option>
+                {studyTypes.map((type) => (
+                  <option key={type.key} value={type.key}>{type.label}</option>
+                ))}
+              </select>
+            </div>
+            {chosen ? (
+              <p className="landing-caveat">
+                <strong>{chosen.label}</strong> cannot support: {chosen.cannot_support}
+              </p>
+            ) : (
+              <p className="landing-caveat dim">
+                A case report and a randomized trial are not interchangeable, so the
+                design is chosen before the search rather than sorted out after it.
+              </p>
+            )}
+
             <div className="landing-starters">
               <span>Try</span>
               {STARTERS.map((starter) => (
-                <button key={starter} type="button" onClick={() => onSearch(starter)}>
+                <button
+                  key={starter}
+                  type="button"
+                  disabled={!studyType}
+                  onClick={() => studyType && onSearch(starter, studyType)}
+                >
                   {starter}
                 </button>
               ))}

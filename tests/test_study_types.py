@@ -11,8 +11,16 @@ client = TestClient(prediction_api.app, raise_server_exceptions=False)
 
 class TestNarrowing:
     def test_any_design_does_not_touch_the_query(self):
+        """Breadth is still available -- it just has to be asked for."""
         assert narrow("osimertinib EGFR", "any") == "osimertinib EGFR"
-        assert narrow("osimertinib EGFR", None) == "osimertinib EGFR"
+
+    def test_not_choosing_a_design_is_refused(self):
+        """A default of "any" gave an unranked mix to a caller who never thought
+        about study design, with no way to know it. Choosing is mandatory now;
+        choosing breadth is not."""
+        for absent in (None, "", "   "):
+            with pytest.raises(ValueError, match="study_type is required"):
+                narrow("osimertinib EGFR", absent)
 
     def test_a_design_appends_its_own_filter(self):
         narrowed = narrow("osimertinib EGFR", "case_report")
@@ -63,3 +71,16 @@ class TestRouteContract:
 
         assert response.status_code == 422, response.text
         assert "unknown study_type" in response.json()["error"]["message"]
+
+
+class TestTheRouteRequiresAChoice:
+    def test_omitting_study_type_is_refused(self):
+        """No default: a caller who never considered study design must be told,
+        not quietly handed an unranked mix."""
+        response = client.get("/v2/sources/europe-pmc/search", params={"query": "osimertinib"})
+
+        assert response.status_code == 422, response.text
+
+    def test_choosing_breadth_explicitly_is_allowed(self):
+        """Mandatory means chosen, not narrow. "any" is a legitimate answer."""
+        assert narrow("osimertinib", "any") == "osimertinib"

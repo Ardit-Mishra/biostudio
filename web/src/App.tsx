@@ -79,6 +79,7 @@ interface SavedStudy {
   mode: StudyMode;
   evidence: EvidenceRecord[];
   seedQuery: string;
+  seedStudyType: string;
 }
 
 function loadStudy(): SavedStudy | null {
@@ -90,7 +91,12 @@ function loadStudy(): SavedStudy | null {
     // Restore only what is structurally a study, and otherwise start clean.
     if (!Array.isArray(parsed?.evidence)) return null;
     if (parsed.mode !== "example" && parsed.mode !== "own") return null;
-    return { mode: parsed.mode, evidence: parsed.evidence, seedQuery: String(parsed.seedQuery ?? "") };
+    return {
+      mode: parsed.mode,
+      evidence: parsed.evidence,
+      seedQuery: String(parsed.seedQuery ?? ""),
+      seedStudyType: String(parsed.seedStudyType ?? ""),
+    };
   } catch {
     return null;
   }
@@ -115,6 +121,7 @@ export default function App() {
   const [mode, setMode] = useState<StudyMode>(saved?.mode ?? "example");
   const [evidence, setEvidence] = useState<EvidenceRecord[]>(saved?.evidence ?? []);
   const [seedQuery, setSeedQuery] = useState(saved?.seedQuery ?? "");
+  const [seedStudyType, setSeedStudyType] = useState(saved?.seedStudyType ?? "");
   const [compilation, setCompilation] = useState<Compilation | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -130,11 +137,14 @@ export default function App() {
   // so an unsaved study is a lost study.
   useEffect(() => {
     try {
-      localStorage.setItem(STUDY_KEY, JSON.stringify({ mode, evidence, seedQuery }));
+      localStorage.setItem(
+        STUDY_KEY,
+        JSON.stringify({ mode, evidence, seedQuery, seedStudyType }),
+      );
     } catch {
       /* quota or a private window -- the session still works, it just will not survive */
     }
-  }, [mode, evidence, seedQuery]);
+  }, [mode, evidence, seedQuery, seedStudyType]);
 
   const studyId = useMemo(
     () => (mode === "example" ? EXEMPLAR_STUDY_ID : studyIdFor(seedQuery)),
@@ -186,12 +196,13 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
-  const startOwnStudy = useCallback((query: string) => {
+  const startOwnStudy = useCallback((query: string, studyType: string) => {
     setMode("own");
     setEvidence([]);
     setCompilation(null);
     setFocusedEvidenceId(null);
     setSeedQuery(query);
+    setSeedStudyType(studyType);
     window.location.hash = "study";
     setScreen("study");
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -302,7 +313,8 @@ export default function App() {
               <EvidenceAnnotationWorkbench
                 onEvidenceAdded={addEvidence}
                 initialQuery={seedQuery}
-                autoSearch={Boolean(seedQuery)}
+                initialStudyType={seedStudyType}
+                autoSearch={Boolean(seedQuery && seedStudyType)}
                 primary
               />
             </div>
@@ -343,6 +355,7 @@ export default function App() {
                   <EvidenceAnnotationWorkbench
                     onEvidenceAdded={addEvidence}
                     initialQuery={seedQuery}
+                    initialStudyType={seedStudyType}
                   />
                   <DecisionRecordExport
                     record={{

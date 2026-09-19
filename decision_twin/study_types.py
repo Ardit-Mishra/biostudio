@@ -60,7 +60,7 @@ class StudyType(BaseModel):
 STUDY_TYPES: tuple[StudyType, ...] = (
     StudyType(
         key="any",
-        label="Any design",
+        label="Any design (unranked)",
         query_fragment="",
         supports="Everything indexed, at every level of evidence.",
         cannot_support="A claim about evidence strength — the results are unsorted by design.",
@@ -130,11 +130,15 @@ BY_KEY: dict[str, StudyType] = {study_type.key: study_type for study_type in STU
 def narrow(query: str, study_type: str | None) -> str:
     """Return the Europe PMC query narrowed to one study design.
 
-    An unknown key is a caller error rather than something to silently ignore:
-    quietly returning unfiltered results would let a reader believe they were
-    looking at randomized trials when they were looking at everything.
+    An unknown or absent key is a caller error rather than something to silently
+    ignore: quietly returning unfiltered results would let a reader believe they
+    were looking at randomized trials when they were looking at everything.
+
+    "any" remains a valid choice. What is no longer valid is not choosing.
     """
-    if not study_type or study_type == "any":
+    if study_type is None or not str(study_type).strip():
+        raise ValueError("study_type is required; choose a design, or 'any' deliberately")
+    if study_type == "any":
         return query
     selected = BY_KEY.get(study_type)
     if selected is None:

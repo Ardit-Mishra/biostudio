@@ -53,12 +53,15 @@ function updateDraft(
 export function EvidenceAnnotationWorkbench({
   onEvidenceAdded,
   initialQuery = "",
+  initialStudyType = "",
   autoSearch = false,
   primary = false,
 }: {
   onEvidenceAdded: (record: EvidenceRecord) => void;
   /** Seeded from whatever the researcher typed on the landing page. */
   initialQuery?: string;
+  /** The level of evidence they chose there. No default: choosing is required. */
+  initialStudyType?: string;
   /** Run that query on mount, so arriving from the hero lands on results. */
   autoSearch?: boolean;
   /** This is the whole screen, not a panel at the bottom of a finished study. */
@@ -67,7 +70,7 @@ export function EvidenceAnnotationWorkbench({
   const [query, setQuery] = useState(initialQuery || "EGFR osimertinib resistance");
   const [mode, setMode] = useState<SearchMode>("literature");
   const [literatureSource, setLiteratureSource] = useState<LiteratureSource>("europe_pmc");
-  const [studyType, setStudyType] = useState("any");
+  const [studyType, setStudyType] = useState(initialStudyType);
   const [studyTypes, setStudyTypes] = useState<StudyType[]>([]);
   const [records, setRecords] = useState<SourceArtifact[]>([]);
   const [selected, setSelected] = useState<SourceArtifact | null>(null);
@@ -112,21 +115,27 @@ export function EvidenceAnnotationWorkbench({
 
   useEffect(() => {
     // Served by the API so the caveats cannot drift from the filter that
-    // applies them. A failure here leaves the picker on "Any design".
+    // applies them. If it fails the picker stays empty, which blocks the search
+    // rather than quietly falling back to an unranked mix.
     void listStudyTypes().then(setStudyTypes).catch(() => setStudyTypes([]));
   }, []);
 
   // Arriving from the landing search should land on results, not on an empty
   // box the researcher has to submit a second time.
   useEffect(() => {
-    if (autoSearch && initialQuery.trim()) void runSearch(initialQuery, "literature");
+    if (autoSearch && initialQuery.trim() && initialStudyType) {
+      void runSearch(initialQuery, "literature");
+    }
     // Intentionally mount-only: re-running on every keystroke would hammer the
     // source and fight the researcher's own edits.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const needsDesign = mode === "literature" && literatureSource === "europe_pmc" && !studyType;
+
   function search(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (needsDesign) return;
     void runSearch(query, mode);
   }
 
@@ -201,7 +210,11 @@ export function EvidenceAnnotationWorkbench({
                       value={studyType}
                       onChange={(event) => { setStudyType(event.target.value); setRecords([]); }}
                       className="refine-select"
+                      required
                     >
+                      <option value="" disabled>
+                        Choose a level of evidence&hellip;
+                      </option>
                       {studyTypes.map((type) => (
                         <option key={type.key} value={type.key}>{type.label}</option>
                       ))}
@@ -228,6 +241,14 @@ export function EvidenceAnnotationWorkbench({
                 </>
               )}
             </div>
+          )}
+
+          {needsDesign && (
+            <p className="refine-required" role="status">
+              Choose a study design before searching. A case report and a
+              randomized trial are not interchangeable, so the level of evidence
+              is chosen deliberately rather than defaulted into.
+            </p>
           )}
 
           <form className="mt-5 flex gap-2" onSubmit={search}>

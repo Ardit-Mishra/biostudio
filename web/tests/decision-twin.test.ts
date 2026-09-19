@@ -11,10 +11,11 @@ describe("Decision Twin source client", () => {
     );
     vi.stubGlobal("fetch", fetch);
 
-    await searchEuropePmc("EGFR resistance", 5);
+    // studyType is a required argument now — the API has no default either.
+    await searchEuropePmc("EGFR resistance", 5, "case_report");
 
     expect(fetch).toHaveBeenCalledWith(
-      "/v2/sources/europe-pmc/search?query=EGFR%20resistance&page_size=5&study_type=any",
+      "/v2/sources/europe-pmc/search?query=EGFR%20resistance&page_size=5&study_type=case_report",
     );
   });
 

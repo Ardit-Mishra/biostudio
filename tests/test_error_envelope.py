@@ -112,12 +112,12 @@ class TestBlankSourceQuery:
     """
 
     def test_whitespace_only_query_is_422_not_500(self):
-        response = client.get("/v2/sources/europe-pmc/search", params={"query": "   "})
+        response = client.get("/v2/sources/europe-pmc/search", params={"query": "   ", "study_type": "any"})
 
         assert response.status_code == 422, response.text
         assert "blank" in response.json()["error"]["message"].lower()
 
     def test_an_empty_query_is_still_rejected_by_the_signature(self):
-        response = client.get("/v2/sources/europe-pmc/search", params={"query": ""})
+        response = client.get("/v2/sources/europe-pmc/search", params={"query": "", "study_type": "any"})
 
         assert response.status_code == 422

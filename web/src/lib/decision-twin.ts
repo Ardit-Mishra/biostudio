@@ -207,8 +207,9 @@ export async function listStudyTypes(): Promise<StudyType[]> {
 
 export async function searchEuropePmc(
   query: string,
-  limit = 10,
-  studyType = "any",
+  limit: number,
+  /** Required. The API has no default either -- see decision_twin/study_types. */
+  studyType: string,
 ): Promise<SourceArtifact[]> {
   const url = `${API_BASE}/v2/sources/europe-pmc/search?query=${encodeURIComponent(query)}&page_size=${limit}&study_type=${encodeURIComponent(studyType)}`;
   const response = await fetch(url);
