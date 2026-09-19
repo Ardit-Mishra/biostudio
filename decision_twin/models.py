@@ -50,6 +50,7 @@ class EvidenceRecord(BaseModel):
     id: ShortText
     claim: ClaimText
     citation: Citation
+    source_title: ShortText | None = None
     excerpt: ExcerptText | None = None
     structured_record: dict[str, Any] | None = None
     assay_context: AssayContext | None = None

@@ -20,7 +20,8 @@ export interface TopologyRecord {
   source: SourceName;
   stage: AssayStage | "unclassified";
   direction: EvidenceRecord["outcome_direction"];
-  label: string;
+  titleLines: string[];
+  citationLabel: string;
 }
 
 export interface TopologyStage {
@@ -49,9 +50,28 @@ const SOURCE_LABEL: Record<SourceName, string> = {
   open_targets: "Open Targets",
 };
 
-function shortLabel(text: string): string {
+function citationTitleLines(text: string): string[] {
   const normalized = text.replace(/\s+/g, " ").trim();
-  return normalized.length > 40 ? `${normalized.slice(0, 39).trimEnd()}…` : normalized;
+  const words = normalized.split(" ");
+  const lines: string[] = [];
+  let line = "";
+
+  for (const word of words) {
+    const candidate = line ? `${line} ${word}` : word;
+    if (candidate.length <= 29 || !line) {
+      line = candidate;
+      continue;
+    }
+    lines.push(line);
+    line = word;
+    if (lines.length === 2) break;
+  }
+  if (line && lines.length < 2) lines.push(line);
+  const consumed = lines.join(" ").length;
+  if (normalized.length > consumed && lines.length > 0) {
+    lines[lines.length - 1] = `${lines[lines.length - 1].replace(/[.,;:]$/, "")}…`;
+  }
+  return lines;
 }
 
 /**
@@ -82,7 +102,8 @@ export function buildEvidenceTopology(
     source: record.citation.source,
     stage: stageByEvidenceId.get(record.id) ?? "unclassified",
     direction: record.outcome_direction,
-    label: shortLabel(record.claim),
+    titleLines: citationTitleLines(record.source_title ?? record.excerpt ?? record.claim),
+    citationLabel: `${SOURCE_LABEL[record.citation.source]} · ${record.citation.source_id}`,
   }));
 
   const stages = TRANSLATION_STAGES.map((stage) => {

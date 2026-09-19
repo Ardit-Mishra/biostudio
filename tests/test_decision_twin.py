@@ -62,6 +62,19 @@ def test_evidence_rejects_a_claim_without_a_source_record_or_excerpt():
         raise AssertionError("uncited evidence was accepted")
 
 
+def test_evidence_retains_the_resolved_source_title_separately_from_its_interpretation():
+    record = EvidenceRecord(
+        id="ev-titled",
+        claim="An operator-authored observation bounded to the source record.",
+        citation=_citation(),
+        source_title="A resolved public publication title.",
+        structured_record={"record_id": "ev-titled"},
+    )
+
+    assert record.source_title == "A resolved public publication title."
+    assert record.source_title != record.claim
+
+
 def test_evidence_rejects_an_unregistered_source():
     """A future agent cannot smuggle arbitrary web content into a Decision Twin."""
     try:

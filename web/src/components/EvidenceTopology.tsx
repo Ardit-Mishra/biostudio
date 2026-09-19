@@ -99,7 +99,7 @@ export function EvidenceTopology({
               <path
                 key={`measurement-${record.id}`}
                 className={`topology-edge ${DIRECTION_CLASS[record.direction]}`}
-                d={path({ x: from.x + 117, y: from.y }, { x: STAGE_POINTS[record.stage].x - 74, y: STAGE_POINTS[record.stage].y })}
+                d={path({ x: from.x + 130, y: from.y }, { x: STAGE_POINTS[record.stage].x - 74, y: STAGE_POINTS[record.stage].y })}
               />
             );
           })}
@@ -114,6 +114,35 @@ export function EvidenceTopology({
               />
             );
           })}
+
+          <g className="topology-flow" aria-hidden="true">
+            {topology.records.map((record) => {
+              const source = sourcePoints.get(record.source)!;
+              const point = recordPoints.get(record.id)!;
+              return <path key={`flow-source-${record.id}`} className="topology-flow-source" d={path(source, point)} />;
+            })}
+            {topology.records.map((record) => {
+              const from = recordPoints.get(record.id)!;
+              if (record.stage === "unclassified") return null;
+              return (
+                <path
+                  key={`flow-measurement-${record.id}`}
+                  className={`topology-flow-path ${DIRECTION_CLASS[record.direction]}`}
+                  d={path({ x: from.x + 130, y: from.y }, { x: STAGE_POINTS[record.stage].x - 74, y: STAGE_POINTS[record.stage].y })}
+                />
+              );
+            })}
+            {topology.stages.filter((stage) => stage.evidenceCount > 0).map((stage) => {
+              const from = STAGE_POINTS[stage.id];
+              return (
+                <path
+                  key={`flow-decision-${stage.id}`}
+                  className={`topology-flow-path ${STATUS_CLASS[stage.status]}`}
+                  d={path({ x: from.x + 77, y: from.y }, { x: decisionPoint.x - 67, y: decisionPoint.y })}
+                />
+              );
+            })}
+          </g>
 
           {topology.sources.map((source) => {
             const point = sourcePoints.get(source.id)!;
@@ -137,7 +166,7 @@ export function EvidenceTopology({
                 className={`topology-record ${focused ? "is-focused" : ""}`}
                 role="button"
                 tabIndex={0}
-                aria-label={`Focus evidence: ${record.label}`}
+                aria-label={`Focus evidence: ${record.citationLabel}`}
                 onClick={() => onFocusEvidence(record.id)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
@@ -146,9 +175,11 @@ export function EvidenceTopology({
                   }
                 }}
               >
-                <rect x="-116" y="-29" width="232" height="58" rx="5" className={`topology-record-box ${DIRECTION_CLASS[record.direction]}`} />
-                <text x="-98" y="-5" className="topology-record-label">{record.label}</text>
-                <text x="-98" y="15" className="topology-record-meta">{record.source.replace(/_/g, " ")} / {record.stage.replace(/_/g, " ")}</text>
+                <rect x="-130" y="-36" width="260" height="72" rx="5" className={`topology-record-box ${DIRECTION_CLASS[record.direction]}`} />
+                <text x="-112" y="-12" className="topology-record-label">
+                  {record.titleLines.map((line, index) => <tspan key={line} x="-112" dy={index === 0 ? 0 : 14}>{line}</tspan>)}
+                </text>
+                <text x="-112" y="22" className="topology-record-meta">{record.citationLabel}</text>
               </g>
             );
           })}
@@ -238,7 +269,7 @@ function MobileTopology({
                 className={`topology-record ${focused ? "is-focused" : ""}`}
                 role="button"
                 tabIndex={0}
-                aria-label={`Focus evidence: ${record.label}`}
+                aria-label={`Focus evidence: ${record.citationLabel}`}
                 onClick={() => onFocusEvidence(record.id)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
@@ -248,8 +279,8 @@ function MobileTopology({
                 }}
               >
                 <rect x="-128" y="-23" width="256" height="46" rx="4" className={`topology-record-box ${DIRECTION_CLASS[record.direction]}`} />
-                <text x="-114" y="-3" className="topology-record-label">{record.label}</text>
-                <text x="-114" y="13" className="topology-record-meta">{record.stage.replace(/_/g, " ")}</text>
+                <text x="-114" y="-3" className="topology-record-label">{record.titleLines[0]}</text>
+                <text x="-114" y="13" className="topology-record-meta">{record.citationLabel}</text>
               </g>
             </g>
           );

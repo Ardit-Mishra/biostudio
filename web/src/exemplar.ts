@@ -36,6 +36,8 @@ export const EXEMPLAR_EVIDENCE: EvidenceRecord[] = [
       source_id: "42714840",
       retrieved_at: RETRIEVED,
     },
+    source_title:
+      "Osimertinib After Definitive Chemoradiotherapy in Unresectable Stage III EGFR-Mutated NSCLC.",
     excerpt:
       "Osimertinib After Definitive Chemoradiotherapy in Unresectable Stage III EGFR-mutated NSCLC.",
     assay_context: {
@@ -57,6 +59,8 @@ export const EXEMPLAR_EVIDENCE: EvidenceRecord[] = [
       source_id: "PMC13585410",
       retrieved_at: RETRIEVED,
     },
+    source_title:
+      "Mechanisms of acquired resistance to osimertinib in EGFR T790M-Positive lung adenocarcinoma.",
     excerpt:
       "Mechanisms of acquired resistance to osimertinib in EGFR T790M-Positive lung adenocarcinoma.",
     assay_context: {
@@ -78,6 +82,7 @@ export const EXEMPLAR_EVIDENCE: EvidenceRecord[] = [
       source_id: "42705393",
       retrieved_at: RETRIEVED,
     },
+    source_title: "TEAD upregulation promotes osimertinib resistance in NSCLC.",
     excerpt: "TEAD upregulation promotes osimertinib resistance in NSCLC.",
     assay_context: {
       target_id: EGFR,

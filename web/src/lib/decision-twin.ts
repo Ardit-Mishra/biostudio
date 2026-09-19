@@ -56,6 +56,7 @@ export interface EvidenceRecord {
   id: string;
   claim: string;
   citation: Citation;
+  source_title?: string | null;
   excerpt?: string | null;
   structured_record?: Record<string, unknown> | null;
   assay_context?: AssayContext | null;

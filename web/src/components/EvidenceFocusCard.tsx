@@ -29,7 +29,9 @@ export function EvidenceFocusCard({
         <h2 id="focus-heading">{stage ? STAGE_LABEL[stage] : "Unclassified"} observation</h2>
         <span className={`direction-stamp direction-${record.outcome_direction}`}>{record.outcome_direction}</span>
       </div>
-      <p className="focus-claim">{record.claim}</p>
+      <p className="focus-citation">{record.citation.source.replace(/_/g, " ")} · {record.citation.source_id}</p>
+      <h3 className="focus-source-title">{record.source_title ?? record.excerpt ?? "Resolved public source record"}</h3>
+      <p className="focus-claim"><span>Operator interpretation</span>{record.claim}</p>
       {record.excerpt && <p className="focus-excerpt">“{record.excerpt}”</p>}
       {context && (
         <dl className="focus-context">
@@ -40,7 +42,7 @@ export function EvidenceFocusCard({
         </dl>
       )}
       <div className="focus-provenance">
-        <span>{record.citation.source.replace(/_/g, " ")} / {record.citation.source_id}</span>
+        <span>Retained {new Date(record.citation.retrieved_at).toLocaleDateString()}</span>
         {href && <a href={href} target="_blank" rel="noopener noreferrer">Open record <ExternalLink className="size-3" aria-hidden="true" /></a>}
       </div>
     </aside>

@@ -62,6 +62,7 @@ export function createEvidenceFromAnnotation(
     id: draft.id.trim(),
     claim: draft.claim.trim(),
     citation: artifact.citation,
+    source_title: artifact.title,
     excerpt: artifact.excerpt,
     structured_record: artifact.structured_record,
     assay_context: {

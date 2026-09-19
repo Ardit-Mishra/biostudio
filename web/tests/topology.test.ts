@@ -8,6 +8,7 @@ const evidence: EvidenceRecord[] = [
     id: "ev-cell",
     claim: "A measured cellular observation.",
     citation: { source: "europe_pmc", source_id: "PMC1", retrieved_at: "2026-09-19T00:00:00Z" },
+    source_title: "A resolved publication title for the cellular observation.",
     assay_context: { target_id: "EGFR", biological_system: "cell_line", readout: "ic50", unit: "nM" },
     outcome_direction: "contradicts",
   },
@@ -34,6 +35,10 @@ describe("evidence topology", () => {
     expect(topology.sources.map((source) => source.id)).toEqual(["chembl", "europe_pmc"]);
     expect(topology.records.find((record) => record.id === "ev-cell")?.stage).toBe("cellular");
     expect(topology.records.find((record) => record.id === "ev-human")?.stage).toBe("human");
+    expect(topology.records.find((record) => record.id === "ev-cell")).toMatchObject({
+      citationLabel: "Europe PMC · PMC1",
+      titleLines: ["A resolved publication title", "for the cellular observation."],
+    });
   });
 
   it("keeps absent biological layers as explicitly missing nodes, never as a filled data point", () => {
