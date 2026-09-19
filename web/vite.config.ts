@@ -11,8 +11,8 @@ export default defineConfig({
     // Proxying /v1 and /v2 in dev keeps the browser on one origin, so there is
     // no CORS preflight in development that production would not also have.
     proxy: {
-      "/v1": { target: "http://127.0.0.1:8078", changeOrigin: true },
-      "/v2": { target: "http://127.0.0.1:8078", changeOrigin: true },
+      "/v1": { target: "http://127.0.0.1:8000", changeOrigin: true },
+      "/v2": { target: "http://127.0.0.1:8000", changeOrigin: true },
     },
   },
 });
