@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import { FlaskConical, Moon, RotateCw, Sun } from "lucide-react";
+import { FlaskConical, Moon, Orbit, RotateCw, Sun } from "lucide-react";
 
-import { AssayTranslationMap } from "@/components/AssayTranslationMap";
 import { EvidenceAnnotationWorkbench } from "@/components/EvidenceAnnotationWorkbench";
-import { EvidenceInspector } from "@/components/EvidenceInspector";
+import { EvidenceFocusCard } from "@/components/EvidenceFocusCard";
+import { EvidenceSignalPlot } from "@/components/EvidenceSignalPlot";
+import { EvidenceTopology } from "@/components/EvidenceTopology";
 import { IntegrityPanel } from "@/components/IntegrityPanel";
+import { Landing } from "@/components/Landing";
+import { SourceAtlas } from "@/components/SourceAtlas";
 import { VerdictBanner } from "@/components/VerdictBanner";
 import { compileStudy, type Compilation, type EvidenceRecord } from "@/lib/decision-twin";
 import {
@@ -24,9 +27,7 @@ function useTheme(): [Theme, () => void] {
     } catch {
       /* private window or blocked storage — fall through to the OS preference */
     }
-    return window.matchMedia?.("(prefers-color-scheme: dark)").matches
-      ? "dark"
-      : "light";
+    return "light";
   });
 
   useEffect(() => {
@@ -47,6 +48,10 @@ export default function App() {
   const [evidence, setEvidence] = useState<EvidenceRecord[]>(EXEMPLAR_EVIDENCE);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(true);
+  const [focusedEvidenceId, setFocusedEvidenceId] = useState<string | null>(EXEMPLAR_EVIDENCE[0]?.id ?? null);
+  const [screen, setScreen] = useState<"landing" | "study">(() =>
+    window.location.hash === "#study" ? "study" : "landing",
+  );
 
   const run = useCallback(async () => {
     setPending(true);
@@ -74,43 +79,28 @@ export default function App() {
   const addEvidence = useCallback((record: EvidenceRecord) => {
     setEvidence((current) => [...current, record]);
   }, []);
+  const openStudy = useCallback(() => {
+    window.location.hash = "study";
+    setScreen("study");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
 
   return (
-    <div className="min-h-screen bg-ground">
-      <header className="border-b border-line bg-surface">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-5 py-4 sm:px-6">
-          <div className="flex items-center gap-3">
-            <div className="grid size-9 shrink-0 place-items-center rounded-lg border border-[var(--ds-accent)]/40 bg-accent-soft text-[var(--ds-accent-ink)]">
-              <FlaskConical className="size-4.5" aria-hidden="true" />
-            </div>
-            <div className="min-w-0">
-              <p className="font-mono text-[12.5px] font-semibold tracking-[0.14em] text-ink">
-                BIOSTUDIO
-              </p>
-              <p className="text-[12px] text-ink-muted">
-                Research-decision integrity
-              </p>
-            </div>
+    <div className="min-h-screen bio-shell">
+      <header className="bio-header">
+        <div className="bio-header-inner">
+          <div className="bio-brand">
+            <div className="bio-mark"><Orbit className="size-[19px]" aria-hidden="true" /><FlaskConical className="size-3" aria-hidden="true" /></div>
+            <div><p>BIOSTUDIO</p><span>Evidence cartography</span></div>
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => void run()}
-              disabled={pending}
-              className="inline-flex min-h-9 items-center gap-2 rounded-md border border-line px-3 font-mono text-[12px] text-ink-muted transition-colors hover:border-line-strong hover:text-ink disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-accent)]"
-            >
-              <RotateCw
-                className={`size-3.5 ${pending ? "animate-spin" : ""}`}
-                aria-hidden="true"
-              />
-              Recompile
-            </button>
+            {screen === "study" ? <button type="button" onClick={() => void run()} disabled={pending} className="header-button"><RotateCw className={`size-3.5 ${pending ? "animate-spin" : ""}`} aria-hidden="true" />Recompile</button> : <button type="button" onClick={openStudy} className="header-button">Open study</button>}
             <button
               type="button"
               onClick={toggleTheme}
               aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
-              className="grid size-9 place-items-center rounded-md border border-line text-ink-muted transition-colors hover:border-line-strong hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-accent)]"
+              className="theme-button"
             >
               {theme === "dark" ? (
                 <Sun className="size-4" aria-hidden="true" />
@@ -122,29 +112,15 @@ export default function App() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-5 py-8 sm:px-6 sm:py-10">
-        <div className="max-w-3xl">
-          <p className="font-mono text-[10.5px] uppercase tracking-[0.16em] text-[var(--ds-accent-ink)]">
-            Public exemplar study
-          </p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
-            {EXEMPLAR_TITLE}
-          </h1>
-          <p className="mt-3 text-[15px] leading-relaxed text-ink-muted">
-            {EXEMPLAR_QUESTION}
-          </p>
-          <p className="mt-3 font-mono text-[11.5px] text-ink-faint">
-            {EXEMPLAR_STUDY_ID}
-          </p>
+      {screen === "landing" ? <Landing onOpenStudy={openStudy} /> : <main className="bio-main">
+        <div className="study-intro">
+          <p className="section-index">PUBLIC EXAMPLE / {EXEMPLAR_STUDY_ID}</p>
+          <h1>{EXEMPLAR_TITLE}</h1>
+          <p>{EXEMPLAR_QUESTION}</p>
         </div>
 
-        <EvidenceAnnotationWorkbench onEvidenceAdded={addEvidence} />
-
         {error && (
-          <p
-            role="alert"
-            className="mt-8 rounded-lg border border-[var(--ds-conflicting)] bg-[var(--ds-conflicting-soft)] px-4 py-3 text-[14px] text-ink"
-          >
+          <p role="alert" className="compile-error">
             {error}{" "}
             <span className="text-ink-muted">
               The Decision Twin API must be running for this study to compile.
@@ -153,27 +129,27 @@ export default function App() {
         )}
 
         {pending && !compilation && (
-          <p className="mt-8 font-mono text-[12.5px] text-ink-muted">
+          <p className="compile-loading">
             Compiling the study from its evidence&hellip;
           </p>
         )}
 
         {compilation && (
-          <div className="mt-8 space-y-10">
+          <div className="study-flow">
             <VerdictBanner compilation={compilation} />
-
-            <AssayTranslationMap lanes={lanes} />
-
-            <div className="grid gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-              <EvidenceInspector evidence={evidence} lanes={lanes} />
-              <IntegrityPanel compilation={compilation} />
+            <EvidenceTopology evidence={evidence} lanes={lanes} focusedEvidenceId={focusedEvidenceId} onFocusEvidence={setFocusedEvidenceId} />
+            <div className="analysis-grid">
+              <EvidenceSignalPlot evidence={evidence} lanes={lanes} focusedEvidenceId={focusedEvidenceId} onFocusEvidence={setFocusedEvidenceId} />
+              <EvidenceFocusCard evidence={evidence} lanes={lanes} focusedEvidenceId={focusedEvidenceId} />
             </div>
+            <div className="atlas-grid"><SourceAtlas /><IntegrityPanel compilation={compilation} /></div>
+            <EvidenceAnnotationWorkbench onEvidenceAdded={addEvidence} />
           </div>
         )}
-      </main>
+      </main>}
 
-      <footer className="border-t border-line">
-        <div className="mx-auto max-w-6xl px-5 py-6 text-[12px] leading-relaxed text-ink-faint sm:px-6">
+      <footer className="bio-footer">
+        <div>
           Educational and research use. BioStudio reports whether public evidence
           is consistent enough to justify a next research step; it does not
           discover drugs, replace experimental validation, or make clinical

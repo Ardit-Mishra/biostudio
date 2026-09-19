@@ -17,6 +17,7 @@ lib/
 web/src/lib/*
 !web/src/lib/decision-twin.ts
 !web/src/lib/annotation.ts
+!web/src/lib/topology.ts
 lib64/
 parts/
 sdist/

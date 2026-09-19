@@ -9,7 +9,7 @@
  * not something to paper over at render time.
  */
 
-export type SourceName = "europe_pmc" | "open_targets";
+export type SourceName = "europe_pmc" | "open_targets" | "chembl";
 
 export type AssayStage =
   | "biochemical"
@@ -176,6 +176,19 @@ export async function searchEuropePmc(
   return payload.records ?? [];
 }
 
+/** Resolve one ChEMBL compound through the API's fixed identifier route. */
+export async function getChEMBLCompound(
+  chemblId: string,
+): Promise<SourceArtifact[]> {
+  const normalizedId = chemblId.trim().toUpperCase();
+  const response = await fetch(
+    `${API_BASE}/v2/sources/chembl/compounds/${encodeURIComponent(normalizedId)}`,
+  );
+  if (!response.ok) throw new Error(`ChEMBL lookup failed (${response.status})`);
+  const payload = (await response.json()) as { records?: SourceArtifact[] };
+  return payload.records ?? [];
+}
+
 /** Build a citation URL for a resolved source id. Never guess a host. */
 export function citationUrl(citation: Citation): string | null {
   if (citation.source === "europe_pmc") {
@@ -186,6 +199,9 @@ export function citationUrl(citation: Citation): string | null {
   }
   if (citation.source === "open_targets") {
     return `https://platform.opentargets.org/target/${citation.source_id}`;
+  }
+  if (citation.source === "chembl") {
+    return `https://www.ebi.ac.uk/chembl/explore/compound/${citation.source_id}`;
   }
   return null;
 }

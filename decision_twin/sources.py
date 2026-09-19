@@ -247,3 +247,88 @@ class OpenTargetsClient:
                 structured_record=structured_record,
             )
         ]
+
+
+class ChEMBLClient:
+    """Retrieve one normalized compound record from ChEMBL's public data API.
+
+    This is intentionally narrower than ChEMBL's query language. Compound
+    activities deserve their own contract because assay conditions, units, and
+    target confidence determine whether an activity can become study evidence.
+    A molecule record by itself is useful public context, but it is not an
+    efficacy, safety, or translation claim.
+    """
+
+    BASE_URL = "https://www.ebi.ac.uk/chembl/api/data/molecule"
+    _COMPOUND_ID = re.compile(r"CHEMBL\d+", re.IGNORECASE)
+
+    def __init__(self, session: HTTPSession | None = None, timeout_seconds: float = 30.0) -> None:
+        if session is None:
+            source_session = requests.Session()
+            source_session.headers.update({
+                "Accept": "application/json",
+                "User-Agent": "BioStudio-DecisionTwin/0.1",
+            })
+            self._session: HTTPSession = source_session
+        else:
+            self._session = session
+        self._timeout_seconds = timeout_seconds
+
+    def compound_summary(self, chembl_id: str) -> list[SourceArtifact]:
+        """Return one citable compound artifact, or no artifact for a sparse record."""
+        normalized_id = chembl_id.strip().upper()
+        if not self._COMPOUND_ID.fullmatch(normalized_id):
+            raise ValueError("chembl_id must be a valid ChEMBL compound identifier")
+
+        try:
+            response = self._session.get(
+                f"{self.BASE_URL}/{normalized_id}.json",
+                params={},
+                timeout=self._timeout_seconds,
+            )
+            response.raise_for_status()
+            payload = response.json()
+        except Exception as error:
+            raise SourceLookupError("ChEMBL lookup failed") from error
+
+        if not isinstance(payload, dict):
+            raise SourceLookupError("ChEMBL returned an invalid compound record")
+        source_id = str(payload.get("molecule_chembl_id") or "").strip().upper()
+        if source_id != normalized_id:
+            raise SourceLookupError("ChEMBL returned an uncitable compound record")
+
+        title = str(payload.get("pref_name") or "").strip()
+        if not title:
+            return []
+        structures = payload.get("molecule_structures")
+        canonical_smiles = (
+            str(structures.get("canonical_smiles") or "").strip()
+            if isinstance(structures, dict)
+            else ""
+        )
+        structured_record = {
+            key: value
+            for key, value in {
+                "chembl_id": source_id,
+                "molecule_type": str(payload.get("molecule_type") or "").strip() or None,
+                # ChEMBL currently serializes this as e.g. "4.0". Preserve the
+                # source representation rather than silently dropping it or
+                # coercing it into a precision the source did not provide.
+                "max_phase": payload.get("max_phase")
+                if isinstance(payload.get("max_phase"), (int, float, str))
+                else None,
+                "canonical_smiles": canonical_smiles or None,
+            }.items()
+            if value is not None
+        }
+        return [
+            SourceArtifact(
+                citation=Citation(
+                    source="chembl",
+                    source_id=source_id,
+                    retrieved_at=datetime.now(timezone.utc),
+                ),
+                title=title,
+                structured_record=structured_record,
+            )
+        ]

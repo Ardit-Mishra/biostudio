@@ -54,7 +54,7 @@ from models.real_admet import _TOX_MAP as _REAL_TOX_LABEL_TO_TDC_NAME
 from decision_twin.assay_map import build_assay_translation_map
 from decision_twin.compiler import compile_decision, snapshot_digest
 from decision_twin.models import DecisionTwinRequest
-from decision_twin.sources import EuropePMCClient, OpenTargetsClient, SourceLookupError
+from decision_twin.sources import ChEMBLClient, EuropePMCClient, OpenTargetsClient, SourceLookupError
 
 _log = logging.getLogger(__name__)
 STARTED_AT = time.monotonic()
@@ -546,6 +546,29 @@ def get_open_targets_target_v2(
 
     return {
         "source": "open_targets",
+        "count": len(records),
+        "records": [record.model_dump(mode="json") for record in records],
+    }
+
+
+@app.get("/v2/sources/chembl/compounds/{chembl_id}")
+def get_chembl_compound_v2(
+    chembl_id: Annotated[str, Path(pattern=r"^CHEMBL\d+$")],
+) -> Dict:
+    """Return a single ChEMBL compound artifact through a fixed public route.
+
+    A compound record gives provenance-backed identity and chemistry context.
+    It does not query activities or create an assay claim, because those require
+    their own measured-context contract before they can enter a Decision Twin.
+    """
+    try:
+        records = ChEMBLClient().compound_summary(chembl_id)
+    except SourceLookupError:
+        _log.warning("ChEMBL source lookup failed", exc_info=True)
+        raise HTTPException(status_code=502, detail="ChEMBL is temporarily unavailable") from None
+
+    return {
+        "source": "chembl",
         "count": len(records),
         "records": [record.model_dump(mode="json") for record in records],
     }

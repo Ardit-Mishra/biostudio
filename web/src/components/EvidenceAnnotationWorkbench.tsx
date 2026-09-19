@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { ArrowRight, Search } from "lucide-react";
+import { ArrowRight, BookOpenText, FlaskConical, Search } from "lucide-react";
 
 import {
   createEvidenceFromAnnotation,
@@ -9,10 +9,13 @@ import {
 } from "@/lib/annotation";
 import {
   citationUrl,
+  getChEMBLCompound,
   searchEuropePmc,
   type EvidenceRecord,
   type SourceArtifact,
 } from "@/lib/decision-twin";
+
+type SearchMode = "literature" | "compound";
 
 const EMPTY_DRAFT: EvidenceAnnotationDraft = {
   id: "",
@@ -46,6 +49,7 @@ export function EvidenceAnnotationWorkbench({
   onEvidenceAdded: (record: EvidenceRecord) => void;
 }) {
   const [query, setQuery] = useState("EGFR osimertinib resistance");
+  const [mode, setMode] = useState<SearchMode>("literature");
   const [records, setRecords] = useState<SourceArtifact[]>([]);
   const [selected, setSelected] = useState<SourceArtifact | null>(null);
   const [draft, setDraft] = useState<EvidenceAnnotationDraft>(EMPTY_DRAFT);
@@ -60,7 +64,11 @@ export function EvidenceAnnotationWorkbench({
     setPending(true);
     setError(null);
     try {
-      setRecords(await searchEuropePmc(normalized, 5));
+      setRecords(
+        mode === "literature"
+          ? await searchEuropePmc(normalized, 5)
+          : await getChEMBLCompound(normalized),
+      );
     } catch (cause) {
       setRecords([]);
       setError(cause instanceof Error ? cause.message : "Source lookup failed.");
@@ -83,25 +91,29 @@ export function EvidenceAnnotationWorkbench({
   }
 
   return (
-    <section className="mt-10 border-y border-line py-8" aria-labelledby="source-workbench-heading">
+    <section className="annotation-workbench" aria-labelledby="source-workbench-heading">
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         <div>
-          <h2 id="source-workbench-heading" className="text-xl font-semibold tracking-tight text-ink">
-            Find a public record
-          </h2>
-          <p className="mt-2 max-w-prose text-[14px] leading-relaxed text-ink-muted">
-            Search Europe PMC, inspect a retained excerpt, then write the research
-            interpretation yourself. A retrieved record is not evidence until all
-            decision-critical context is supplied.
-          </p>
+          <p className="section-index">04 / OPERATOR ANNOTATION</p>
+          <h2 id="source-workbench-heading" className="workbench-title">Bring a source in carefully.</h2>
+          <p className="workbench-intro">Retrieve a public record, inspect it, then supply the biological context yourself. Retrieval never promotes itself to evidence.</p>
+
+          <div className="source-mode" role="group" aria-label="Public source to search">
+            <button type="button" onClick={() => { setMode("literature"); setQuery("EGFR osimertinib resistance"); setRecords([]); }} className={mode === "literature" ? "is-active" : ""}>
+              <BookOpenText className="size-3.5" aria-hidden="true" /> Literature
+            </button>
+            <button type="button" onClick={() => { setMode("compound"); setQuery("CHEMBL3353410"); setRecords([]); }} className={mode === "compound" ? "is-active" : ""}>
+              <FlaskConical className="size-3.5" aria-hidden="true" /> Compound
+            </button>
+          </div>
 
           <form className="mt-5 flex gap-2" onSubmit={search}>
-            <label className="sr-only" htmlFor="source-query">Search Europe PMC</label>
+            <label className="sr-only" htmlFor="source-query">{mode === "literature" ? "Search Europe PMC" : "Look up a ChEMBL compound"}</label>
             <input
               id="source-query"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Target, disease, compound, or assay"
+              placeholder={mode === "literature" ? "Target, disease, compound, or assay" : "ChEMBL compound ID, e.g. CHEMBL3353410"}
               className="min-w-0 flex-1 rounded-md border border-line bg-surface px-3 py-2.5 text-[14px] text-ink shadow-sm outline-none placeholder:text-ink-faint focus:border-[var(--ds-accent)] focus:ring-2 focus:ring-[var(--ds-accent-soft)]"
             />
             <button
@@ -110,7 +122,7 @@ export function EvidenceAnnotationWorkbench({
               className="inline-flex shrink-0 items-center gap-2 rounded-md bg-[var(--ds-accent)] px-3.5 py-2.5 text-[13px] font-medium text-[var(--ds-on-accent)] transition-colors hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-55 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-accent)]"
             >
               <Search className="size-3.5" aria-hidden="true" />
-              {pending ? "Searching" : "Search"}
+              {pending ? "Searching" : mode === "literature" ? "Search" : "Resolve"}
             </button>
           </form>
 
