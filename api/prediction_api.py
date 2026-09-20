@@ -126,6 +126,8 @@ def _serializable_errors(errors: List[Dict]) -> List[Dict]:
     cleaned: List[Dict] = []
     for error in errors:
         item = {key: value for key, value in error.items() if key not in {"ctx", "input"}}
+        if "loc" in item:
+            item["loc"] = [_bounded_loc(part) for part in item["loc"]]
         ctx = error.get("ctx")
         if ctx:
             item["ctx"] = {key: str(value) for key, value in ctx.items()}
@@ -133,6 +135,20 @@ def _serializable_errors(errors: List[Dict]) -> List[Dict]:
             item["input_summary"] = _input_summary(error["input"])
         cleaned.append(item)
     return cleaned
+
+
+#: A location segment is normally one of our own field names, which are short.
+#: For `extra_forbidden` it is the key the caller invented, so it is the one
+#: part of a validation error the caller still controls. The segment has to
+#: survive -- an "unexpected field" error that will not say which field is not
+#: worth returning -- but it does not have to survive at any length.
+MAX_LOC_SEGMENT = 64
+
+
+def _bounded_loc(part: object) -> object:
+    if isinstance(part, str) and len(part) > MAX_LOC_SEGMENT:
+        return part[:MAX_LOC_SEGMENT] + "..."
+    return part
 
 
 def _input_summary(value: object) -> Dict:

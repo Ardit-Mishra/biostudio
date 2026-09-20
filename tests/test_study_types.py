@@ -84,3 +84,48 @@ class TestTheRouteRequiresAChoice:
     def test_choosing_breadth_explicitly_is_allowed(self):
         """Mandatory means chosen, not narrow. "any" is a legitimate answer."""
         assert narrow("osimertinib", "any") == "osimertinib"
+
+
+class TestTheRejectionDoesNotRepeatTheInput:
+    """A 422 names the designs that exist, not the one the caller invented.
+
+    Stress-probing the running API found the rejection echoing the submitted
+    `study_type` verbatim. It is a small reflection -- the value is already in
+    the query string -- but it put caller-controlled text into a response body
+    that travels to proxy logs and error trackers the study never touches, and
+    it was the less useful half of the message: somebody who typed a wrong key
+    needs the list of right ones, not their own typo returned to them.
+    """
+
+    def test_the_submitted_value_is_not_repeated(self):
+        from decision_twin.study_types import narrow
+
+        canary = "PRIVATE_CANARY_7d9f2c"
+        with pytest.raises(ValueError) as caught:
+            narrow("EGFR", canary)
+        assert canary not in str(caught.value)
+
+    def test_the_valid_designs_are_named_instead(self):
+        from decision_twin.study_types import BY_KEY, narrow
+
+        with pytest.raises(ValueError) as caught:
+            narrow("EGFR", "not-a-design")
+        message = str(caught.value)
+        assert "randomized_trial" in message
+        assert "any" in message
+        for key in BY_KEY:
+            assert key in message
+
+    def test_the_route_does_not_echo_it_either(self):
+        from fastapi.testclient import TestClient
+
+        import api.prediction_api as prediction_api
+
+        canary = "PRIVATE_CANARY_7d9f2c"
+        client = TestClient(prediction_api.app)
+        response = client.get(
+            "/v2/sources/europe-pmc/search",
+            params={"query": "EGFR", "page_size": 1, "study_type": canary},
+        )
+        assert response.status_code == 422
+        assert canary not in response.text

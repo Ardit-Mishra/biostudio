@@ -121,3 +121,48 @@ class TestBlankSourceQuery:
         response = client.get("/v2/sources/europe-pmc/search", params={"query": "", "study_type": "any"})
 
         assert response.status_code == 422
+
+
+class TestCallerControlledLocationIsBounded:
+    """`loc` is the one part of a validation error the caller still writes.
+
+    For most errors the location is one of our own field names. For
+    `extra_forbidden` it is the key the caller invented, so an unbounded
+    location lets arbitrary caller text into a 422 body that reaches proxy
+    logs and error trackers. The segment must survive -- an "unexpected field"
+    error that will not say which field is not worth returning -- but it does
+    not have to survive at any length.
+    """
+
+    def test_a_long_unknown_key_is_truncated(self):
+        from api.prediction_api import MAX_LOC_SEGMENT, _serializable_errors
+
+        key = "SECRET_COMPOUND_" + "x" * 300
+        cleaned = _serializable_errors([{
+            "type": "extra_forbidden",
+            "loc": ("body", "evidence", 0, key),
+            "msg": "Extra inputs are not permitted",
+            "input": 1,
+        }])
+        segment = cleaned[0]["loc"][-1]
+        assert len(segment) <= MAX_LOC_SEGMENT + 3
+        assert key not in str(cleaned)
+
+    def test_an_ordinary_field_name_is_untouched(self):
+        from api.prediction_api import _serializable_errors
+
+        cleaned = _serializable_errors([{
+            "type": "missing",
+            "loc": ("body", "evidence", 0, "citation"),
+            "msg": "Field required",
+        }])
+        assert cleaned[0]["loc"] == ["body", "evidence", 0, "citation"]
+
+    def test_numeric_indices_survive_as_numbers(self):
+        """An index says which record failed; stringifying it loses that."""
+        from api.prediction_api import _serializable_errors
+
+        cleaned = _serializable_errors([{
+            "type": "missing", "loc": ("body", "evidence", 7, "claim"), "msg": "Field required",
+        }])
+        assert cleaned[0]["loc"][2] == 7

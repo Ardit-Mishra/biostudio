@@ -142,7 +142,14 @@ def narrow(query: str, study_type: str | None) -> str:
         return query
     selected = BY_KEY.get(study_type)
     if selected is None:
-        raise ValueError(f"unknown study_type: {study_type}")
+        # Name the designs that exist rather than repeating the one that does
+        # not. Echoing the submitted value put caller-controlled text into a
+        # 422 body that travels through proxy logs and error trackers, and it
+        # was the less useful half of the message anyway: a caller who typed a
+        # wrong key needs the list of right ones, not their own typo back.
+        raise ValueError(
+            "unknown study_type; expected one of: " + ", ".join(sorted(BY_KEY))
+        )
     if not selected.query_fragment:
         return query
     return f"({query}) AND {selected.query_fragment}"
