@@ -142,3 +142,6 @@ uv.lock
 # wanted to commit every file under web/node_modules.
 node_modules/
 dist/
+
+# Local editor/agent scaffolding, not part of the project
+.claude/
