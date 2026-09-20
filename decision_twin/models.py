@@ -36,12 +36,14 @@ SourceName = Literal[
 def _bounded_record(value: dict[str, Any] | None, *, field: str) -> dict[str, Any] | None:
     """Reject a structured record that is too deep or too large to carry safely.
 
-    Depth is walked iteratively rather than recursively, and counts containers
-    rather than leaves. The recursive version blew the interpreter stack before
-    it could reject anything: a 5,000-deep structure raised RecursionError
-    inside the validator, turning a rejection into a crash. It also traversed
-    only dict and list, so a deep tuple passed the check and then failed later
-    during JSON export -- past the point where a clean 422 was still possible.
+    Depth is walked iteratively and counts containers rather than leaves.
+
+    The rewrite is for the traversal, not the recursion. The previous version
+    returned early once it passed the limit, so it never recursed far enough to
+    exhaust the stack -- but it walked only dicts and lists. A fifty-deep tuple
+    measured as depth 2 and sailed through the bound, then failed later during
+    JSON encoding for the digest or the export, past the point where a clean
+    422 was still available. Sets and frozensets had the same hole.
 
     Size is measured on the JSON encoding because a two-key dict can still hold
     a megabyte, and because that encoding is what every downstream step -- the
