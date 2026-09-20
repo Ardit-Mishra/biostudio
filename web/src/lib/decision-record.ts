@@ -268,8 +268,15 @@ export function toMarkdown(input: DecisionRecordInput): string {
 
 function csvCell(value: unknown): string {
   const text = value === null || value === undefined ? "" : String(value);
-  // Quote always: the fields carry commas, quotes and newlines from abstracts.
-  return `"${text.replace(/"/g, '""')}"`;
+  // Quoting handles commas, quotes and newlines. It does not stop Excel
+  // evaluating a cell: a value opening with =, +, - or @ is read as a formula
+  // even inside quotes. This file exists to move evidence a stranger wrote
+  // into a spreadsheet, and the header row of this export says "opens in
+  // Excel", so a claim beginning "=cmd|..." would be executable content rather
+  // than a quotation. A leading apostrophe makes the cell literal text; Excel
+  // and LibreOffice both consume it without displaying it.
+  const neutral = /^[=+@-]/.test(text) || /^[ ]/.test(text) ? `'${text}` : text;
+  return `"${neutral.replace(/"/g, '""')}"`;
 }
 
 export function toCsv(input: DecisionRecordInput): string {
@@ -301,23 +308,35 @@ export function toCsv(input: DecisionRecordInput): string {
 /** RIS is line-oriented: a newline inside a field corrupts the record. */
 const NEWLINES = new RegExp(String.fromCharCode(13) + '?' + String.fromCharCode(10), 'g');
 
+/** RIS is line-oriented: an embedded newline starts a line no tag introduces. */
+function risText(value: string): string {
+  return value.replace(NEWLINES, " ").replace(/\s+/g, " ").trim();
+}
+
+/** Lanes that return scholarly articles, as opposed to database entries. */
+const RIS_LITERATURE_SOURCES = new Set(["europe_pmc", "openalex", "pubmed"]);
+
 export function toRis(input: DecisionRecordInput): string {
   const out: string[] = [];
   for (const r of input.evidence) {
-    const literature = r.citation.source === "europe_pmc";
+    // OpenAlex is a literature lane. Typing its records DATA made Zotero and
+    // EndNote file peer-reviewed articles as datasets.
+    const literature = RIS_LITERATURE_SOURCES.has(r.citation.source);
     out.push(`TY  - ${literature ? "JOUR" : "DATA"}`);
-    out.push(`TI  - ${r.source_title ?? r.claim}`);
-    if (literature && /^\d+$/.test(r.citation.source_id)) {
+    out.push(`TI  - ${risText(r.source_title ?? r.claim)}`);
+    // The accession number is a PMID, so it stays specific to Europe PMC even
+    // though the type above is now shared with the other literature lanes.
+    if (r.citation.source === "europe_pmc" && /^\d+$/.test(r.citation.source_id)) {
       out.push(`AN  - ${r.citation.source_id}`);
     }
     out.push(`UR  - ${citationUrlFor(r)}`);
     out.push(`DB  - ${r.citation.source.replace(/_/g, " ")}`);
     out.push(`ID  - ${r.citation.source_id}`);
-    if (r.excerpt) out.push(`AB  - ${r.excerpt.replace(NEWLINES, " ")}`);
-    out.push(`N1  - Retained in study ${input.studyId} as ${r.outcome_direction}: ${r.claim}`);
+    if (r.excerpt) out.push(`AB  - ${risText(r.excerpt)}`);
+    out.push(`N1  - Retained in study ${input.studyId} as ${r.outcome_direction}: ${risText(r.claim)}`);
     if (r.direction_rationale) {
       out.push(
-        `N1  - Reason for direction: ${r.direction_rationale.replace(NEWLINES, " ")}`,
+        `N1  - Reason for direction: ${risText(r.direction_rationale)}`,
       );
     }
     out.push(`Y2  - ${r.citation.retrieved_at.slice(0, 10).replace(/-/g, "/")}`);
