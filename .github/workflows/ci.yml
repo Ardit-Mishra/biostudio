@@ -45,3 +45,39 @@ jobs:
       - name: Run ADMET model test suite
         run: >
           uv run --no-project --python 3.12 --with-requirements requirements.txt --with-requirements requirements-dev.txt python -m pytest tests/ -v
+
+  # The frontend was not built or tested here at all, and that is how
+  # web/src/lib/decision-record.ts -- the whole export surface -- reached a
+  # pull request without ever being committed. An unanchored `lib/` in
+  # .gitignore swallowed it, six committed files imported it, and every gate
+  # ran against a working tree that still had the file on disk. Nothing in CI
+  # looked at a clean checkout, so nothing noticed.
+  #
+  # `npm ci` installs strictly from the lockfile and fails if package.json and
+  # the lock disagree. `npm run build` is `tsc --noEmit && vite build`, so a
+  # module missing from the repository is a type error before it is a bundler
+  # error, and either way the job goes red.
+  web-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies from the lockfile
+        run: npm ci
+
+      - name: Run the frontend test suite
+        run: npm test
+
+      - name: Typecheck and build
+        run: npm run build
