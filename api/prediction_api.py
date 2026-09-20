@@ -599,9 +599,19 @@ def search_europe_pmc_v2(
     # `returned` is what the caller got; `total_hits` is what the source said
     # exists. Reporting only the first would let a study be assembled from a
     # page without anyone knowing a page is what it was.
+    #
+    # The design is echoed back with its label and its limit rather than left
+    # for the client to look up. The client's copy arrives from a separate
+    # fetch, so a search issued before that fetch resolved recorded a null
+    # design in the exported record -- the one field the product insists on.
+    chosen = next((t for t in STUDY_TYPES if t.key == study_type), None)
     return {
         "source": "europe_pmc",
         "study_type": study_type,
+        "study_design": (
+            {"key": chosen.key, "label": chosen.label, "cannot_support": chosen.cannot_support}
+            if chosen else None
+        ),
         "query": effective_query,
         "count": len(page.records),
         "returned": len(page.records),
@@ -624,11 +634,21 @@ def list_study_types_v2() -> Dict:
 @app.get("/v2/sources/openalex/search")
 def search_openalex_v2(
     query: Annotated[str, Query(min_length=1, max_length=500)],
+    study_type: Annotated[str, Query(max_length=40)],
     page_size: Annotated[int, Query(ge=1, le=OpenAlexClient.MAX_PAGE_SIZE)] = 10,
 ) -> Dict:
-    """Return bounded OpenAlex works. A retrieval boundary, not study evidence."""
+    """Return bounded OpenAlex works. A retrieval boundary, not study evidence.
+
+    `study_type` is required here even though OpenAlex cannot filter on it. The
+    design is a property of the study, not of the lane, and leaving it optional
+    on one route made the product's one mandatory choice reachable-around by
+    calling that route directly.
+    """
     if not query.strip():
         raise HTTPException(status_code=422, detail="query must not be blank")
+    chosen = next((t for t in STUDY_TYPES if t.key == study_type), None)
+    if chosen is None:
+        raise HTTPException(status_code=422, detail="study_type is not a known study design")
 
     try:
         page = OpenAlexClient().search_page(query, page_size=page_size)
@@ -638,6 +658,14 @@ def search_openalex_v2(
 
     return {
         "source": "openalex",
+        "study_type": study_type,
+        "study_design": {
+            "key": chosen.key, "label": chosen.label, "cannot_support": chosen.cannot_support,
+        },
+        # OpenAlex has no publication-type filter, so the design is recorded
+        # and carried, not applied. Saying so beats implying a filter that
+        # never ran.
+        "design_filtered": False,
         "query": query.strip(),
         "count": len(page.records),
         "returned": len(page.records),

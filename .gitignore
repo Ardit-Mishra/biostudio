@@ -10,14 +10,13 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-!web/
-!web/src/
-!web/src/lib/
-web/src/lib/*
-!web/src/lib/decision-twin.ts
-!web/src/lib/annotation.ts
-!web/src/lib/topology.ts
+# Anchored to the repository root: this is the Python build directory, not
+# web/src/lib. It used to be unanchored, with an allowlist of three files under
+# web/src/lib re-added by name -- so every new module written there was ignored
+# silently. web/src/lib/decision-record.ts, the whole export surface, never
+# reached a commit, and the branch could not build from a clean checkout while
+# building fine on the machine that wrote it.
+/lib/
 lib64/
 parts/
 sdist/

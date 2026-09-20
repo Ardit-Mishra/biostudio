@@ -74,15 +74,23 @@ describe("markdown export", () => {
     expect(md).toContain("eligibility criteria");
   });
 
-  it("gives the denominator and names what was left unscreened", () => {
+  it("gives the denominator and names what was left unretrieved", () => {
     const md = toMarkdown(input());
     expect(md).toContain("5 of 6");
-    expect(md).toMatch(/1 matching record was not screened/);
+    expect(md).toMatch(/1 matching record was not retrieved/);
   });
 
-  it("says so plainly when every matching record was screened", () => {
+  it("says so plainly when every matching record was retrieved", () => {
     const md = toMarkdown(input({ searchProvenance: { ...provenance, totalHits: 5, returned: 5 } }));
-    expect(md).toContain("All matching records were screened.");
+    expect(md).toContain("All matching records were retrieved.");
+  });
+
+  it("never claims a record was screened, only that it was retrieved", () => {
+    // A tool cannot know a person read something. Saying "screened" in a
+    // methods section would overstate the review it is evidence of.
+    const md = toMarkdown(input());
+    expect(md).not.toMatch(/screened/i);
+    expect(md).toMatch(/retrieved/i);
   });
 
   it("distinguishes an unreported total from a total of zero", () => {
@@ -107,7 +115,7 @@ describe("json export", () => {
     expect(flat).toContain('AND PUB_TYPE:\\"Randomized Controlled Trial\\"');
     expect(flat).toContain("study_design");
     expect(flat).toContain("total_hits");
-    expect(flat).toContain("records_screened");
+    expect(flat).toContain("records_returned");
   });
 
   it("nulls the provenance fields rather than omitting them when absent", () => {

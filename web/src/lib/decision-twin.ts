@@ -215,6 +215,8 @@ export async function listStudyTypes(): Promise<StudyType[]> {
  */
 export interface SearchOutcome {
   records: SourceArtifact[];
+  /** Echoed by the source route, so it cannot race the study-type fetch. */
+  studyDesign?: { key: string; label: string; cannot_support: string } | null;
   /** The query as the source received it, including any design filter. */
   executedQuery: string;
   /** What the source said exists. `null` when a source does not report one. */
@@ -229,12 +231,14 @@ interface RawSearchPayload {
   total_hits?: number | null;
   returned?: number;
   page_size?: number;
+  study_design?: { key: string; label: string; cannot_support: string } | null;
 }
 
 function toOutcome(payload: RawSearchPayload, fallbackQuery: string, pageSize: number): SearchOutcome {
   const records = payload.records ?? [];
   return {
     records,
+    studyDesign: payload.study_design ?? null,
     executedQuery: payload.query ?? fallbackQuery,
     totalHits: typeof payload.total_hits === "number" ? payload.total_hits : null,
     returned: payload.returned ?? records.length,
@@ -254,8 +258,13 @@ export async function searchEuropePmc(
   return toOutcome((await response.json()) as RawSearchPayload, query, limit);
 }
 
-export async function searchOpenAlex(query: string, limit = 10): Promise<SearchOutcome> {
-  const url = `${API_BASE}/v2/sources/openalex/search?query=${encodeURIComponent(query)}&page_size=${limit}`;
+export async function searchOpenAlex(
+  query: string,
+  limit = 10,
+  /** Required, as on every literature lane. OpenAlex cannot filter on it. */
+  studyType: string,
+): Promise<SearchOutcome> {
+  const url = `${API_BASE}/v2/sources/openalex/search?query=${encodeURIComponent(query)}&page_size=${limit}&study_type=${encodeURIComponent(studyType)}`;
   const response = await fetch(url);
   if (!response.ok) throw new Error(`OpenAlex search failed (${response.status})`);
   return toOutcome((await response.json()) as RawSearchPayload, query, limit);

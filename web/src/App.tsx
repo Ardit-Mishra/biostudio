@@ -320,6 +320,7 @@ export default function App() {
                 initialQuery={seedQuery}
                 initialStudyType={seedStudyType}
                 autoSearch={Boolean(seedQuery && seedStudyType)}
+                onSearchRan={setSearchProvenance}
                 primary
               />
             </div>

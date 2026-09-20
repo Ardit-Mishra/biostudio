@@ -36,25 +36,35 @@ SourceName = Literal[
 def _bounded_record(value: dict[str, Any] | None, *, field: str) -> dict[str, Any] | None:
     """Reject a structured record that is too deep or too large to carry safely.
 
-    Depth first, because a cyclic-looking or deeply nested payload is cheap to
-    send and expensive to serialize -- and the size check below has to serialize
-    it to measure it. Measuring the JSON encoding rather than len() of the dict
-    is the point: a two-key dict can still hold a megabyte of text.
+    Depth is walked iteratively rather than recursively, and counts containers
+    rather than leaves. The recursive version blew the interpreter stack before
+    it could reject anything: a 5,000-deep structure raised RecursionError
+    inside the validator, turning a rejection into a crash. It also traversed
+    only dict and list, so a deep tuple passed the check and then failed later
+    during JSON export -- past the point where a clean 422 was still possible.
+
+    Size is measured on the JSON encoding because a two-key dict can still hold
+    a megabyte, and because that encoding is what every downstream step -- the
+    digest, the export, the response -- actually pays for.
     """
     if value is None:
         return None
 
-    def depth(node: Any, level: int = 1) -> int:
-        if level > MAX_RECORD_DEPTH:
-            return level
+    stack: list[tuple[Any, int]] = [(value, 1)]
+    while stack:
+        node, level = stack.pop()
         if isinstance(node, dict):
-            return max((depth(v, level + 1) for v in node.values()), default=level)
-        if isinstance(node, list):
-            return max((depth(v, level + 1) for v in node), default=level)
-        return level
+            children = node.values()
+        elif isinstance(node, (list, tuple, set, frozenset)):
+            children = node
+        else:
+            continue
+        if level > MAX_RECORD_DEPTH:
+            raise ValueError(f"{field} nests deeper than {MAX_RECORD_DEPTH} levels")
+        for child in children:
+            if isinstance(child, (dict, list, tuple, set, frozenset)):
+                stack.append((child, level + 1))
 
-    if depth(value) > MAX_RECORD_DEPTH:
-        raise ValueError(f"{field} nests deeper than {MAX_RECORD_DEPTH} levels")
     try:
         encoded = json.dumps(value, default=str)
     except (TypeError, ValueError) as exc:
@@ -182,3 +192,16 @@ class DecisionTwinRequest(BaseModel):
     study_id: ShortText
     evidence: list[EvidenceRecord] = Field(min_length=1, max_length=250)
     model_assessments: list[dict[str, Any]] = Field(default_factory=list, max_length=50)
+
+    @model_validator(mode="after")
+    def model_assessments_are_bounded(self) -> "DecisionTwinRequest":
+        """Cap each assessment, not just how many there are.
+
+        The count was capped and the contents were not, so fifty assessments
+        could carry arbitrary depth and size. The digest serializes each one to
+        sort it and then serializes the whole payload again, so an unbounded
+        assessment is paid for twice on every compile.
+        """
+        for index, assessment in enumerate(self.model_assessments):
+            _bounded_record(assessment, field=f"model_assessments[{index}]")
+        return self

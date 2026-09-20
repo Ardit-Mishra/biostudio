@@ -60,8 +60,17 @@ export function EvidenceAnnotationWorkbench({
   onSearchRan,
 }: {
   onEvidenceAdded: (record: EvidenceRecord) => void;
-  /** Report the method back up, so the exported record can state it. */
-  onSearchRan?: (provenance: SearchProvenance) => void;
+  /**
+   * Report the method back up, so the exported record can state it.
+   *
+   * Required, not optional. This component is mounted twice -- once for an
+   * empty study, once beside a compiled one -- and the first version of this
+   * prop was optional, so the empty-study call site omitted it and every
+   * export from the ordinary path carried a null search, null design and null
+   * denominator while the tests passed. A required prop makes that omission a
+   * build error rather than a silently empty methods section.
+   */
+  onSearchRan: (provenance: SearchProvenance) => void;
   /** Seeded from whatever the researcher typed on the landing page. */
   initialQuery?: string;
   /** The level of evidence they chose there. No default: choosing is required. */
@@ -85,6 +94,16 @@ export function EvidenceAnnotationWorkbench({
   // others, with nothing on screen to tell the two apart.
   const [pageSize, setPageSize] = useState(10);
   const [coverage, setCoverage] = useState<{ totalHits: number | null; returned: number } | null>(null);
+
+  // Records and their denominator are one fact, so they are invalidated
+  // together. They were not: switching source or design cleared the list and
+  // left "Showing 6 of 6" standing above nothing, which is precisely the kind
+  // of number-detached-from-its-evidence this product exists to refuse.
+  const clearResults = useCallback(() => {
+    setRecords([]);
+    setCoverage(null);
+    setSelected(null);
+  }, []);
   const [error, setError] = useState<string | null>(null);
   // Same ordering hazard as compile: a slow earlier search must not overwrite
   // the results of a later one.
@@ -108,17 +127,19 @@ export function EvidenceAnnotationWorkbench({
         }
         const outcome =
           literatureSource === "openalex"
-            ? await searchOpenAlex(normalized, pageSize)
+            ? await searchOpenAlex(normalized, pageSize, studyType)
             : await searchEuropePmc(normalized, pageSize, studyType);
         if (seq !== searchSeq.current) return;
         setRecords(outcome.records);
         setCoverage({ totalHits: outcome.totalHits, returned: outcome.returned });
-        const chosenType = studyTypes.find((t) => t.key === studyType);
-        onSearchRan?.({
+        // Prefer what the route echoed back; the locally fetched list is a
+        // fallback and may not have arrived yet when a seeded search fires.
+        const chosen = outcome.studyDesign ?? studyTypes.find((t) => t.key === studyType) ?? null;
+        onSearchRan({
           source: literatureSource === "openalex" ? "OpenAlex" : "Europe PMC",
           executedQuery: outcome.executedQuery,
-          studyDesignLabel: chosenType?.label,
-          studyDesignCannotSupport: chosenType?.cannot_support,
+          studyDesignLabel: chosen?.label,
+          studyDesignCannotSupport: chosen?.cannot_support,
           totalHits: outcome.totalHits,
           returned: outcome.returned,
         });
@@ -200,10 +221,10 @@ export function EvidenceAnnotationWorkbench({
           </p>
 
           <div className="source-mode" role="group" aria-label="Public source to search">
-            <button type="button" aria-pressed={mode === "literature"} onClick={() => { setMode("literature"); setQuery("EGFR osimertinib resistance"); setRecords([]); }} className={mode === "literature" ? "is-active" : ""}>
+            <button type="button" aria-pressed={mode === "literature"} onClick={() => { setMode("literature"); setQuery("EGFR osimertinib resistance"); clearResults(); }} className={mode === "literature" ? "is-active" : ""}>
               <BookOpenText className="size-3.5" aria-hidden="true" /> Literature
             </button>
-            <button type="button" aria-pressed={mode === "compound"} onClick={() => { setMode("compound"); setQuery("CHEMBL3353410"); setRecords([]); }} className={mode === "compound" ? "is-active" : ""}>
+            <button type="button" aria-pressed={mode === "compound"} onClick={() => { setMode("compound"); setQuery("CHEMBL3353410"); clearResults(); }} className={mode === "compound" ? "is-active" : ""}>
               <FlaskConical className="size-3.5" aria-hidden="true" /> Compound
             </button>
           </div>
@@ -217,7 +238,7 @@ export function EvidenceAnnotationWorkbench({
                     key={source.key}
                     type="button"
                     aria-pressed={literatureSource === source.key}
-                    onClick={() => { setLiteratureSource(source.key); setRecords([]); }}
+                    onClick={() => { setLiteratureSource(source.key); clearResults(); }}
                     className={literatureSource === source.key ? "is-active" : ""}
                     title={source.blurb}
                   >
@@ -241,7 +262,7 @@ export function EvidenceAnnotationWorkbench({
                       id="study-type"
                       name="study-type"
                       value={studyType}
-                      onChange={(event) => { setStudyType(event.target.value); setRecords([]); }}
+                      onChange={(event) => { setStudyType(event.target.value); clearResults(); }}
                       className="refine-select"
                       required
                     >

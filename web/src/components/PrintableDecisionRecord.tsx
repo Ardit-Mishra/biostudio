@@ -253,11 +253,11 @@ export function PrintableDecisionRecord({ record }: { record: DecisionRecordInpu
               <dt>Coverage</dt>
               <dd>
                 {record.searchProvenance.totalHits === null
-                  ? `${record.searchProvenance.returned} screened; this source reports no total.`
-                  : `${record.searchProvenance.returned} of ${record.searchProvenance.totalHits} matching records screened.` +
+                  ? `${record.searchProvenance.returned} retrieved; this source reports no total.`
+                  : `${record.searchProvenance.returned} of ${record.searchProvenance.totalHits} matching records retrieved.` +
                     (record.searchProvenance.totalHits > record.searchProvenance.returned
-                      ? ` ${record.searchProvenance.totalHits - record.searchProvenance.returned} were not screened.`
-                      : " All matching records were screened.")}
+                      ? ` ${record.searchProvenance.totalHits - record.searchProvenance.returned} were not retrieved.`
+                      : " All matching records were retrieved.")}
               </dd>
             </>
           )}
