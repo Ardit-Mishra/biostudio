@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from html.parser import HTMLParser
 import re
@@ -96,6 +97,30 @@ class GraphQLSession(Protocol):
     def post(self, url: str, *, json: dict[str, Any], timeout: float) -> Any: ...
 
 
+@dataclass(frozen=True)
+class SearchPage:
+    """One page of results, and how many the source said there were.
+
+    The page on its own is not interpretable. A researcher shown five records
+    cannot tell whether that is the whole evidence base or the visible corner
+    of six hundred, and a reviewer cannot accept a synthesis whose denominator
+    is unstated -- PRISMA asks for records identified before records screened.
+    `total_hits` is None only when a source does not report one, which is a
+    different statement from zero and is kept distinguishable.
+    """
+
+    records: list[SourceArtifact]
+    total_hits: int | None
+
+
+def _reported_total(value: object) -> int | None:
+    """Read a source's own count, without inventing one when it is absent."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    total = int(value)
+    return total if total >= 0 else None
+
+
 class EuropePMCClient:
     """Retrieve bounded, citable literature records from Europe PMC."""
 
@@ -106,8 +131,8 @@ class EuropePMCClient:
         self._session = session or requests.Session()
         self._timeout_seconds = timeout_seconds
 
-    def search(self, query: str, *, page_size: int = 10) -> list[SourceArtifact]:
-        """Return citable literature records without inventing missing metadata."""
+    def search_page(self, query: str, *, page_size: int = 10) -> SearchPage:
+        """Return citable literature records, and the total the source reported."""
         normalized_query = query.strip()
         if not normalized_query:
             raise ValueError("query must not be empty")
@@ -137,11 +162,18 @@ class EuropePMCClient:
         if not isinstance(raw_results, list):
             raise SourceLookupError("Europe PMC returned an invalid result payload")
 
-        return [
-            artifact
-            for raw_result in raw_results
-            if (artifact := self._to_artifact(raw_result)) is not None
-        ]
+        return SearchPage(
+            records=[
+                artifact
+                for raw_result in raw_results
+                if (artifact := self._to_artifact(raw_result)) is not None
+            ],
+            total_hits=_reported_total(payload.get("hitCount")),
+        )
+
+    def search(self, query: str, *, page_size: int = 10) -> list[SourceArtifact]:
+        """The records alone, for callers that do not report a denominator."""
+        return self.search_page(query, page_size=page_size).records
 
     @staticmethod
     def _to_artifact(raw_result: object) -> SourceArtifact | None:
@@ -384,6 +416,9 @@ class OpenAlexClient:
         self._timeout_seconds = timeout_seconds
 
     def search(self, query: str, *, page_size: int = 10) -> list[SourceArtifact]:
+        return self.search_page(query, page_size=page_size).records
+
+    def search_page(self, query: str, *, page_size: int = 10) -> SearchPage:
         normalized_query = query.strip()
         if not normalized_query:
             raise ValueError("query must not be empty")
@@ -408,13 +443,18 @@ class OpenAlexClient:
         if not isinstance(payload, dict):
             raise SourceLookupError("OpenAlex returned an invalid payload")
         results = payload.get("results")
+        meta = payload.get("meta")
+        total = _reported_total(meta.get("count")) if isinstance(meta, dict) else None
         if not isinstance(results, list):
-            return []
-        return [
-            artifact
-            for raw_result in results
-            if (artifact := self._to_artifact(raw_result)) is not None
-        ]
+            return SearchPage(records=[], total_hits=total)
+        return SearchPage(
+            records=[
+                artifact
+                for raw_result in results
+                if (artifact := self._to_artifact(raw_result)) is not None
+            ],
+            total_hits=total,
+        )
 
     def _to_artifact(self, raw_result: object) -> SourceArtifact | None:
         if not isinstance(raw_result, dict):

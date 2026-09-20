@@ -11,6 +11,7 @@ import { Landing } from "@/components/Landing";
 import { SourceAtlas } from "@/components/SourceAtlas";
 import { VerdictBanner } from "@/components/VerdictBanner";
 import { compileStudy, type Compilation, type EvidenceRecord } from "@/lib/decision-twin";
+import type { SearchProvenance } from "@/lib/decision-record";
 import {
   EXEMPLAR_EVIDENCE,
   EXEMPLAR_QUESTION,
@@ -126,6 +127,10 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [focusedEvidenceId, setFocusedEvidenceId] = useState<string | null>(null);
+  // The method behind the evidence: which source was asked what, and how much
+  // of the answer was looked at. Held here because the exported record needs
+  // it and the workbench is where it is learned.
+  const [searchProvenance, setSearchProvenance] = useState<SearchProvenance | null>(null);
 
   // Compiles are fired by a button a reader can hammer, and responses are not
   // guaranteed to arrive in the order they were sent. Without this, the twelfth
@@ -356,6 +361,7 @@ export default function App() {
                     onEvidenceAdded={addEvidence}
                     initialQuery={seedQuery}
                     initialStudyType={seedStudyType}
+                    onSearchRan={setSearchProvenance}
                   />
                   <DecisionRecordExport
                     record={{
@@ -365,6 +371,7 @@ export default function App() {
                         ? EXEMPLAR_QUESTION
                         : "Is the public evidence consistent enough to justify the next research step?",
                       searchQuery: seedQuery,
+                      searchProvenance: searchProvenance ?? undefined,
                       isExample,
                       evidence,
                       compilation,

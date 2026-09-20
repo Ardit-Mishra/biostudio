@@ -591,17 +591,23 @@ def search_europe_pmc_v2(
         raise HTTPException(status_code=422, detail=str(error)) from None
 
     try:
-        records = EuropePMCClient().search(effective_query, page_size=page_size)
+        page = EuropePMCClient().search_page(effective_query, page_size=page_size)
     except SourceLookupError:
         _log.warning("Europe PMC source lookup failed", exc_info=True)
         raise HTTPException(status_code=502, detail="Europe PMC is temporarily unavailable") from None
 
+    # `returned` is what the caller got; `total_hits` is what the source said
+    # exists. Reporting only the first would let a study be assembled from a
+    # page without anyone knowing a page is what it was.
     return {
         "source": "europe_pmc",
         "study_type": study_type,
         "query": effective_query,
-        "count": len(records),
-        "records": [record.model_dump(mode="json") for record in records],
+        "count": len(page.records),
+        "returned": len(page.records),
+        "total_hits": page.total_hits,
+        "page_size": page_size,
+        "records": [record.model_dump(mode="json") for record in page.records],
     }
 
 
@@ -625,15 +631,19 @@ def search_openalex_v2(
         raise HTTPException(status_code=422, detail="query must not be blank")
 
     try:
-        records = OpenAlexClient().search(query, page_size=page_size)
+        page = OpenAlexClient().search_page(query, page_size=page_size)
     except SourceLookupError:
         _log.warning("OpenAlex source lookup failed", exc_info=True)
         raise HTTPException(status_code=502, detail="OpenAlex is temporarily unavailable") from None
 
     return {
         "source": "openalex",
-        "count": len(records),
-        "records": [record.model_dump(mode="json") for record in records],
+        "query": query.strip(),
+        "count": len(page.records),
+        "returned": len(page.records),
+        "total_hits": page.total_hits,
+        "page_size": page_size,
+        "records": [record.model_dump(mode="json") for record in page.records],
     }
 
 

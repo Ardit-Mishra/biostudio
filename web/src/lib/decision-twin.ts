@@ -205,25 +205,60 @@ export async function listStudyTypes(): Promise<StudyType[]> {
   return payload.study_types ?? [];
 }
 
+/**
+ * One search, with enough about itself to be reported.
+ *
+ * The records alone are not a search. A methods section needs the string that
+ * actually ran -- which is not the string the reader typed, because a study
+ * design is appended to it -- and it needs the denominator, because "five
+ * records" means nothing without "of how many".
+ */
+export interface SearchOutcome {
+  records: SourceArtifact[];
+  /** The query as the source received it, including any design filter. */
+  executedQuery: string;
+  /** What the source said exists. `null` when a source does not report one. */
+  totalHits: number | null;
+  returned: number;
+  pageSize: number;
+}
+
+interface RawSearchPayload {
+  records?: SourceArtifact[];
+  query?: string;
+  total_hits?: number | null;
+  returned?: number;
+  page_size?: number;
+}
+
+function toOutcome(payload: RawSearchPayload, fallbackQuery: string, pageSize: number): SearchOutcome {
+  const records = payload.records ?? [];
+  return {
+    records,
+    executedQuery: payload.query ?? fallbackQuery,
+    totalHits: typeof payload.total_hits === "number" ? payload.total_hits : null,
+    returned: payload.returned ?? records.length,
+    pageSize: payload.page_size ?? pageSize,
+  };
+}
+
 export async function searchEuropePmc(
   query: string,
   limit: number,
   /** Required. The API has no default either -- see decision_twin/study_types. */
   studyType: string,
-): Promise<SourceArtifact[]> {
+): Promise<SearchOutcome> {
   const url = `${API_BASE}/v2/sources/europe-pmc/search?query=${encodeURIComponent(query)}&page_size=${limit}&study_type=${encodeURIComponent(studyType)}`;
   const response = await fetch(url);
   if (!response.ok) throw new Error(`Europe PMC search failed (${response.status})`);
-  const payload = (await response.json()) as { records?: SourceArtifact[] };
-  return payload.records ?? [];
+  return toOutcome((await response.json()) as RawSearchPayload, query, limit);
 }
 
-export async function searchOpenAlex(query: string, limit = 10): Promise<SourceArtifact[]> {
+export async function searchOpenAlex(query: string, limit = 10): Promise<SearchOutcome> {
   const url = `${API_BASE}/v2/sources/openalex/search?query=${encodeURIComponent(query)}&page_size=${limit}`;
   const response = await fetch(url);
   if (!response.ok) throw new Error(`OpenAlex search failed (${response.status})`);
-  const payload = (await response.json()) as { records?: SourceArtifact[] };
-  return payload.records ?? [];
+  return toOutcome((await response.json()) as RawSearchPayload, query, limit);
 }
 
 /** Resolve one ChEMBL compound through the API's fixed identifier route. */

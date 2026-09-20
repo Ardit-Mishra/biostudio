@@ -4,23 +4,27 @@ from fastapi.testclient import TestClient
 
 import api.prediction_api as prediction_api
 from decision_twin.models import Citation, SourceArtifact
-from decision_twin.sources import SourceLookupError
+from decision_twin.sources import SearchPage, SourceLookupError
 
 
 client = TestClient(prediction_api.app)
 
 
 class _Client:
-    def __init__(self, records=None, error: Exception | None = None):
+    def __init__(self, records=None, error: Exception | None = None, total_hits: int | None = None):
         self.records = records or []
         self.error = error
+        self.total_hits = total_hits
         self.calls = []
 
-    def search(self, query: str, *, page_size: int):
+    def search_page(self, query: str, *, page_size: int) -> SearchPage:
         self.calls.append({"query": query, "page_size": page_size})
         if self.error:
             raise self.error
-        return self.records
+        return SearchPage(records=self.records, total_hits=self.total_hits)
+
+    def search(self, query: str, *, page_size: int):
+        return self.search_page(query, page_size=page_size).records
 
 
 def _artifact() -> SourceArtifact:
@@ -38,7 +42,7 @@ def _artifact() -> SourceArtifact:
 
 def test_search_endpoint_exposes_normalized_artifacts_but_not_decision_claims(monkeypatch):
     """The public retrieval route must remain separate from study assembly."""
-    source_client = _Client(records=[_artifact()])
+    source_client = _Client(records=[_artifact()], total_hits=6)
     monkeypatch.setattr(prediction_api, "EuropePMCClient", lambda: source_client)
 
     response = client.get("/v2/sources/europe-pmc/search", params={"query": "EGFR AND NSCLC", "page_size": 5, "study_type": "any"})
@@ -51,6 +55,12 @@ def test_search_endpoint_exposes_normalized_artifacts_but_not_decision_claims(mo
     assert "claim" not in body["records"][0]
     assert "outcome_direction" not in body["records"][0]
     assert source_client.calls == [{"query": "EGFR AND NSCLC", "page_size": 5}]
+    # A page has to say what it is a page of: one shown, six matching. Reporting
+    # only the first lets a study be assembled from a fraction of the record
+    # without the reader ever learning a fraction is what they saw.
+    assert body["returned"] == 1
+    assert body["total_hits"] == 6
+    assert body["page_size"] == 5
 
 
 def test_search_endpoint_reports_a_source_outage_without_leaking_transport_details(monkeypatch):

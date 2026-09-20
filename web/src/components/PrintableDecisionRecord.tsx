@@ -232,6 +232,35 @@ export function PrintableDecisionRecord({ record }: { record: DecisionRecordInpu
             Retrieval never promotes a record to evidence; an operator supplied every
             claim and assay context above.
           </dd>
+          {record.searchProvenance && (
+            <>
+              <dt>Search executed</dt>
+              <dd>
+                <code>{record.searchProvenance.executedQuery}</code> against{" "}
+                {record.searchProvenance.source}.
+              </dd>
+              {record.searchProvenance.studyDesignLabel && (
+                <>
+                  <dt>Study design</dt>
+                  <dd>
+                    {record.searchProvenance.studyDesignLabel}.
+                    {record.searchProvenance.studyDesignCannotSupport
+                      ? ` Cannot support: ${record.searchProvenance.studyDesignCannotSupport}`
+                      : ""}
+                  </dd>
+                </>
+              )}
+              <dt>Coverage</dt>
+              <dd>
+                {record.searchProvenance.totalHits === null
+                  ? `${record.searchProvenance.returned} screened; this source reports no total.`
+                  : `${record.searchProvenance.returned} of ${record.searchProvenance.totalHits} matching records screened.` +
+                    (record.searchProvenance.totalHits > record.searchProvenance.returned
+                      ? ` ${record.searchProvenance.totalHits - record.searchProvenance.returned} were not screened.`
+                      : " All matching records were screened.")}
+              </dd>
+            </>
+          )}
           <dt>Comparison rule</dt>
           <dd>
             Two records are comparable only when target, biological system, readout,

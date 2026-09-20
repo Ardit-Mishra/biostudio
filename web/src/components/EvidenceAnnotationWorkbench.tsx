@@ -20,6 +20,7 @@ import {
   type EvidenceRecord,
   type SourceArtifact,
 } from "@/lib/decision-twin";
+import type { SearchProvenance } from "@/lib/decision-record";
 
 type SearchMode = "literature" | "compound";
 
@@ -56,8 +57,11 @@ export function EvidenceAnnotationWorkbench({
   initialStudyType = "",
   autoSearch = false,
   primary = false,
+  onSearchRan,
 }: {
   onEvidenceAdded: (record: EvidenceRecord) => void;
+  /** Report the method back up, so the exported record can state it. */
+  onSearchRan?: (provenance: SearchProvenance) => void;
   /** Seeded from whatever the researcher typed on the landing page. */
   initialQuery?: string;
   /** The level of evidence they chose there. No default: choosing is required. */
@@ -76,6 +80,11 @@ export function EvidenceAnnotationWorkbench({
   const [selected, setSelected] = useState<SourceArtifact | null>(null);
   const [draft, setDraft] = useState<EvidenceAnnotationDraft>(EMPTY_DRAFT);
   const [pending, setPending] = useState(false);
+  // How many of the matching records the reader has chosen to look at. A fixed
+  // five was the whole evidence base for some queries and a rounding error for
+  // others, with nothing on screen to tell the two apart.
+  const [pageSize, setPageSize] = useState(10);
+  const [coverage, setCoverage] = useState<{ totalHits: number | null; returned: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Same ordering hazard as compile: a slow earlier search must not overwrite
   // the results of a later one.
@@ -90,17 +99,33 @@ export function EvidenceAnnotationWorkbench({
       setPending(true);
       setError(null);
       try {
-        const found =
-          searchMode !== "literature"
-            ? await getChEMBLCompound(normalized)
-            : literatureSource === "openalex"
-              ? await searchOpenAlex(normalized, 5)
-              : await searchEuropePmc(normalized, 5, studyType);
+        if (searchMode !== "literature") {
+          const found = await getChEMBLCompound(normalized);
+          if (seq !== searchSeq.current) return;
+          setRecords(found);
+          setCoverage(null);
+          return;
+        }
+        const outcome =
+          literatureSource === "openalex"
+            ? await searchOpenAlex(normalized, pageSize)
+            : await searchEuropePmc(normalized, pageSize, studyType);
         if (seq !== searchSeq.current) return;
-        setRecords(found);
+        setRecords(outcome.records);
+        setCoverage({ totalHits: outcome.totalHits, returned: outcome.returned });
+        const chosenType = studyTypes.find((t) => t.key === studyType);
+        onSearchRan?.({
+          source: literatureSource === "openalex" ? "OpenAlex" : "Europe PMC",
+          executedQuery: outcome.executedQuery,
+          studyDesignLabel: chosenType?.label,
+          studyDesignCannotSupport: chosenType?.cannot_support,
+          totalHits: outcome.totalHits,
+          returned: outcome.returned,
+        });
       } catch (cause) {
         if (seq !== searchSeq.current) return;
         setRecords([]);
+        setCoverage(null);
         setError(cause instanceof Error ? cause.message : "Source lookup failed.");
       } finally {
         if (seq === searchSeq.current) setPending(false);
@@ -110,7 +135,7 @@ export function EvidenceAnnotationWorkbench({
     // pinned the callback to the first render and sent study_type=any forever,
     // however the reader set the picker -- a filter that silently does nothing
     // is worse than no filter, because the results look narrowed.
-    [literatureSource, studyType],
+    [literatureSource, studyType, pageSize, studyTypes, onSearchRan],
   );
 
   useEffect(() => {
@@ -289,6 +314,35 @@ export function EvidenceAnnotationWorkbench({
           </form>
 
           {error && <p role="alert" className="mt-3 text-[13px] text-[var(--ds-conflicting)]">{error}</p>}
+
+          {coverage && mode === "literature" && (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[12.5px] text-muted">
+              <p>
+                {coverage.totalHits === null ? (
+                  <>Showing <b className="text-ink">{coverage.returned}</b>. This source does not report a total.</>
+                ) : (
+                  <>
+                    Showing <b className="text-ink">{coverage.returned}</b> of{" "}
+                    <b className="text-ink">{coverage.totalHits.toLocaleString()}</b> matching record
+                    {coverage.totalHits === 1 ? "" : "s"}.
+                    {coverage.totalHits > coverage.returned && " The rest were not screened."}
+                  </>
+                )}
+              </p>
+              <label className="flex items-center gap-2">
+                <span>Show</span>
+                <select
+                  className="refine-select"
+                  value={pageSize}
+                  onChange={(event) => setPageSize(Number(event.target.value))}
+                >
+                  {[10, 20].map((n) => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          )}
 
           {records.length > 0 && (
             <ul className="mt-5 divide-y divide-line border-y border-line">
