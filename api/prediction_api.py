@@ -125,12 +125,33 @@ def _serializable_errors(errors: List[Dict]) -> List[Dict]:
     """
     cleaned: List[Dict] = []
     for error in errors:
-        item = {key: value for key, value in error.items() if key != "ctx"}
+        item = {key: value for key, value in error.items() if key not in {"ctx", "input"}}
         ctx = error.get("ctx")
         if ctx:
             item["ctx"] = {key: str(value) for key, value in ctx.items()}
+        if "input" in error:
+            item["input_summary"] = _input_summary(error["input"])
         cleaned.append(item)
     return cleaned
+
+
+def _input_summary(value: object) -> Dict:
+    """Describe the rejected value without repeating it.
+
+    Pydantic echoes the offending input, and FastAPI passes it straight back.
+    For most APIs that is a convenience. Here the rejected value can be an
+    unpublished claim, an internal compound identifier, or the text of a record
+    an operator has not chosen to share -- and a 422 body travels through proxy
+    logs, browser history and error trackers that the study itself never
+    touches. The type and the size are what a caller actually needs to fix the
+    request; the value is what they already have.
+    """
+    summary: Dict = {"type": type(value).__name__}
+    if isinstance(value, (str, bytes)):
+        summary["length"] = len(value)
+    elif isinstance(value, (list, tuple, set, dict)):
+        summary["length"] = len(value)
+    return summary
 
 
 @app.exception_handler(RequestValidationError)

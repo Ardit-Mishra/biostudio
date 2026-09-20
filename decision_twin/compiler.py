@@ -49,11 +49,25 @@ def compile_decision(
 def snapshot_digest(
     *, study_id: str, evidence: list[EvidenceRecord], model_assessments: list[dict[str, Any]]
 ) -> str:
-    """Hash the canonical decision inputs so a later replay can detect drift."""
+    """Hash the canonical decision inputs so a later replay can detect drift.
+
+    `sort_keys` canonicalises the inside of each object but not the order of
+    the lists holding them, so the same study re-posted with its evidence in a
+    different order used to hash differently. That is a false positive in the
+    one place a false positive is most expensive: the digest exists to say "the
+    inputs changed", and annotating records in a different order is not a
+    change. Both lists are therefore ordered by their own canonical encoding
+    before hashing, which is stable across processes and runs.
+    """
+
+    def canonical_of(value: Any) -> str:
+        return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+
     payload = {
         "study_id": study_id,
-        "evidence": [record.model_dump(mode="json") for record in evidence],
-        "model_assessments": model_assessments,
+        "evidence": sorted(
+            (record.model_dump(mode="json") for record in evidence), key=canonical_of
+        ),
+        "model_assessments": sorted(model_assessments, key=canonical_of),
     }
-    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    return hashlib.sha256(canonical_of(payload).encode("utf-8")).hexdigest()

@@ -131,7 +131,15 @@ export function EvidenceAnnotationWorkbench({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const needsDesign = mode === "literature" && literatureSource === "europe_pmc" && !studyType;
+  // The design is a property of the study, not of the source that happens to
+  // be selected: it decides what the evidence is allowed to support once it is
+  // annotated. Gating it on europe_pmc meant switching lane to OpenAlex walked
+  // straight past a choice the product treats as mandatory.
+  const needsDesign = mode === "literature" && !studyType;
+  // Only Europe PMC can actually narrow a query by publication type. Saying so
+  // is the same rule as everywhere else here: a filter that silently does
+  // nothing is worse than no filter, because the results look narrowed.
+  const designFiltersSource = literatureSource === "europe_pmc";
 
   function search(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -198,7 +206,7 @@ export function EvidenceAnnotationWorkbench({
                 only one of them is a fact about coverage.
               </p>
 
-              {literatureSource === "europe_pmc" && studyTypes.length > 0 && (
+              {studyTypes.length > 0 && (
                 <>
                   <div className="refine-row">
                     <label className="refine-label" htmlFor="study-type">
@@ -220,6 +228,13 @@ export function EvidenceAnnotationWorkbench({
                       ))}
                     </select>
                   </div>
+                  {!designFiltersSource && (
+                    <p className="refine-why">
+                      This lane cannot filter by publication type. The design is
+                      recorded and still bounds what the evidence can support &mdash;
+                      it just does not narrow the search.
+                    </p>
+                  )}
                   {/* Choosing a design is choosing a level of evidence, so the
                       limit of that level is shown at the moment of choosing. */}
                   {(() => {
