@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { listStudyTypes, type StudyType } from "@/lib/decision-twin";
-import { ArrowDownRight, ArrowUpRight, Beaker, BookOpenText, Dna, FlaskConical, GitCompareArrows, Network, Search } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, BookOpenText, Dna, FlaskConical, GitCompareArrows, Network, Search } from "lucide-react";
 
 /** Queries that return real records, offered so the box is never a blank stare. */
 const STARTERS = [
@@ -172,8 +172,8 @@ export function Landing({
         <div className="source-rail">
           <span><BookOpenText className="size-4" aria-hidden="true" /> Europe PMC <em>literature</em></span>
           <span><Dna className="size-4" aria-hidden="true" /> Open Targets <em>target context</em></span>
+          <span><BookOpenText className="size-4" aria-hidden="true" /> OpenAlex <em>general scholarly</em></span>
           <span className="source-rail-wired"><FlaskConical className="size-4" aria-hidden="true" /> ChEMBL <em>bounded compound route</em></span>
-          <span className="source-rail-gap"><Beaker className="size-4" aria-hidden="true" /> BindingDB <em>planned affinity lane</em></span>
         </div>
       </section>
 
