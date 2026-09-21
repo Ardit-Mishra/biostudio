@@ -7,6 +7,41 @@ BioStudio demonstrates modular pharmaceutical data science workflows for small m
 
 🌐 **Live Demo:** https://biostudio.arditmishra.com
 
+---
+
+## Variant Control Bench
+
+The second half of this repository, and a different problem: not *what might this
+molecule do*, but *is the molecule I am about to order actually the one I asked for*.
+
+A composer drafts DNA fragments carrying requested variants. A **verifier** receives
+only the exported FASTA and the GRCh38 reference window, re-derives the edits from
+those bases, and compares the result against the order. It never reads the composer's
+record of what it meant to do — the separation is enforced by the function signature,
+not by convention.
+
+It refuses to release an order until it can prove the fragments encode exactly the
+requested edits, and it says plainly what it does not establish: sequence verified is
+not synthesis confirmed, and synthesis confirmed is not experimentally qualified.
+
+| Suite | Result |
+|---|---|
+| Named defect classes | 9/9 |
+| Sealed-order manifest | 17/17 |
+| Construct assembly | 11/11 |
+| Adversarial campaign, 22 operators | 13,883 attempts · 0 false pass · 0 false hold |
+
+The campaign number is falsifiable: two deliberately broken verifier builds ship with
+the bench so you can watch it catch them. One is a real off-by-one the campaign found
+in this repository's own indel normaliser — it rolled a deletion onto a *different*
+allele, and released corrupted fragments once in roughly twenty thousand attempts.
+
+Built on real data: Ensembl GRCh38 reference windows, AlphaFold models with
+per-residue pLDDT, and ClinVar significance.
+
+See [`variant-control-bench/`](variant-control-bench/) — a self-contained page with
+no build step and no network at runtime.
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
 [![RDKit](https://img.shields.io/badge/RDKit-2022.9-green.svg)](https://www.rdkit.org/)

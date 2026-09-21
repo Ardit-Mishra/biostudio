@@ -45,3 +45,46 @@ jobs:
       - name: Run ADMET model test suite
         run: >
           uv run --no-project --python 3.12 --with-requirements requirements.txt --with-requirements requirements-dev.txt python -m pytest tests/ -v
+
+  # The Variant Control Bench is a self-contained JS subproject with no runtime
+  # dependencies, so it needs nothing but Node. Each suite is a named step:
+  # a failure should say which claim stopped holding, not just "tests failed".
+  variant-control-bench:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: variant-control-bench
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Defect classes
+        run: node test/engine.test.mjs
+
+      - name: Sealed manifest
+        run: node test/manifest.test.mjs
+
+      - name: Construct assembly
+        run: node test/assembly.test.mjs
+
+      - name: Reviewed defects stay fixed
+        run: node test/verify-codex.mjs
+
+      - name: Adversarial campaign
+        run: node test/fuzz.test.mjs 4000
+
+      - name: Build the page
+        run: node build.mjs
+
+      - name: Page is self-contained
+        run: |
+          test -s dist/index.html
+          if grep -oE 'src="https?://[^"]+"' dist/index.html \
+             | grep -vE 'cdnjs\.cloudflare\.com|cdn\.jsdelivr\.net/npm/'; then
+            echo "unexpected external script host in the built page"; exit 1
+          fi

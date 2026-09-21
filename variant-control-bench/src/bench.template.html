@@ -1,0 +1,1801 @@
+<title>Variant Control Bench</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+  /* A sequencer bench at night: one committed visual world, every colour painted. */
+  :root{
+    --ground:#0b1016; --panel:#111a22; --panel-2:#0e161d;
+    --rule:#1e2c38; --rule-soft:#17222c;
+    --ink:#d9e4ed; --ink-2:#93a7b7; --ink-3:#64798a;
+    --compose:#2fd4c4; --verify:#f2a340; --hold:#e4697a; --pass:#6fcf8a; --focus:#7fd3ff;
+    /* Nucleotides, and AlphaFold's own pLDDT bands. */
+    --nA:#3fbf7f; --nC:#4a9fe0; --nG:#e8a33d; --nT:#e0596b;
+    --p90:#0053d6; --p70:#65cbf3; --p50:#ffdb13; --p00:#ff7d45;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--ground);color:var(--ink);
+    font:15px/1.5 "IBM Plex Sans","Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  .lbl{font-family:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif;text-transform:uppercase;
+    letter-spacing:.09em;font-weight:600;font-size:11px;color:var(--ink-3)}
+  .mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+
+  .app{height:100%;display:grid;
+    grid-template-columns:256px minmax(0,1fr) 344px;
+    grid-template-rows:auto auto minmax(0,1fr);
+    grid-template-areas:"head head head" "caps caps caps" "rail mid right"}
+
+  .head{grid-area:head;border-bottom:1px solid var(--rule);display:flex;flex-wrap:wrap;
+    align-items:center;gap:8px 18px;padding:11px 18px;background:var(--panel-2)}
+  .head h1{margin:0;font-family:"IBM Plex Sans Condensed",sans-serif;font-weight:600;
+    font-size:19px;color:var(--ink)}
+  .head p{margin:0;color:var(--ink-2);font-size:13.5px;max-width:52ch}
+  .headbtn{margin-left:auto;display:flex;gap:8px;align-items:center}
+  .note{font-size:11px;color:var(--ink-3);border:1px solid var(--rule);border-radius:2px;
+    padding:4px 9px;font-family:"IBM Plex Mono",monospace}
+  .gopen{width:auto;padding:5px 13px;border-color:var(--focus);color:var(--focus);
+    font-family:"IBM Plex Sans Condensed",sans-serif;text-transform:uppercase;
+    letter-spacing:.09em;font-weight:600;font-size:11.5px}
+  .gopen:hover{background:rgba(127,211,255,.1)}
+
+  /* ---- middle: bench canvas over the sequence track ---- */
+  .mid{grid-area:mid;min-height:0;min-width:0;display:grid;grid-template-rows:minmax(0,1fr) auto;
+    border-left:1px solid var(--rule);border-right:1px solid var(--rule)}
+  .stage{position:relative;min-height:0;background:var(--ground)}
+  #scene{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+  #scene:active{cursor:grabbing}
+  .labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+  .tag{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;
+    font-family:"IBM Plex Sans Condensed",sans-serif;text-transform:uppercase;letter-spacing:.1em;
+    font-weight:600;font-size:10.5px;padding:3px 7px;border:1px solid currentColor;border-radius:2px;
+    background:rgba(11,16,22,.78)}
+  .tag small{display:block;letter-spacing:.04em;text-transform:none;font-weight:500;font-size:10px;
+    opacity:.72;font-family:"IBM Plex Mono",monospace}
+  .tag.plain{border-color:transparent;background:rgba(11,16,22,.6);letter-spacing:.06em;
+    font-size:9.5px;padding:2px 5px}
+  .tag.coord{font-family:"IBM Plex Mono",monospace;text-transform:none;letter-spacing:0;
+    font-size:9.5px;font-weight:400;border-color:transparent;background:rgba(11,16,22,.6)}
+  .tag-c{color:var(--compose)} .tag-v{color:var(--verify)}
+  .tag-w{color:var(--hold)} .tag-i{color:var(--ink-3)}
+  .tag-ok{color:var(--pass)} .tag-bad{color:var(--hold)}
+
+  .strip{position:absolute;left:0;right:0;bottom:0;display:flex;flex-wrap:wrap;align-items:center;
+    gap:9px 14px;padding:9px 14px;background:linear-gradient(to top,rgba(11,16,22,.95),rgba(11,16,22,0))}
+  .phase{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-2)}
+  .verdict{font-family:"IBM Plex Sans Condensed",sans-serif;text-transform:uppercase;
+    letter-spacing:.11em;font-weight:600;font-size:11px;padding:4px 10px;border-radius:2px;border:1px solid}
+  .verdict.released{color:var(--pass);border-color:var(--pass);background:rgba(111,207,138,.1)}
+  .verdict.held{color:var(--hold);border-color:var(--hold);background:rgba(228,105,122,.1)}
+  .verdict.running{color:var(--ink-3);border-color:var(--rule)}
+
+  .track{border-top:1px solid var(--rule);background:var(--panel-2);padding:10px 14px 12px;min-width:0}
+  .trackhead{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+  .seg{display:flex;border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin-left:auto}
+  .seg button{border:0;border-radius:0;width:auto;padding:4px 11px;font-size:11px;
+    font-family:"IBM Plex Sans Condensed",sans-serif;text-transform:uppercase;letter-spacing:.08em;
+    color:var(--ink-3);background:transparent}
+  .seg button[aria-pressed="true"]{background:var(--rule-soft);color:var(--ink)}
+  .aln{overflow-x:auto;font-family:"IBM Plex Mono",monospace;font-size:11.5px;line-height:1.5;
+    white-space:pre;padding-bottom:2px}
+  .aln .rowlbl{display:inline-block;width:64px;color:var(--ink-3);font-size:10px;
+    letter-spacing:.06em;text-transform:uppercase;font-family:"IBM Plex Sans Condensed",sans-serif}
+  .bA{color:var(--nA)} .bC{color:var(--nC)} .bG{color:var(--nG)} .bT{color:var(--nT)}
+  .bD{color:var(--ink-3)}
+  .hiQ{background:rgba(47,212,196,.22);border-radius:1px}
+  .hiOK{background:rgba(111,207,138,.24);border-radius:1px}
+  .hiBad{background:rgba(228,105,122,.26);border-radius:1px}
+  .faWrap{display:flex;flex-direction:column;gap:8px}
+  .faHint{font-size:11.5px;color:var(--ink-3)}
+  .faHint b{color:var(--ink-2);font-weight:500}
+  textarea#faEdit{width:100%;height:116px;resize:vertical;background:var(--ground);
+    color:var(--ink-2);border:1px solid var(--rule);border-radius:2px;padding:8px 10px;
+    font-family:"IBM Plex Mono",monospace;font-size:11px;line-height:1.45;white-space:pre}
+  .faRow{display:flex;gap:8px;flex-wrap:wrap}
+  .faRow button{width:auto;padding:6px 12px;font-size:12px}
+  .faRow .prim{border-color:var(--verify);color:var(--verify)}
+  .faRow .prim:hover{background:rgba(242,163,64,.1)}
+
+  /* ---- check a delivery ---- */
+  .chkgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .chkcol{display:flex;flex-direction:column;gap:6px;min-width:0}
+  .chkhead{display:flex;align-items:center;gap:10px}
+  .chkhead button{width:auto;padding:3px 9px;font-size:11px;color:var(--ink-3);
+    font-family:"IBM Plex Sans Condensed",sans-serif;text-transform:uppercase;letter-spacing:.07em;
+    margin-left:auto}
+  .chkhead button:hover{border-color:var(--ink-3);color:var(--ink-2)}
+  .chkgrid textarea{height:132px;resize:vertical;background:var(--ground);color:var(--ink-2);
+    border:1px solid var(--rule);border-radius:2px;padding:8px 10px;
+    font-family:"IBM Plex Mono",monospace;font-size:10.5px;line-height:1.45;white-space:pre;width:100%}
+  .chkid{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--ink-3);
+    word-break:break-all;line-height:1.4}
+  .chkid.good{color:var(--pass)} .chkid.bad{color:var(--hold)}
+  @media (max-width:820px){ .chkgrid{grid-template-columns:1fr} }
+
+  /* ---- assembly ---- */
+  .asmbar{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;margin-bottom:12px}
+  .asmbar label{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--ink-3)}
+  .asmbar select{width:auto;min-width:150px;font-size:12px;padding:5px 26px 5px 8px}
+  .asmbar button{width:auto;padding:6px 14px;font-size:12px}
+  .asmbar .prim{border-color:var(--compose);color:var(--compose)}
+  .asmbar .prim:hover:not(:disabled){background:rgba(47,212,196,.1)}
+
+  .asmtrack{display:flex;align-items:stretch;gap:3px;padding:14px 0 10px;overflow-x:auto;
+    min-height:74px}
+  .apart{border:1px dashed var(--rule);border-radius:2px;padding:7px 8px;flex:none;
+    display:flex;flex-direction:column;justify-content:center;gap:3px;
+    opacity:.22;transform:translateY(-6px);background:transparent;overflow:hidden;
+    transition:opacity .26s ease,transform .26s ease}
+  .apart.seated{opacity:1;transform:none;border-style:solid;background:var(--panel-2)}
+  @media (prefers-reduced-motion: reduce){ .apart{transition:none} }
+  .apart b{font-family:"IBM Plex Sans Condensed",sans-serif;font-size:10.5px;font-weight:600;
+    letter-spacing:.05em;text-transform:uppercase;color:var(--ink-2);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .apart i{font-style:normal;font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--ink-3)}
+  /* Colour by what the part IS, then overlay the verdict once checked. */
+  .apart.k-adapter{border-color:rgba(242,163,64,.45)}
+  .apart.k-adapter b{color:var(--verify)}
+  .apart.k-arm{border-color:var(--rule)}
+  .apart.k-payload{border-color:rgba(47,212,196,.55);background:rgba(47,212,196,.07)}
+  .apart.k-payload b{color:var(--compose)}
+  .apart.v-ok{border-color:var(--pass)}
+  .apart.v-bad{border-color:var(--hold);background:rgba(228,105,122,.1)}
+  .apart.v-bad b{color:var(--hold)}
+  .asmscale{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--ink-3);
+    line-height:1.5}
+  .asmscale b{color:var(--ink-2);font-weight:500;padding:0 3px}
+  .asmrows{margin-top:11px;display:flex;flex-direction:column;gap:1px}
+  .asmrow{display:grid;grid-template-columns:150px 1fr;gap:10px;padding:5px 0;font-size:11.5px;
+    border-bottom:1px solid var(--rule-soft);color:var(--ink-3)}
+  .asmrow:last-child{border-bottom:0}
+  .asmrow b{font-family:"IBM Plex Sans Condensed",sans-serif;text-transform:uppercase;
+    letter-spacing:.06em;font-size:10px;font-weight:600;color:var(--ink-2)}
+  .asmrow.s-match b{color:var(--pass)}
+  .asmrow.s-armedit b,.asmrow.s-uncuttable b,.asmrow.s-mismatch b,.asmrow.s-short b{color:var(--hold)}
+  .asmpool{margin-top:12px;border:1px solid var(--rule);border-left:2px solid var(--rule);
+    border-radius:2px;padding:8px 10px;font-size:11.5px;color:var(--ink-2);background:var(--panel-2)}
+  .asmpool b{font-family:"IBM Plex Sans Condensed",sans-serif;text-transform:uppercase;
+    letter-spacing:.07em;font-size:10px;color:var(--ink-3);margin-right:6px}
+  .asmpool.ok{border-left-color:var(--pass)} .asmpool.bad{border-left-color:var(--hold)}
+
+  /* ---- rail + record ---- */
+  .rail,.right{min-height:0;min-width:0;overflow:auto;background:var(--panel)}
+  .rail{grid-area:rail;padding:16px 18px}
+  .right{grid-area:right;display:grid;grid-template-rows:auto minmax(0,1fr);padding:0;overflow:hidden}
+  .structwrap{position:relative;height:232px;border-bottom:1px solid var(--rule);background:var(--panel-2)}
+  #struct{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+  .structcap{position:absolute;left:12px;top:10px;max-width:56%;pointer-events:none}
+  .structcap b{font-family:"IBM Plex Sans Condensed",sans-serif;font-size:12px;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--ink)}
+  .structcap span{display:block;font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--ink-3)}
+  .plddt{position:absolute;right:12px;bottom:10px;display:flex;gap:0;align-items:center}
+  .plddt i{width:15px;height:7px;display:block}
+  .plddt em{font-style:normal;font-size:9.5px;color:var(--ink-3);margin-left:6px;
+    font-family:"IBM Plex Mono",monospace;max-width:150px;line-height:1.3}
+  .record{overflow:auto;padding:16px 18px}
+
+  .block{padding-block:14px;border-top:1px solid var(--rule-soft)}
+  .block:first-child{border-top:0;padding-top:0}
+  .block > .lbl{display:block;margin-bottom:9px}
+
+  .field{display:flex;flex-direction:column;gap:5px;margin-bottom:11px}
+  .field span{font-size:11.5px;color:var(--ink-3)}
+  select,button,textarea{font:inherit;font-size:13px;color:var(--ink);background:var(--panel-2);
+    border:1px solid var(--rule);border-radius:2px;padding:7px 9px;width:100%}
+  select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),
+    linear-gradient(135deg,var(--ink-3) 50%,transparent 50%);
+    background-position:calc(100% - 15px) 14px,calc(100% - 10px) 14px;
+    background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+  button{cursor:pointer;transition:border-color .15s,color .15s}
+  .run{border-color:var(--compose);color:var(--compose);font-family:"IBM Plex Sans Condensed",sans-serif;
+    text-transform:uppercase;letter-spacing:.1em;font-weight:600;padding:9px}
+  .run:hover:not(:disabled){background:rgba(47,212,196,.1)}
+  .run:disabled{opacity:.42;cursor:default;border-color:var(--rule);color:var(--ink-3)}
+  .ghost{margin-top:8px;color:var(--ink-2);font-size:12px;padding:6px}
+  .ghost:hover:not(:disabled){border-color:var(--ink-3)}
+  .ghost:disabled{opacity:.42;cursor:default}
+  :is(select,button,textarea,[tabindex]):focus-visible{outline:2px solid var(--focus);outline-offset:1px}
+
+  .loci{display:flex;flex-direction:column;gap:1px}
+  .loc{display:grid;grid-template-columns:16px 1fr auto;align-items:center;gap:9px;padding:6px 0;
+    border-bottom:1px solid var(--rule-soft);cursor:pointer;font-size:12.5px;color:var(--ink-2)}
+  .loc:last-child{border-bottom:0}
+  .loc .box{width:12px;height:12px;border:1px solid var(--rule);border-radius:2px;justify-self:center}
+  .loc[aria-checked="true"] .box{background:var(--compose);border-color:var(--compose)}
+  .loc[aria-checked="true"]{color:var(--ink)}
+  .loc.focused{background:rgba(127,211,255,.07);box-shadow:inset 2px 0 0 var(--focus)}
+  .loc b{font-weight:500;font-family:"IBM Plex Mono",monospace;font-size:12px}
+  .loc i{display:block;font-style:normal;font-size:10.5px;color:var(--ink-3)}
+  .loc .sig{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;
+    font-family:"IBM Plex Sans Condensed",sans-serif;color:var(--hold);white-space:nowrap}
+  .loc .sig.dr{color:var(--verify)}
+
+  .suite{display:flex;flex-direction:column;gap:1px}
+  .srow{display:grid;grid-template-columns:12px 1fr auto;align-items:center;gap:8px;padding:5px 0;
+    font-size:12.5px;color:var(--ink-2);border-bottom:1px solid var(--rule-soft)}
+  .srow:last-child{border-bottom:0}
+  .dot{width:8px;height:8px;border-radius:50%;background:transparent;border:1px solid var(--rule);
+    justify-self:center}
+  .srow.done .dot{background:var(--pass);border-color:var(--pass)}
+  .srow.fail .dot{background:var(--hold);border-color:var(--hold)}
+  .srow.done,.srow.fail{color:var(--ink)}
+  .srow em{font-style:normal;font-size:10px;letter-spacing:.07em;text-transform:uppercase;
+    font-family:"IBM Plex Sans Condensed",sans-serif;color:var(--ink-3)}
+  .srow.ctrl em{color:var(--verify)}
+  .tally{display:flex;align-items:baseline;gap:8px;margin-bottom:9px}
+  .tally b{font-family:"IBM Plex Mono",monospace;font-size:24px;font-weight:500;color:var(--ink)}
+  .tally span{font-size:11.5px;color:var(--ink-3);line-height:1.35}
+
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{text-align:left;font-family:"IBM Plex Sans Condensed",sans-serif;text-transform:uppercase;
+    letter-spacing:.08em;font-size:10px;color:var(--ink-3);font-weight:600;padding:0 0 6px;
+    border-bottom:1px solid var(--rule)}
+  td{padding:6px 0;border-bottom:1px solid var(--rule-soft);vertical-align:top}
+  td:last-child,th:last-child{text-align:right}
+  .st{font-size:10px;letter-spacing:.07em;text-transform:uppercase;font-weight:600;
+    font-family:"IBM Plex Sans Condensed",sans-serif}
+  .st.match{color:var(--pass)}
+    .st.mismatch,.st.missing,.st.extra,.st.short{color:var(--hold)}
+  .st.intended{color:var(--compose)}
+  .sub{display:block;color:var(--ink-3);font-size:10.5px;margin-top:2px}
+
+  details.work{border:1px solid var(--rule);border-radius:2px;background:var(--panel-2)}
+  details.work summary{cursor:pointer;padding:8px 10px;font-family:"IBM Plex Sans Condensed",sans-serif;
+    text-transform:uppercase;letter-spacing:.08em;font-size:10.5px;color:var(--ink-2);font-weight:600}
+  details.work summary::marker{color:var(--ink-3)}
+  .workbody{padding:0 10px 10px;font-family:"IBM Plex Mono",monospace;font-size:10.5px;
+    color:var(--ink-3);line-height:1.6}
+  .workbody b{color:var(--ink-2);font-weight:500}
+
+  dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:12.5px}
+  dt{color:var(--ink-3);font-family:"IBM Plex Sans Condensed",sans-serif;text-transform:uppercase;
+    letter-spacing:.07em;font-size:10px;font-weight:600;padding-top:2px}
+  dd{margin:0;color:var(--ink)}
+  .limits{margin:0;padding-left:15px;font-size:12px;color:var(--ink-2)}
+  .limits li{margin-bottom:4px}
+  .advisory{margin-top:10px;border:1px solid var(--rule);border-left:2px solid var(--verify);
+    border-radius:2px;padding:8px 10px;font-size:12px;color:var(--ink-2);background:var(--panel-2)}
+  .advisory b{color:var(--ink);font-weight:500}
+  .digest{margin-top:10px;font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--ink-3);
+    word-break:break-all;line-height:1.45}
+  .srcs{margin-top:10px;font-size:11px;color:var(--ink-3);line-height:1.5}
+
+  /* ---- capability strip: what this checks, always on screen ---- */
+  .caps{grid-area:caps;display:flex;flex-wrap:wrap;align-items:center;gap:7px 9px;
+    padding:8px 18px;background:var(--ground);border-bottom:1px solid var(--rule);
+    font-size:11.5px;color:var(--ink-3)}
+  .caps b{font-family:"IBM Plex Sans Condensed",sans-serif;text-transform:uppercase;
+    letter-spacing:.09em;font-size:10px;color:var(--ink-3);font-weight:600;margin-right:2px}
+  .cap{border:1px solid var(--rule);border-radius:2px;padding:2px 8px;color:var(--ink-2);
+    font-family:"IBM Plex Mono",monospace;font-size:10.5px}
+  .cap.on{border-color:rgba(111,207,138,.5);color:var(--pass)}
+  .cap.adv{border-color:rgba(242,163,64,.45);color:var(--verify)}
+  .cap.off{opacity:.62;text-decoration:line-through}
+  .caps .tail{margin-left:auto;color:var(--ink-3);font-size:11px}
+
+  /* ---- campaign ---- */
+  .hud{position:absolute;left:14px;top:12px;pointer-events:none;
+    font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-2);
+    background:rgba(11,16,22,.72);border:1px solid var(--rule);border-radius:2px;
+    padding:9px 12px;min-width:186px}
+  .hud[hidden]{display:none}
+  .hud h4{margin:0 0 7px;font-family:"IBM Plex Sans Condensed",sans-serif;font-size:10.5px;
+    letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);font-weight:600;
+    display:flex;justify-content:space-between;gap:12px}
+  .hud h4 span{color:var(--verify)}
+  .hud .big{font-size:27px;line-height:1.05;color:var(--ink);font-variant-numeric:tabular-nums}
+  .hud .big em{font-style:normal;font-size:10.5px;color:var(--ink-3);display:block;
+    letter-spacing:.06em;text-transform:uppercase;font-family:"IBM Plex Sans Condensed",sans-serif}
+  .hud dl.k{display:grid;grid-template-columns:1fr auto;gap:2px 10px;margin:8px 0 0;font-size:11px}
+  .hud dl.k dt{font-family:"IBM Plex Mono",monospace;text-transform:none;letter-spacing:0;
+    font-size:11px;color:var(--ink-3);font-weight:400;padding:0}
+  .hud dl.k dd{font-variant-numeric:tabular-nums;color:var(--ink)}
+  .hud dl.k dd.bad{color:var(--hold)}
+  .stamp{position:absolute;right:18px;top:14px;pointer-events:none;
+    font-family:"IBM Plex Sans Condensed",sans-serif;font-weight:600;letter-spacing:.16em;
+    text-transform:uppercase;font-size:13px;padding:5px 13px;border:1px solid;border-radius:2px;
+    opacity:0;transition:opacity .12s}
+  .stamp.on{opacity:1}
+  .stamp.good{color:var(--pass);border-color:var(--pass);background:rgba(111,207,138,.12)}
+  .stamp.bad{color:var(--hold);border-color:var(--hold);background:rgba(228,105,122,.16)}
+  .ticker{display:flex;flex-direction:column;gap:1px;max-height:150px;overflow:auto}
+  .ticker button{text-align:left;width:100%;border:0;border-bottom:1px solid var(--rule-soft);
+    border-radius:0;background:transparent;padding:5px 2px;font-family:"IBM Plex Mono",monospace;
+    font-size:10.5px;color:var(--ink-2);cursor:pointer}
+  .ticker button:hover{color:var(--ink);background:var(--rule-soft)}
+  .ticker b{color:var(--hold);font-weight:500}
+  .ticker .none{font-size:11.5px;color:var(--ink-3);padding:4px 0;
+    font-family:"IBM Plex Sans",sans-serif}
+
+  /* ---- guide ---- */
+  .guide{position:fixed;inset:0;z-index:50;background:rgba(6,10,14,.82);
+    display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 16px}
+  .guide[hidden]{display:none}
+  .gcard{width:min(760px,100%);background:var(--panel);border:1px solid var(--rule);
+    border-radius:3px;padding:26px 28px 28px;position:relative}
+  .gcard h2{margin:0 0 4px;font-family:"IBM Plex Sans Condensed",sans-serif;font-weight:600;
+    font-size:22px;text-wrap:balance}
+  .gcard .glede{margin:0 0 20px;color:var(--ink-2);font-size:14px;max-width:62ch}
+  .gclose{position:absolute;top:18px;right:20px;width:auto;padding:5px 12px;font-size:11.5px;
+    font-family:"IBM Plex Sans Condensed",sans-serif;text-transform:uppercase;letter-spacing:.09em;
+    color:var(--ink-2)}
+  .gclose:hover{border-color:var(--ink-3)}
+  /* The steps are the left-to-right path through the bench, so they are numbered. */
+  .steps{list-style:none;margin:0 0 20px;padding:0;display:grid;gap:1px;
+    counter-reset:step}
+  .steps li{display:grid;grid-template-columns:30px 1fr;gap:12px;padding:11px 0;
+    border-bottom:1px solid var(--rule-soft);font-size:13px;color:var(--ink-2)}
+  .steps li:last-child{border-bottom:0}
+  .steps li::before{counter-increment:step;content:counter(step,decimal-leading-zero);
+    font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--compose);padding-top:2px}
+  .steps b{display:block;color:var(--ink);font-weight:500;font-size:13.5px;margin-bottom:1px}
+  .gsec{margin:0 0 9px}
+  .glegend{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:7px 18px;
+    font-size:12px;color:var(--ink-2);margin-bottom:20px}
+  .glegend div{display:flex;align-items:center;gap:8px}
+  .glegend i{width:11px;height:11px;border-radius:2px;flex:none}
+  .gtrue{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+  .gtrue > div{border:1px solid var(--rule);border-radius:2px;padding:11px 13px;font-size:12.5px;
+    color:var(--ink-2);background:var(--panel-2)}
+  .gtrue h3{margin:0 0 6px;font-family:"IBM Plex Sans Condensed",sans-serif;font-size:11px;
+    letter-spacing:.09em;text-transform:uppercase}
+  .gtrue ul{margin:0;padding-left:15px} .gtrue li{margin-bottom:3px}
+  .gyes h3{color:var(--pass)} .gno h3{color:var(--hold)}
+
+  @media (max-width:1060px){
+    html,body{height:auto}
+    .app{height:auto;grid-template-columns:minmax(0,1fr);grid-template-rows:auto;
+      grid-template-areas:"head" "caps" "mid" "rail" "right"}
+    .mid{border-left:0;border-right:0}
+    .stage{height:min(52vh,360px)}
+    .right{overflow:visible;grid-template-rows:auto auto;border-top:1px solid var(--rule)}
+    .rail{border-top:1px solid var(--rule)}
+    .headbtn{margin-left:0}
+    .gcard{padding:22px 18px 24px}
+  }
+</style>
+
+<div class="app">
+  <header class="head">
+    <h1>Variant Control Bench</h1>
+    <p>Fragments are released only after a separate verifier recovers the requested edits from the exported sequence alone.</p>
+    <span class="headbtn">
+      <span class="note" id="buildnote">real GRCh38</span>
+      <button class="gopen" id="gopen">Guide</button>
+    </span>
+  </header>
+
+  <div class="caps">
+    <b>Checks</b>
+    <span class="cap on">allele identity</span>
+    <span class="cap on">delivered span</span>
+    <span class="cap on">strand</span>
+    <span class="cap on">duplicate records</span>
+    <span class="cap adv">reading frame (advisory)</span>
+    <span class="cap adv">GC + homopolymer (advisory)</span>
+    <span class="cap on">construct assembly</span>
+    <span class="cap on">declared intended edits</span>
+    <span class="tail">from the exported sequence and the reference, nothing else</span>
+  </div>
+
+  <section class="mid">
+    <div class="stage">
+      <canvas id="scene"></canvas>
+      <div class="labels" id="labels"></div>
+      <div class="hud" id="hud" hidden>
+        <h4>Campaign <span id="hudState">running</span></h4>
+        <div class="big"><span id="hudN">0</span><em>attempts verified</em></div>
+        <dl class="k">
+          <dt>false pass</dt><dd id="hudFP">0</dd>
+          <dt>false hold</dt><dd id="hudFH">0</dd>
+          <dt>seed</dt><dd id="hudSeed">&mdash;</dd>
+        </dl>
+      </div>
+      <div class="stamp" id="stamp">pass</div>
+      <div class="strip">
+        <span class="verdict running" id="verdict">idle</span>
+        <span class="phase" id="phase">&mdash;</span>
+      </div>
+    </div>
+
+    <div class="track">
+      <div class="trackhead">
+        <span class="lbl" id="trackttl">Alignment</span>
+        <span class="seg">
+          <button id="tabAln" aria-pressed="true">Alignment</button>
+          <button id="tabFa" aria-pressed="false">Edit the export</button>
+          <button id="tabChk" aria-pressed="false">Check a delivery</button>
+          <button id="tabAsm" aria-pressed="false">Assemble</button>
+        </span>
+      </div>
+      <div class="aln" id="aln"></div>
+      <div id="asm" hidden></div>
+
+      <div id="chk" hidden>
+        <p class="faHint" style="margin:0 0 10px"><b>The job this is actually for.</b> Seal the order
+          into a manifest, then months later check whatever the vendor sends back against it. The
+          manifest names the assembly, every allele, every ordered span and any edits the order
+          declared on purpose &mdash; and it is hashed, so the result can say which order it checked
+          against. The verifier still sees only sequence and reference.</p>
+        <div class="chkgrid">
+          <div class="chkcol">
+            <span class="chkhead"><span class="lbl">Order manifest</span>
+              <button id="mSeal">Seal current order</button></span>
+            <textarea id="mJson" spellcheck="false" aria-label="Order manifest JSON"></textarea>
+            <span class="chkid" id="mId">Not sealed yet.</span>
+          </div>
+          <div class="chkcol">
+            <span class="chkhead"><span class="lbl">Delivery received</span>
+              <button id="mFill">Paste composer output</button></span>
+            <textarea id="mFasta" spellcheck="false" aria-label="Delivery FASTA"
+              placeholder="Paste the FASTA the vendor sent back"></textarea>
+            <span class="chkid" id="mMeta">No delivery loaded.</span>
+          </div>
+        </div>
+        <span class="faRow" style="margin-top:10px">
+          <button class="prim" id="mCheck">Check delivery against manifest</button>
+          <span class="verdict running" id="mVerdict">no check run</span>
+        </span>
+      </div>
+
+      <div class="faWrap" id="fa" hidden>
+        <p class="faHint"><b>Change anything below and re-verify.</b> The verifier is not told that you
+          edited it, and never sees the request &mdash; it re-derives the edits from these bases and the
+          reference, then the result is compared against what was asked.</p>
+        <textarea id="faEdit" spellcheck="false" aria-label="Exported FASTA"></textarea>
+        <span class="faRow">
+          <button class="prim" id="faRun">Re-verify edited export</button>
+          <button id="faReset">Restore composer output</button>
+        </span>
+      </div>
+    </div>
+  </section>
+
+  <aside class="rail">
+    <div class="block">
+      <span class="lbl">Loci in this order</span>
+      <div class="loci" id="loci" role="group" aria-label="Loci in this order"></div>
+    </div>
+
+    <div class="block">
+      <span class="lbl">Run</span>
+      <div class="field">
+        <span>Seeded defect injected into the export</span>
+        <select id="defect" aria-label="Seeded defect"></select>
+      </div>
+      <div class="field">
+        <span>Model named in the run record &mdash; none is called from this page</span>
+        <select id="model" aria-label="Composer model"></select>
+      </div>
+      <button class="run" id="run">Compose and verify</button>
+      <button class="ghost" id="sweep">Run all eight classes</button>
+    </div>
+
+    <div class="block">
+      <span class="lbl">Adversarial campaign</span>
+      <p style="margin:0 0 10px;font-size:11.5px;color:var(--ink-3)">Mutates the export over and
+        over and checks the verdict against what each mutation logically requires. Corruptions must
+        be held; presentation changes must not be. Every attempt replays from its seed.</p>
+      <div class="field">
+        <span>Verifier build under test</span>
+        <select id="build" aria-label="Verifier build under test">
+          <option value="fixed">Current build</option>
+          <option value="legacy">Pre-fix normalizer &mdash; the bug this campaign found</option>
+          <option value="header">Header-trusting placement &mdash; trusts the composer's labels</option>
+        </select>
+      </div>
+      <button class="run" id="camp" style="border-color:var(--verify);color:var(--verify)">Start campaign</button>
+      <div class="ticker" id="ticker" style="margin-top:11px"><span class="none">No failures yet.</span></div>
+    </div>
+
+    <div class="block">
+      <span class="lbl">Defect suite</span>
+      <div class="tally"><b id="tally">0/8</b><span>defect classes resolved<br>6 must catch, 2 must not flag</span></div>
+      <div class="suite" id="suite"></div>
+    </div>
+  </aside>
+
+  <aside class="right">
+    <div class="structwrap">
+      <canvas id="struct"></canvas>
+      <div class="structcap"><b id="sname">&mdash;</b><span id="smeta">&mdash;</span></div>
+      <div class="plddt">
+        <i style="background:var(--p00)"></i><i style="background:var(--p50)"></i>
+        <i style="background:var(--p70)"></i><i style="background:var(--p90)"></i>
+        <em>pLDDT 0&ndash;100 &middot; local model confidence,<br>not variant effect</em>
+      </div>
+    </div>
+
+    <div class="record">
+      <div class="block">
+        <span class="lbl">Recovered from sequence</span>
+        <table>
+          <thead><tr><th>Requested</th><th>Recovered</th><th>Status</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+
+      <div class="block">
+        <details class="work">
+          <summary>The verifier&rsquo;s working</summary>
+          <div class="workbody" id="work"></div>
+        </details>
+      </div>
+
+      <div class="block">
+        <span class="lbl">Run evidence</span>
+        <dl>
+          <dt>Task</dt><dd>Do the exported fragments encode exactly the requested edits?</dd>
+          <dt>Context</dt><dd>Pre-order check on research-use constructs</dd>
+          <dt>Influence</dt><dd>High &mdash; no other check precedes the order</dd>
+          <dt>Consequence</dt><dd>Moderate &mdash; wasted synthesis, invalid arm</dd>
+          <dt>Evidence</dt><dd id="evid">&mdash;</dd>
+        </dl>
+        <div class="advisory" id="advisory"></div>
+        <div style="margin-top:12px">
+          <span class="lbl" style="display:block;margin-bottom:7px">Advisories &mdash; reported, not gating</span>
+          <div id="advList" class="workbody" style="padding:0"></div>
+        </div>
+        <div style="margin-top:12px">
+          <span class="lbl" style="display:block;margin-bottom:7px">Residual limitations</span>
+          <ul class="limits">
+            <li>Sequence verified is not synthesis confirmed.</li>
+            <li>Synthesis confirmed is not experimentally qualified.</li>
+            <li>Structural confidence is a model score, not an assay.</li>
+          </ul>
+        </div>
+        <div class="digest" id="digest">record digest &mdash; pending</div>
+        <div class="srcs" id="srcs"></div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<div class="guide" id="guide" hidden>
+  <div class="gcard" role="dialog" aria-modal="true" aria-labelledby="gt">
+    <button class="gclose" id="gclose">Close</button>
+    <h2 id="gt">What this bench does</h2>
+    <p class="glede">You are about to pay for DNA synthesis. Before the order goes out, something
+      independent should prove the fragments actually carry the variants you asked for &mdash; and say
+      so in a form a reviewer can audit. That is all this does, and it refuses to claim more.</p>
+
+    <span class="lbl gsec">The path across the bench, left to right</span>
+    <ol class="steps">
+      <li><span><b>Choose the loci</b>Five real cancer variants ship with the page. Click a row&rsquo;s
+        checkbox to include or drop it; click its name to focus it &mdash; the helix, the alignment and
+        the protein all follow the focused locus.</span></li>
+      <li><span><b>Compose</b>The composer applies each edit to the real GRCh38 window and lays one
+        labelled fragment tile on the left pad. Nothing is verified yet.</span></li>
+      <li><span><b>Cross the barrier</b>Only the exported bases cross. The request, the model identity
+        and the composer&rsquo;s log stop at the wall. In code that is literal: the verify function is
+        handed a FASTA string and a reference window, and has no parameter through which the
+        request could reach it.</span></li>
+      <li><span><b>Re-derive</b>On the right pad the fragment is placed against the reference track by
+        shared k-mers, the edits are called out of the alignment, and indels are left-aligned before
+        anything is compared. Risers mark every position the verifier called.</span></li>
+      <li><span><b>Read the verdict</b>Released only when every requested edit is recovered and nothing
+        unrequested appears. Otherwise held, with the discrepancy named.</span></li>
+    </ol>
+
+    <span class="lbl gsec">Assembling a construct</span>
+    <p class="glede" style="margin-bottom:14px">The <b>Assemble</b> tab treats a construct as what it
+      is: an ordered set of parts &mdash; enzyme adapter, homology arm, payload, arm, adapter &mdash;
+      joined in that order. Two ways an order fails live only here. An enzyme site that lands inside
+      the insert makes the enzyme cut the construct in half, so a perfectly correct sequence still
+      cannot be built. And because parts join by matching 4 nt overhangs, two constructs sharing an
+      overhang can ligate to each other &mdash; every fragment individually correct, the pool
+      misassembled. Neither is a sequence error; both sink the experiment.</p>
+
+    <span class="lbl gsec">Checking a real delivery</span>
+    <p class="glede" style="margin-bottom:14px">The <b>Check a delivery</b> tab is the job this is
+      actually for. Seal the order into a manifest, then months later paste in whatever the vendor
+      sent back. The manifest is hashed, so the result names which order it checked against, and
+      editing it breaks the seal on purpose. It is also where an order declares edits it wants on
+      purpose &mdash; the silent PAM-blocking substitutions an HDR template carries &mdash; so they
+      read as intended rather than as defects. Declaring them in the sealed order means that decision
+      was made before the delivery arrived, not after seeing a red row.</p>
+
+    <span class="lbl gsec">Try to break it</span>
+    <p class="glede" style="margin-bottom:14px">Two ways. Pick a <b>seeded defect</b> to have the
+      composer sabotage its own export in a named way &mdash; six must be caught, two are controls that
+      must <em>not</em> be flagged, because a checker that holds on everything is worthless. Or open
+      <b>Edit the export</b>, change the bases by hand, and re-verify. Nothing is scripted: the verdict
+      is computed from whatever bases are in that box.</p>
+
+    <span class="lbl gsec">Or let it grind</span>
+    <p class="glede" style="margin-bottom:14px"><b>Start campaign</b> runs the same check thousands of
+      times against randomly mutated exports. Each cell on the left pad is one verified attempt, green
+      where the verdict was the one the mutation required and red where it was not. A corruption that
+      gets released is a <b>false pass</b>; a presentation-only change that gets blocked is a
+      <b>false hold</b>. Both are bugs in the checker, and any failure replays from its seed.</p>
+
+    <p class="glede" style="margin-bottom:14px">A campaign that only ever reports zero proves
+      nothing, so two deliberately broken builds are selectable. <b>Pre-fix normalizer</b> is the real
+      bug this campaign found &mdash; roughly one false pass in twenty thousand attempts, which is why
+      it survived to ship. <b>Header-trusting placement</b> matches fragments by the name the composer
+      wrote on them instead of by sequence; it fails about one attempt in eight, every one of them a
+      renamed header. Watch either get caught, then switch back.</p>
+
+    <span class="lbl gsec">Reading the scene</span>
+    <div class="glegend">
+      <div><i style="background:var(--nA)"></i>Adenine</div>
+      <div><i style="background:var(--nC)"></i>Cytosine</div>
+      <div><i style="background:var(--nG)"></i>Guanine</div>
+      <div><i style="background:var(--nT)"></i>Thymine</div>
+      <div><i style="background:var(--compose)"></i>Requested edit</div>
+      <div><i style="background:var(--pass)"></i>Recovered and matching</div>
+      <div><i style="background:var(--hold)"></i>Discrepancy, or blocked at the wall</div>
+      <div><i style="background:var(--verify)"></i>Verifier side and its sweep</div>
+      <div><i style="background:var(--p90)"></i>pLDDT &gt; 90 very high</div>
+      <div><i style="background:var(--p70)"></i>pLDDT 70&ndash;90 confident</div>
+      <div><i style="background:var(--p50)"></i>pLDDT 50&ndash;70 low</div>
+      <div><i style="background:var(--p00)"></i>pLDDT &lt; 50 very low</div>
+    </div>
+
+    <div class="gtrue">
+      <div class="gyes">
+        <h3>Real in this page</h3>
+        <ul>
+          <li>GRCh38 reference windows from Ensembl.</li>
+          <li>AlphaFold models and per-residue pLDDT.</li>
+          <li>ClinVar significance for each locus.</li>
+          <li>The compose and verify engine, running live on your bases.</li>
+          <li>Every verdict, computed here and not stored in the page.</li>
+        </ul>
+      </div>
+      <div class="gno">
+        <h3>Not real, and not claimed</h3>
+        <ul>
+          <li>No DNA is synthesised and no vendor is contacted.</li>
+          <li>Cloud Run and Lambda are the intended split; both sides run in your browser here.</li>
+          <li>No language model is called &mdash; the model field only enters the provenance digest.</li>
+          <li>Data was fetched when the page was built, not queried live.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/htm/3.1.1/htm.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/motion@11.11.17/dist/motion.js"></script>
+<script>/*__ENGINE__*/</script>
+<script>/*__FUZZ__*/</script>
+<script>/*__ADVISE__*/</script>
+<script>/*__MANIFEST__*/</script>
+<script>/*__ASSEMBLY__*/</script>
+<script>window.BENCH_DATA = /*__DATA__*/;</script>
+<script>
+(function(){
+  "use strict";
+  var D = window.BENCH_DATA, E = window.VCEngine, F = window.VCFuzz, A = window.VCAdvise,
+      MAN = window.VCManifest;
+  var REDUCED = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  var DEFECTS = [
+    {key:"none",       label:"None — clean construct", kind:"clean"},
+    {key:"revcomp",    label:"Reverse complement",          kind:"catch"},
+    {key:"offbyone",   label:"Off-by-one position",         kind:"catch"},
+    {key:"contig",     label:"Wrong contig",                kind:"catch"},
+    {key:"extra",      label:"Unrequested substitution",    kind:"catch"},
+    {key:"truncate",   label:"Truncated flank",             kind:"catch"},
+    {key:"dup",        label:"Duplicated fragment",         kind:"catch"},
+    {key:"rightalign", label:"Un-normalised indel",         kind:"control"},
+    {key:"wrap",       label:"Line wrap and soft-mask",     kind:"control"}
+  ];
+  var MODELS = ["llama-3.3-70b · Groq","qwen2.5-72b · Together",
+                "mistral-large · Mistral","deepseek-v3 · DeepSeek",
+                "gemma-2-27b · Groq","phi-4 · Together"];
+
+  var selected = D.loci.map(function(){ return true; });
+  var focus = 0, suite = {}, active = null, lastRun = null, edited = false;
+
+  function order(){ return D.loci.filter(function(_,i){ return selected[i]; }); }
+  function windowsOf(loci){
+    return loci.map(function(L){
+      return {key:L.gene, gene:L.gene, contig:L.contig, from:L.window.from, seq:L.window.seq};
+    });
+  }
+
+  /* =============================================================== 3D bench */
+  var canvas = document.getElementById("scene"), stage = canvas.parentNode;
+  var C = {ground:0x0b1016, compose:0x2fd4c4, verify:0xf2a340, hold:0xe4697a,
+           pass:0x6fcf8a, dim:0x64798a, rail:0x3a4c5c,
+           A:0x3fbf7f, C_:0x4a9fe0, G:0xe8a33d, T:0xe0596b};
+  function baseColor(ch){ return ch==="A"?C.A:ch==="C"?C.C_:ch==="G"?C.G:ch==="T"?C.T:C.dim; }
+
+  var renderer = new THREE.WebGLRenderer({canvas:canvas, antialias:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+  var scene = new THREE.Scene();
+  scene.background = new THREE.Color(C.ground);
+  scene.fog = new THREE.FogExp2(C.ground, 0.018);
+
+  var camera = new THREE.PerspectiveCamera(48, 1, 0.1, 220);
+  var target = new THREE.Vector3(0, 1.9, 0);
+  var az = 0, el = 0.40, dist = 35;
+  function placeCamera(){
+    camera.position.set(target.x + dist*Math.cos(el)*Math.sin(az),
+                        target.y + dist*Math.sin(el),
+                        target.z + dist*Math.cos(el)*Math.cos(az));
+    camera.lookAt(target);
+  }
+
+  scene.add(new THREE.HemisphereLight(0x2a3d52, 0x05080b, 0.42));
+  var kl = new THREE.DirectionalLight(0xffffff, 0.42); kl.position.set(7,14,11); scene.add(kl);
+  var pc = new THREE.PointLight(C.compose, 5.5, 24); pc.position.set(-9,7.5,3); scene.add(pc);
+  var pv = new THREE.PointLight(C.verify, 5.5, 24);  pv.position.set(9,7.5,3);  scene.add(pv);
+
+  function pad(x, hue){
+    var slab = new THREE.Mesh(new THREE.BoxGeometry(13.4,0.3,10.4),
+      new THREE.MeshStandardMaterial({color:0x0c141b, roughness:0.95, metalness:0.05,
+        emissive:hue, emissiveIntensity:0.012}));
+    slab.position.set(x,-1.4,0); scene.add(slab);
+    var grid = new THREE.GridHelper(10,10,hue,hue);
+    grid.material.opacity = 0.2; grid.material.transparent = true;
+    grid.position.set(x,-1.24,0); scene.add(grid);
+  }
+  pad(-9, C.compose); pad(9, C.verify);
+
+  var wf = new THREE.Mesh(new THREE.PlaneGeometry(21,10),
+    new THREE.MeshBasicMaterial({color:C.hold, transparent:true, opacity:0.05, side:THREE.DoubleSide}));
+  wf.rotation.y = Math.PI/2; wf.position.y = 3.1; scene.add(wf);
+  var we = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(21,10)),
+    new THREE.LineBasicMaterial({color:C.hold, transparent:true, opacity:0.4}));
+  we.rotation.y = Math.PI/2; we.position.y = 3.1; scene.add(we);
+  for(var wi=1; wi<6; wi++){
+    var ln = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(21,0.01)),
+      new THREE.LineBasicMaterial({color:C.hold, transparent:true, opacity:0.11}));
+    ln.rotation.y = Math.PI/2; ln.position.y = 3.1 - 5 + wi*1.66; scene.add(ln);
+  }
+
+  // What the barrier stops, parked against it so the block is visible.
+  var intent = new THREE.Mesh(new THREE.BoxGeometry(3.6,0.14,2.3),
+    new THREE.MeshStandardMaterial({color:0x123039, emissive:C.compose, emissiveIntensity:0.4,
+      roughness:0.4, transparent:true, opacity:0.9}));
+  intent.position.set(-2.6,2.5,0); intent.rotation.z = -0.16; scene.add(intent);
+
+  /* ---- composer pad: one labelled tile per fragment in the order ---- */
+  var tiles = new THREE.Group(); scene.add(tiles);
+  var tileMeshes = [];
+  function buildTiles(loci){
+    while(tiles.children.length) tiles.remove(tiles.children[0]);
+    clearDynamicTags();
+    tileMeshes = loci.map(function(L, i){
+      var m = new THREE.Mesh(new THREE.BoxGeometry(6.2,0.16,1.15),
+        new THREE.MeshStandardMaterial({color:0x14222c, emissive:C.compose,
+          emissiveIntensity:0.06, roughness:0.6}));
+      m.position.set(-9, 0.1, (i - (loci.length-1)/2) * 1.65);
+      m.userData.locus = L;
+      m.visible = false;
+      tiles.add(m);
+      var t = tagFor("tag-i plain",
+        esc(L.gene) + " · " + L.window.seq.length + " bp",
+        new THREE.Vector3(-13.6, 0.45, m.position.z));
+      t.dyn = true; t.tile = m;
+      return m;
+    });
+  }
+  function showTiles(frac){
+    tileMeshes.forEach(function(m, i){
+      var on = (i + 1) / tileMeshes.length <= frac + 0.001;
+      m.visible = on;
+      m.material.emissiveIntensity = on ? 0.3 : 0.06;
+    });
+  }
+
+  /* ---- verifier pad: reference track with a real coordinate ruler ---- */
+  var BP = 89, HLEN = 11.2, HRAD = 1.0, TURNS = 4.2, HY = 1.7;
+  var trackG = new THREE.Group(); scene.add(trackG);
+  var railMat = new THREE.MeshStandardMaterial({color:0x1a2836, emissive:C.rail,
+    emissiveIntensity:0.12, roughness:0.8});
+  var rail = new THREE.Mesh(new THREE.BoxGeometry(HLEN+0.9, 0.12, 0.62), railMat);
+  rail.position.set(9, -0.25, 0); trackG.add(rail);
+  var ticks = [];
+  for(var ti=0; ti<BP; ti+=10){
+    var big = (ti % 20 === 0);
+    var tk = new THREE.Mesh(new THREE.BoxGeometry(0.055, big?0.34:0.2, 0.7),
+      new THREE.MeshBasicMaterial({color:C.rail}));
+    tk.position.set(9 + ((ti/(BP-1))-0.5)*HLEN, -0.25, 0);
+    trackG.add(tk); ticks.push(tk);
+  }
+
+  // Delivered span: how much of the reference window the fragment actually
+  // covers. This is the one piece of coverage the schematic helix cannot show.
+  var spanOK = new THREE.Mesh(new THREE.BoxGeometry(1,0.2,0.78),
+    new THREE.MeshBasicMaterial({color:C.pass, transparent:true, opacity:0.5}));
+  var spanNo = new THREE.Mesh(new THREE.BoxGeometry(1,0.2,0.78),
+    new THREE.MeshBasicMaterial({color:C.hold, transparent:true, opacity:0.32}));
+  spanOK.visible = spanNo.visible = false;
+  trackG.add(spanOK); trackG.add(spanNo);
+  function bar(mesh, i0, i1){
+    var len = (i1 - i0) / (BP - 1) * HLEN;
+    if(len <= 0){ mesh.visible = false; return; }
+    mesh.scale.x = len;
+    mesh.position.set(9 + (((i0 + i1) / 2) / (BP - 1) - 0.5) * HLEN, -0.25, 0);
+    mesh.visible = true;
+  }
+  function setSpan(cov, kind){
+    if(kind === "truncated" && cov){ bar(spanOK, cov.from, cov.to); bar(spanNo, cov.to, BP - 1); }
+    else if(kind === "none" || kind === "unplaced"){ spanOK.visible = false; bar(spanNo, 0, BP - 1); }
+    else { bar(spanOK, 0, BP - 1); spanNo.visible = false; }
+  }
+
+  // Risers: one per position the verifier actually called, on the reference.
+  var risers = new THREE.Group(); scene.add(risers);
+  function setRisers(list){
+    while(risers.children.length){
+      var c = risers.children[0]; risers.remove(c);
+      c.geometry.dispose(); c.material.dispose();
+    }
+    list.forEach(function(r){
+      var m = new THREE.Mesh(new THREE.BoxGeometry(0.085, HY - 0.1, 0.085),
+        new THREE.MeshBasicMaterial({color:r.color, transparent:true, opacity:0.85}));
+      m.position.set(9 + ((r.bp/(BP-1))-0.5)*HLEN, (HY-0.1)/2 - 0.2, 0);
+      risers.add(m);
+    });
+  }
+
+  var helix = new THREE.Group(); helix.position.y = HY; scene.add(helix);
+  var bMat = new THREE.MeshStandardMaterial({color:0xffffff, roughness:0.45, metalness:0.08});
+  var rMat = new THREE.MeshStandardMaterial({color:0xffffff, roughness:0.55, metalness:0.05});
+  var strands = new THREE.InstancedMesh(new THREE.SphereGeometry(0.14,10,8), bMat, BP*2);
+  var rungs = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.045,0.045,1,6), rMat, BP);
+  helix.add(strands); helix.add(rungs);
+
+  var geom = [];
+  for(var gi=0; gi<BP; gi++){
+    var t = gi/(BP-1);
+    geom.push({x:(t-0.5)*HLEN, th:t*TURNS*Math.PI*2});
+  }
+  var _m=new THREE.Matrix4(), _p=new THREE.Vector3(), _q=new THREE.Quaternion(),
+      _s=new THREE.Vector3(), _e=new THREE.Euler(), _c=new THREE.Color();
+
+  function writeHelix(reveal){
+    for(var i=0;i<BP;i++){
+      var g = geom[i], s = Math.max(0, Math.min(1, (reveal*BP - i)/4));
+      _e.set(g.th,0,0); _q.setFromEuler(_e);
+      _p.set(g.x, Math.cos(g.th)*HRAD, Math.sin(g.th)*HRAD); _s.set(s,s,s);
+      strands.setMatrixAt(i*2, _m.compose(_p,_q,_s));
+      _p.set(g.x, -Math.cos(g.th)*HRAD, -Math.sin(g.th)*HRAD);
+      strands.setMatrixAt(i*2+1, _m.compose(_p,_q,_s));
+      _p.set(g.x,0,0); _s.set(s, s*HRAD*2, s);
+      rungs.setMatrixAt(i, _m.compose(_p,_q,_s));
+    }
+    strands.instanceMatrix.needsUpdate = true; rungs.instanceMatrix.needsUpdate = true;
+  }
+  function paintHelix(seq, override){
+    for(var i=0;i<BP;i++){
+      var col = (override && override[i] !== undefined) ? override[i] : baseColor(seq[i]);
+      _c.setHex(col);
+      strands.setColorAt(i*2,_c); strands.setColorAt(i*2+1,_c); rungs.setColorAt(i,_c);
+    }
+    strands.instanceColor.needsUpdate = true; rungs.instanceColor.needsUpdate = true;
+  }
+
+  var sweep = new THREE.Mesh(new THREE.BoxGeometry(0.1,4.0,4.0),
+    new THREE.MeshBasicMaterial({color:C.verify, transparent:true, opacity:0.45}));
+  sweep.visible = false; sweep.position.y = HY; scene.add(sweep);
+
+  /* ---- campaign result matrix, laid out on the composer pad ---- */
+  var CCOL = 26, CROW = 11, CN = CCOL * CROW;
+  var cellGeo = new THREE.PlaneGeometry(0.34, 0.34);
+  var cells = new THREE.InstancedMesh(cellGeo,
+    new THREE.MeshBasicMaterial({transparent:true, opacity:0.92}), CN);
+  cells.visible = false; scene.add(cells);
+  (function layoutCells(){
+    var mm = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(1,1,1);
+    q.setFromEuler(new THREE.Euler(-Math.PI/2, 0, 0));
+    for(var i=0;i<CN;i++){
+      var c = i % CCOL, r = Math.floor(i / CCOL);
+      mm.compose(new THREE.Vector3(-9 + (c - (CCOL-1)/2) * 0.44, 0.05,
+                                   (r - (CROW-1)/2) * 0.44), q, sc);
+      cells.setMatrixAt(i, mm);
+      cells.setColorAt(i, new THREE.Color(0x16222c));
+    }
+    cells.instanceMatrix.needsUpdate = true;
+  })();
+  function paintCell(i, hex){
+    cells.setColorAt(i % CN, _c.setHex(hex));
+    cells.instanceColor.needsUpdate = true;
+  }
+  function clearCells(){
+    for(var i=0;i<CN;i++) cells.setColorAt(i, _c.setHex(0x16222c));
+    cells.instanceColor.needsUpdate = true;
+  }
+
+  /* ---- live trial runners ---------------------------------------------
+     During a campaign the compute runs far faster than anything readable, so
+     the lanes carry a live sample of real attempts while the counter counts
+     every one. A failure always gets a lane and then parks on the rack, so
+     nothing that went wrong scrolls past unseen. ---------------------------- */
+  var LANES = 7, POOL = 16, FLIGHT = 1150;
+  var runners = [], rack = [], RACK_MAX = 9;
+  var runGeo = new THREE.BoxGeometry(1.9, 0.19, 0.19);
+  for(var ri=0; ri<POOL; ri++){
+    var rm = new THREE.Mesh(runGeo, new THREE.MeshStandardMaterial({
+      color:0x0f2029, emissive:C.compose, emissiveIntensity:0.7, roughness:0.35,
+      transparent:true, opacity:0.95 }));
+    rm.visible = false; scene.add(rm);
+    runners.push({ mesh:rm, active:false, t:0, lane:ri % LANES, ok:true, parked:false });
+  }
+  function spawnRunner(ok, force){
+    var r = null, i;
+    for(i=0;i<runners.length;i++) if(!runners[i].active){ r = runners[i]; break; }
+    if(!r && force){
+      for(i=0;i<runners.length;i++) if(!runners[i].parked){ r = runners[i]; break; }
+    }
+    if(!r) return false;
+    r.active = true; r.parked = false; r.t = 0; r.ok = ok;
+    r.lane = Math.floor(Math.random() * LANES);
+    r.mesh.visible = true;
+    r.mesh.material.emissive.setHex(C.compose);
+    r.mesh.material.emissiveIntensity = 0.7;
+    r.mesh.scale.set(1,1,1);
+    return true;
+  }
+  function parkFailure(r){
+    // Keep the wrong verdicts on screen instead of letting them fly past.
+    r.parked = true; r.active = false;
+    rack.push(r);
+    while(rack.length > RACK_MAX){
+      var old = rack.shift(); old.parked = false; old.mesh.visible = false;
+    }
+    tagRack.off = false;
+    rack.forEach(function(x, k){
+      x.mesh.position.set(9 - 3.2 + k * 0.8, 0.75, 4.7);
+      x.mesh.scale.set(0.42, 1, 1);
+      x.mesh.material.emissive.setHex(C.hold);
+      x.mesh.material.emissiveIntensity = 1.0;
+    });
+  }
+  function stepRunners(dt){
+    for(var i=0;i<runners.length;i++){
+      var r = runners[i];
+      if(!r.active) continue;
+      r.t += dt / FLIGHT;
+      var z = (r.lane - (LANES-1)/2) * 0.95;
+      if(r.t >= 1){
+        r.mesh.position.set(9, HY, z);
+        if(!r.ok){ parkFailure(r); onArrival(false); }
+        else { r.active = false; r.mesh.visible = false; onArrival(true); }
+        continue;
+      }
+      r.mesh.position.set(-9 + 18 * r.t, HY + Math.sin(r.t * Math.PI) * 1.35, z);
+      if(r.t > 0.5 && r.mesh.material.emissive.getHex() === C.compose)
+        r.mesh.material.emissive.setHex(r.ok ? C.pass : C.hold);
+    }
+  }
+
+  // The specimen re-renders on every arrival: that redraw is the loop.
+  var pulse = null;
+  function pulseSpecimen(ok){ pulse = { t0: performance.now(), ok: ok }; }
+  function stepPulse(now){
+    if(!pulse) return;
+    var e = now - pulse.t0;
+    if(e > 520){ pulse = null; writeHelix(1); paintHelix(pulseSeq, null); return; }
+    writeHelix(Math.min(1, e / 260));
+    if(e < 300){
+      var ov = {}, hex = pulse.ok ? C.pass : C.hold;
+      for(var i=0;i<BP;i+=3) ov[i] = hex;
+      paintHelix(pulseSeq, ov);
+    } else paintHelix(pulseSeq, null);
+  }
+  var pulseSeq = "";
+  function onArrival(ok){
+    pulseSpecimen(ok);
+    sweep.visible = true; sweep.position.set(9, HY, 0);
+    sweep.material.color.setHex(ok ? C.pass : C.hold);
+    sweep.material.opacity = 0.5;
+  }
+
+  /* ---- projected labels ---- */
+  var labelBox = document.getElementById("labels");
+  var LAB = [];
+  function tagFor(cls, html, v3){
+    var el = document.createElement("div");
+    el.className = "tag " + cls; el.innerHTML = html;
+    labelBox.appendChild(el);
+    var rec = {el:el, at:v3};
+    LAB.push(rec); return rec;
+  }
+  function clearDynamicTags(){
+    for(var i=LAB.length-1;i>=0;i--){
+      if(LAB[i].dyn){ labelBox.removeChild(LAB[i].el); LAB.splice(i,1); }
+    }
+  }
+  tagFor("tag-c", 'Composer<small>applies edits to the reference</small>', new THREE.Vector3(-9,6.6,0));
+  tagFor("tag-v", 'Verifier<small>re-derives edits from bases</small>', new THREE.Vector3(9,6.6,0));
+  tagFor("tag-w", 'verify(fasta, reference)<small>its only two inputs</small>',
+         new THREE.Vector3(0,8.2,0));
+  tagFor("tag-i", 'Not passed in<small>request · provenance · composer log</small>',
+         new THREE.Vector3(-2.6,3.9,0));
+  var tagRefTrack = tagFor("tag-i plain", "GRCh38 reference", new THREE.Vector3(9,-1.0,0));
+  var tagLanes = tagFor("tag-i plain", "live sample of attempts", new THREE.Vector3(0,-1.6,0));
+  var tagRack = tagFor("tag-bad plain", "wrong verdicts held here", new THREE.Vector3(9,1.6,4.7));
+  tagLanes.off = true; tagRack.off = true;
+  var tagFrom = tagFor("tag-i coord", "", new THREE.Vector3(9 - HLEN/2 - 0.1, -0.85, 0));
+  var tagTo   = tagFor("tag-i coord", "", new THREE.Vector3(9 + HLEN/2 + 0.1, -0.85, 0));
+
+  function placeLabels(){
+    var w = stage.clientWidth, h = stage.clientHeight;
+    LAB.forEach(function(L){
+      if(L.off || (L.tile && (!L.tile.visible || !tiles.visible))){
+        L.el.style.display = "none"; return;
+      }
+      var v = L.at.clone().project(camera), vis = v.z < 1;
+      L.el.style.display = vis ? "block" : "none";
+      if(!vis) return;
+      L.el.style.left = ((v.x*0.5+0.5)*w) + "px";
+      L.el.style.top = ((-v.y*0.5+0.5)*h) + "px";
+    });
+  }
+  function orbit(el2, get, set){
+    var drag = null;
+    el2.addEventListener("pointerdown", function(e){
+      drag={x:e.clientX,y:e.clientY}; el2.setPointerCapture(e.pointerId); });
+    el2.addEventListener("pointermove", function(e){
+      if(!drag) return;
+      var s = get();
+      set(s.a - (e.clientX-drag.x)*0.006,
+          Math.max(0.12, Math.min(1.35, s.e + (e.clientY-drag.y)*0.004)));
+      drag = {x:e.clientX, y:e.clientY};
+    });
+    el2.addEventListener("pointerup", function(){ drag=null; });
+    el2.addEventListener("pointercancel", function(){ drag=null; });
+  }
+  orbit(canvas, function(){ return {a:az,e:el}; }, function(a,e2){ az=a; el=e2; });
+  canvas.addEventListener("wheel", function(e){
+    e.preventDefault(); dist = Math.max(18, Math.min(56, dist + e.deltaY*0.02));
+  }, {passive:false});
+
+  /* ========================================================== 3D structure */
+  var sCanvas = document.getElementById("struct"), sWrap = sCanvas.parentNode;
+  var sRenderer = new THREE.WebGLRenderer({canvas:sCanvas, antialias:true, alpha:true});
+  sRenderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+  var sScene = new THREE.Scene();
+  var sCam = new THREE.PerspectiveCamera(38, 1, 0.1, 600);
+  var sAz = 0.6, sEl = 0.2, sDist = 3.0, sSpin = true;
+  sScene.add(new THREE.HemisphereLight(0x33465c, 0x080c11, 0.85));
+  var sKey = new THREE.DirectionalLight(0xffffff, 0.75); sKey.position.set(3,5,6); sScene.add(sKey);
+  var sFill = new THREE.DirectionalLight(0x88b4ff, 0.3); sFill.position.set(-4,-2,-3); sScene.add(sFill);
+  var chain = null, marker = null;
+
+  function plddtColor(v){
+    if(v > 90) return 0x0053d6;
+    if(v > 70) return 0x65cbf3;
+    if(v > 50) return 0xffdb13;
+    return 0xff7d45;
+  }
+  function buildStructure(L){
+    if(chain){ sScene.remove(chain); chain.geometry.dispose(); chain.material.dispose(); chain=null; }
+    if(marker){ sScene.remove(marker); marker.geometry.dispose(); marker.material.dispose(); marker=null; }
+    var S = L.structure, n = S.xs.length, pts = [], cx=0, cy=0, cz=0, i;
+    for(i=0;i<n;i++){ cx+=S.xs[i]; cy+=S.ys[i]; cz+=S.zs[i]; }
+    cx/=n; cy/=n; cz/=n;
+    var maxR = 0;
+    for(i=0;i<n;i++){
+      var dx=S.xs[i]-cx, dy=S.ys[i]-cy, dz=S.zs[i]-cz;
+      maxR = Math.max(maxR, Math.sqrt(dx*dx+dy*dy+dz*dz));
+      pts.push(new THREE.Vector3(dx,dy,dz));
+    }
+    var k = 1/maxR;
+    pts.forEach(function(p){ p.multiplyScalar(k); });
+    var curve = new THREE.CatmullRomCurve3(pts);
+    var segs = Math.min(3000, Math.max(120, n*2)), radial = 6;
+    var geo = new THREE.TubeGeometry(curve, segs, 0.012, radial, false);
+    var colors = new Float32Array(geo.attributes.position.count*3), col = new THREE.Color();
+    for(var v=0; v<geo.attributes.position.count; v++){
+      var ring = Math.floor(v/(radial+1));
+      var res = Math.min(n-1, Math.round((ring/segs)*(n-1)));
+      col.setHex(plddtColor(S.plddt[res]));
+      colors[v*3]=col.r; colors[v*3+1]=col.g; colors[v*3+2]=col.b;
+    }
+    geo.setAttribute("color", new THREE.BufferAttribute(colors,3));
+    chain = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+      vertexColors:true, roughness:0.55, metalness:0.05}));
+    sScene.add(chain);
+    var ri = L.residue - S.first;
+    if(ri >= 0 && ri < n){
+      marker = new THREE.Mesh(new THREE.SphereGeometry(0.045,16,12),
+        new THREE.MeshStandardMaterial({color:0xffffff, emissive:C.hold, emissiveIntensity:0.8,
+          roughness:0.25}));
+      marker.position.copy(pts[ri]); sScene.add(marker);
+    }
+    document.getElementById("sname").textContent = L.gene + " — " + L.hgvsp;
+    document.getElementById("smeta").innerHTML =
+      esc(L.uniprot) + " · " + esc(S.model) + " v" + S.version +
+      "<br>" + n + " aa · pLDDT " +
+      (S.residuePlddt === null ? "n/a" : S.residuePlddt) + " at residue " + L.residue;
+  }
+
+  /* ==================================================== sequence + record UI */
+  var elAln = document.getElementById("aln"), elFa = document.getElementById("fa");
+  var elFaEdit = document.getElementById("faEdit");
+  var elRows = document.getElementById("rows"), elVerdict = document.getElementById("verdict");
+  var elPhase = document.getElementById("phase"), elEvid = document.getElementById("evid");
+  var elDigest = document.getElementById("digest"), elAdv = document.getElementById("advisory");
+  var elWork = document.getElementById("work");
+  var elRun = document.getElementById("run"), elSweep = document.getElementById("sweep");
+  var selDefect = document.getElementById("defect"), selModel = document.getElementById("model");
+
+  function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;"); }
+  function seqHTML(s, hi){
+    var out = "";
+    for(var i=0;i<s.length;i++){
+      var ch = s[i], cls = "b" + (ch === "-" ? "D" : ch);
+      out += '<span class="' + cls + (hi && hi[i] ? " " + hi[i] : "") + '">' + ch + "</span>";
+    }
+    return out;
+  }
+  function focusLocus(){ return D.loci[focus]; }
+
+  function renderAlignment(L, res){
+    var win = L.window.seq, from = L.window.from;
+    var found = res && res.findings ? res.findings.filter(function(f){
+      return f.window && f.window.key === L.gene; }) : [];
+    var frag = null;
+    if(res){
+      E.parseFasta(res.fasta).forEach(function(r){
+        if(frag === null && r.name.indexOf(L.gene + "_") === 0) frag = r.seq;
+      });
+    }
+    var qi = L.pos - from, qlen = L.ref.length, n = win.length;
+    var refRow = win, obsRow, kind = "sub", cov = null;
+    if(!frag){
+      obsRow = Array(n+1).join("·"); kind = "none";
+    } else {
+      var indel = null;
+      found.forEach(function(f){
+        if(f.status === "called" && f.ref && f.ref.length !== f.alt.length) indel = f;
+        if(f.truncated && f.from !== undefined) cov = {from:f.from - from, to:f.to - from};
+      });
+      if(cov){
+        obsRow = "";
+        for(var ci=0; ci<n; ci++)
+          obsRow += (ci >= cov.from && ci < cov.to) ? frag[ci - cov.from] : "·";
+        kind = "truncated";
+      } else if(indel){
+        var ip = indel.pos - from, al = indel.alt.length, rl = indel.ref.length;
+        obsRow = (frag.slice(0, ip + al) + Array(rl - al + 1).join("-") +
+                  frag.slice(ip + al)).slice(0, n);
+        kind = "indel";
+      } else if(frag.length === n){
+        obsRow = frag;
+        kind = found.length ? "sub" : "unplaced";
+      } else {
+        obsRow = (frag + Array(n+1).join("·")).slice(0, n);
+        kind = "unplaced";
+      }
+    }
+
+    var hiRef = {}, hiObs = {}, i;
+    for(i=0;i<qlen;i++) hiRef[qi+i] = "hiQ";
+    var okGene = res && res.rows.some(function(r){ return r.gene === L.gene && r.status === "match"; });
+    found.forEach(function(f){
+      if(f.status !== "called") return;
+      var ri = f.pos - from, rl = Math.max(1, (f.ref||"N").length);
+      for(var j=0;j<rl;j++) if(ri+j >= 0) hiObs[ri+j] = okGene ? "hiOK" : "hiBad";
+    });
+    if(found.length && found[0].status !== "called")
+      for(i=0;i<qlen;i++) hiObs[qi+i] = "hiBad";
+
+    var ruler = "";
+    for(var c=0;c<refRow.length;c++) ruler += (c % 10 === 0) ? "|" : (c % 5 === 0 ? "." : " ");
+    var legend = kind === "truncated"
+        ? "· not delivered · delivered " + (cov.to - cov.from) + " of " + n + " nt"
+      : kind === "indel" ? "- deleted relative to reference"
+      : kind === "unplaced" ? "fragment did not place on this window"
+      : kind === "none" ? "no fragment for this locus" : "substitutions only";
+    elAln.innerHTML =
+      '<div><span class="rowlbl">' + esc(L.contig) + '</span><span class="bD">' + ruler +
+        "  1-based, bp</span></div>" +
+      '<div><span class="rowlbl">reference</span>' + seqHTML(refRow, hiRef) + "</div>" +
+      '<div><span class="rowlbl">exported</span>' + seqHTML(obsRow, hiObs) + "</div>" +
+      '<div><span class="rowlbl">' + esc(L.pos) + '</span><span class="bD">' +
+        Array(qi+1).join(" ") + "^  requested</span></div>" +
+      '<div style="margin-top:4px"><span class="rowlbl"></span><span class="bD">' +
+        esc(legend) + "</span></div>";
+    setSpan(cov, kind);
+
+    // 3D: risers at every called position, and the ruler's real end coordinates.
+    setRisers(found.filter(function(f){ return f.status === "called" && f.bp !== undefined; })
+      .map(function(f){ return {bp:f.bp, color: okGene ? C.pass : C.hold}; }));
+    tagFrom.el.textContent = from.toLocaleString();
+    tagTo.el.textContent = L.window.to.toLocaleString();
+    tagRefTrack.el.textContent = L.contig + " reference · " + BP + " bp";
+  }
+
+  function renderRows(rows){
+    elRows.innerHTML = "";
+    if(!rows || !rows.length){
+      elRows.innerHTML = '<tr><td colspan="3" style="color:var(--ink-3);padding:10px 0">' +
+        "Nothing recovered yet.</td></tr>";
+      return;
+    }
+    rows.forEach(function(r){
+      var a = r.ref && r.ref.length - (r.alt ? r.alt.length : 0) > 3
+        ? "del" + (r.ref.length - r.alt.length)
+        : (r.ref ? r.ref + ">" + r.alt : "—");
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        '<td class="mono">' + esc(r.contig) + (r.pos ? ":" + r.pos : "") + " " + esc(a) +
+          '<span class="sub">' + esc(r.gene) + " " + esc(r.hgvsp || "") + "</span></td>" +
+        '<td class="mono">' + (r.recPos === null || r.recPos === undefined ? "—" : r.recPos) +
+          '<span class="sub">' + esc(r.note) + "</span></td>" +
+        '<td><span class="st ' + r.status + '">' + r.status + "</span></td>";
+      elRows.appendChild(tr);
+    });
+  }
+
+  // Show what the verifier had to go on, so the verdict is inspectable.
+  function renderWork(res){
+    if(!res || !res.findings.length){ elWork.textContent = "No fragments placed."; return; }
+    var seen = {}, out = [];
+    res.findings.forEach(function(f){
+      var id = f.record + "|" + f.status;
+      if(seen[id]) return; seen[id] = 1;
+      var w = f.window ? f.window.gene : "no window";
+      var sc = f.score === undefined ? "—" : (f.score*100).toFixed(0) + "%";
+      var line = "<b>" + esc(f.record) + "</b> → " + esc(w) + " · seed " + sc +
+        (f.reversed ? " · reverse strand" : "") +
+        (f.truncated ? " · partial coverage " + f.from + "–" + f.to : "");
+      if(f.status === "called")
+        line += "<br>&nbsp;&nbsp;called " + f.pos + " " + esc(f.ref) + ">" + esc(f.alt) +
+                " (left-aligned)";
+      else line += "<br>&nbsp;&nbsp;" + f.status;
+      out.push(line);
+    });
+    elWork.innerHTML = out.join("<br>") +
+      "<br><br>Placement floor 25% shared 12-mers. Indels left-aligned on both sides before comparison.";
+  }
+
+  function digestOf(obj){
+    var json = JSON.stringify(obj);
+    if(window.crypto && crypto.subtle && window.TextEncoder){
+      crypto.subtle.digest("SHA-256", new TextEncoder().encode(json)).then(function(buf){
+        elDigest.textContent = "record digest · sha256 " +
+          Array.prototype.map.call(new Uint8Array(buf), function(b){
+            return ("0"+b.toString(16)).slice(-2); }).join("");
+      }).catch(function(){ elDigest.textContent = "record digest · unavailable here"; });
+    } else { elDigest.textContent = "record digest · unavailable here"; }
+  }
+
+  function advisory(L){
+    var p = L.structure.residuePlddt;
+    var band = p === null ? "not modelled" : p > 90 ? "very high" : p > 70 ? "confident"
+             : p > 50 ? "low" : "very low";
+    elAdv.innerHTML = "<b>" + esc(L.gene) + " residue " + L.residue + "</b> — AlphaFold pLDDT " +
+      (p === null ? "n/a" : p) + " (" + band + "). ClinVar: " +
+      esc(L.clinvar.significance || "not classified") + "." +
+      (p !== null && p <= 70
+        ? " Structural interpretation at this residue is weak; the sequence check is unaffected." : "");
+  }
+
+  function renderAdvisories(res){
+    var box = document.getElementById("advList");
+    var sum = A.summary(order(), res.fasta, E.parseFasta);
+    if(!sum.items.length){
+      box.innerHTML = '<span style="color:var(--ink-3)">Nothing to flag: no length change requested, ' +
+        'GC and homopolymer runs within the usual screens.</span>';
+      return;
+    }
+    box.innerHTML = sum.items.map(function(i){
+      var c = i.level === "warn" ? "var(--verify)" : "var(--ink-3)";
+      return '<div style="margin-bottom:4px"><b style="color:' + c + '">' + esc(i.scope) +
+        "</b> · " + esc(i.text) + "</div>";
+    }).join("");
+  }
+
+  function apply(res, L){
+    lastRun = res;
+    renderAdvisories(res);
+    renderRows(res.rows);
+    renderWork(res);
+    renderAlignment(L, res);
+    if(!edited) elFaEdit.value = res.fasta;
+    elVerdict.className = "verdict " + res.verdict;
+    elVerdict.textContent = res.verdict === "released" ? "checks passed" : "held";
+    elEvid.textContent = res.verdict === "released"
+      ? "Independent re-derivation; " + res.rows.length + " of " + res.rows.length + " edits matched"
+      : "Independent re-derivation; " + res.discrepancies +
+        (res.discrepancies === 1 ? " discrepancy" : " discrepancies") + " on export";
+    // Hash the artifact, not a summary of it: two different exports must never
+    // land on the same digest.
+    var fz = res.frozen || {};
+    digestOf({engine:fz.engine || E.VERSION, at:fz.at || null, model:fz.model || null,
+              defect: edited ? "hand-edited" : (fz.defect || null),
+              requested: res.requested.map(function(q){
+                return q.contig + ":" + q.pos + q.ref + ">" + q.alt; }),
+              recovered: res.rows.map(function(r){
+                return r.status + "@" + r.recPos + ":" + (r.ref||"") + ">" + (r.alt||""); }),
+              verdict: res.verdict, fasta: res.fasta});
+  }
+
+  function renderSuite(){
+    var n = 0;
+    DEFECTS.forEach(function(d){
+      if(d.kind === "clean") return;
+      var row = document.getElementById("s-"+d.key);
+      row.classList.remove("done","fail");
+      if(suite[d.key] === true){ row.classList.add("done"); n++; }
+      else if(suite[d.key] === false){ row.classList.add("fail"); }
+    });
+    document.getElementById("tally").textContent = n + "/8";
+  }
+
+  /* ------------------------------------------------------------- run cycle */
+  var T = {compose:1500, settle:1950, transit:3100, verify:5200};
+
+  function computeRun(){
+    var loci = order();
+    if(!loci.length) return null;
+    var r = E.run(loci, selDefect.value, D.decoy);
+    // Freeze the settings into the run: changing a control afterwards must not
+    // rewrite the evidence for a run that already happened.
+    r.frozen = {defect:selDefect.value, model:selModel.value, engine:E.VERSION,
+                at:new Date().toISOString()};
+    return r;
+  }
+  function activeLocus(){ return selected[focus] ? focusLocus() : order()[0]; }
+
+  function start(){
+    var res = computeRun();
+    if(!res){ elPhase.textContent = "Select at least one locus."; return; }
+    edited = false;
+    var L = activeLocus();
+    if(!selected[focus]) focus = D.loci.indexOf(L);
+
+    var def = DEFECTS.filter(function(d){ return d.key === selDefect.value; })[0];
+    var expect = (def.kind === "control" || def.kind === "clean") ? "released" : "held";
+    if(def.kind !== "clean") suite[def.key] = (res.verdict === expect);
+    renderSuite();
+
+    buildTiles(order()); showTiles(0);
+    helix.rotation.y = 0; helix.position.x = -9; sweep.visible = false;
+    setRisers([]);
+    paintHelix(L.window.seq, null);
+    elVerdict.className = "verdict running"; elVerdict.textContent = "running";
+    renderRows(null);
+
+    active = {t0:performance.now(), res:res, L:L, def:def, revealed:false, done:false};
+    elRun.disabled = true; elSweep.disabled = true;
+    if(REDUCED){ writeHelix(1); showTiles(1); helix.position.x = 9; finishRun(); }
+  }
+
+  function finishRun(){
+    var a = active; if(!a) return;
+    a.done = true; sweep.visible = false; showTiles(1);
+    apply(a.res, a.L);
+    elPhase.textContent = a.res.verdict === "released"
+      ? "Every requested edit recovered from the exported sequence alone."
+      : a.res.discrepancies + " discrepanc" + (a.res.discrepancies === 1 ? "y" : "ies") +
+        " between what was asked and what the sequence proves.";
+    elRun.disabled = false; elSweep.disabled = false;
+    if(queue.length) setTimeout(nextQueued, 420);
+  }
+
+  function step(now){
+    if(!active || active.done) return;
+    var e = now - active.t0, L = active.L;
+    if(e < T.compose){
+      var f0 = e / T.compose;
+      writeHelix(f0); showTiles(f0);
+      elPhase.textContent = "Composing · " + order().length + " fragments · " +
+        L.gene + " " + L.contig + ":" + L.pos + " shown";
+    } else if(e < T.settle){
+      writeHelix(1); showTiles(1);
+      if(!active.revealed){
+        var ov = {}; ov[L.window.flank] = C.compose;
+        paintHelix(L.window.seq, ov); active.revealed = true;
+      }
+      intent.rotation.z = -0.16 + Math.sin(e*0.012)*0.03;
+      elPhase.textContent = "Draft accepted · request and log recorded on the composer side";
+    } else if(e < T.transit){
+      var k = (e - T.settle) / (T.transit - T.settle);
+      helix.position.x = -9 + 18*k;
+      if(active.def.key === "revcomp") helix.rotation.y = Math.PI * k;
+      elPhase.textContent = "Bases cross to the verifier · the composer's record does not";
+    } else if(e < T.verify){
+      helix.position.x = 9;
+      var f = (e - T.transit) / (T.verify - T.transit);
+      sweep.visible = true;
+      sweep.position.set(9 - HLEN/2 - 0.6 + (HLEN + 1.2)*f, HY, 0);
+      elPhase.textContent = "Placing on " + L.contig + " by shared 12-mers, then calling edits";
+    } else { finishRun(); }
+  }
+
+  var queue = [];
+  function nextQueued(){ if(queue.length){ selDefect.value = queue.shift(); start(); } }
+
+  /* ------------------------------------------------------------------- UI */
+  DEFECTS.forEach(function(d){
+    var o = document.createElement("option");
+    o.value = d.key;
+    o.textContent = d.label + (d.kind === "control" ? "  (must not flag)"
+                  : d.kind === "catch" ? "  (must catch)" : "");
+    selDefect.appendChild(o);
+  });
+  MODELS.forEach(function(m){
+    var o = document.createElement("option"); o.value = m; o.textContent = m; selModel.appendChild(o);
+  });
+
+  var elSuite = document.getElementById("suite");
+  DEFECTS.forEach(function(d){
+    if(d.kind === "clean") return;
+    var row = document.createElement("div");
+    row.className = "srow" + (d.kind === "control" ? " ctrl" : "");
+    row.id = "s-" + d.key;
+    row.innerHTML = '<span class="dot"></span><span>' + d.label + '</span><em>' +
+      (d.kind === "control" ? "control" : "catch") + "</em>";
+    elSuite.appendChild(row);
+  });
+
+  var elLoci = document.getElementById("loci");
+  function setFocusTo(i){
+    focus = i;
+    Array.prototype.forEach.call(elLoci.children, function(c,j){
+      c.classList.toggle("focused", j === i); });
+    var L = D.loci[i];
+    buildStructure(L); advisory(L);
+    paintHelix(L.window.seq, null);
+    renderAlignment(L, lastRun);
+  }
+  D.loci.forEach(function(L, i){
+    var el = document.createElement("div");
+    el.className = "loc"; el.setAttribute("role","checkbox");
+    el.setAttribute("aria-checked","true"); el.tabIndex = 0;
+    var sig = (L.clinvar.significance || "").toLowerCase();
+    el.innerHTML = '<span class="box"></span>' +
+      "<span><b>" + L.gene + "</b> <i>" + L.hgvsp + " · " + L.contig + ":" + L.pos + "</i></span>" +
+      '<span class="sig' + (sig.indexOf("drug") >= 0 ? " dr" : "") + '">' +
+        (L.clinvar.significance || "—") + "</span>";
+    function toggle(){
+      selected[i] = !selected[i];
+      el.setAttribute("aria-checked", selected[i] ? "true" : "false");
+      buildTiles(order()); showTiles(1);
+      var res = computeRun();
+      if(res){ edited = false; apply(res, activeLocus()); }
+    }
+    el.addEventListener("click", function(ev){
+      if(ev.offsetX < 26 || ev.target.className === "box") toggle(); else setFocusTo(i);
+    });
+    el.addEventListener("keydown", function(ev){
+      if(ev.key === " "){ ev.preventDefault(); toggle(); }
+      if(ev.key === "Enter"){ ev.preventDefault(); setFocusTo(i); }
+    });
+    elLoci.appendChild(el);
+  });
+
+  var elChk = document.getElementById("chk");
+  var elAsm = document.getElementById("asm");
+  function tab(which){
+    elAln.hidden = which !== "aln";
+    elFa.hidden  = which !== "fa";
+    elChk.hidden = which !== "chk";
+    elAsm.hidden = which !== "asm";
+    [["tabAln","aln"],["tabFa","fa"],["tabChk","chk"],["tabAsm","asm"]].forEach(function(pair){
+      document.getElementById(pair[0])
+        .setAttribute("aria-pressed", which === pair[1] ? "true" : "false");
+    });
+    document.getElementById("trackttl").textContent =
+      which === "aln" ? "Alignment" : which === "fa" ? "Exported FASTA"
+      : which === "chk" ? "Check a delivery" : "Construct assembly";
+  }
+  document.getElementById("tabAln").addEventListener("click", function(){ tab("aln"); });
+  document.getElementById("tabFa").addEventListener("click", function(){ tab("fa"); });
+  document.getElementById("tabChk").addEventListener("click", function(){ tab("chk"); });
+  document.getElementById("tabAsm").addEventListener("click", function(){ tab("asm"); });
+
+  // The verifier is handed the bytes in the box and nothing else.
+  document.getElementById("faRun").addEventListener("click", function(){
+    var loci = order();
+    if(!loci.length || !lastRun) return;
+    var W = windowsOf(loci), byKey = {};
+    W.forEach(function(w){ byKey[w.contig + ":" + w.gene] = w; });
+    var findings = E.verify(elFaEdit.value, W);
+    var rows = E.reconcile(lastRun.requested, findings, byKey);
+    var bad = rows.filter(function(r){ return r.status !== "match"; });
+    edited = true;
+    apply({fasta:elFaEdit.value, requested:lastRun.requested, findings:findings, rows:rows,
+           verdict: bad.length ? "held" : "released", discrepancies: bad.length}, activeLocus());
+    elPhase.textContent = bad.length
+      ? "Hand-edited export · " + bad.length + " discrepanc" + (bad.length===1?"y":"ies") + " found"
+      : "Hand-edited export · still encodes exactly the requested edits";
+  });
+  document.getElementById("faReset").addEventListener("click", function(){
+    edited = false;
+    var res = computeRun();
+    if(res){ elFaEdit.value = res.fasta; apply(res, activeLocus());
+      elPhase.textContent = "Composer output restored."; }
+  });
+
+  elRun.addEventListener("click", function(){ queue = []; start(); });
+  elSweep.addEventListener("click", function(){
+    queue = DEFECTS.filter(function(d){ return d.kind !== "clean"; }).map(function(d){ return d.key; });
+    nextQueued();
+  });
+  selDefect.addEventListener("change", function(){
+    edited = false;
+    var res = computeRun();
+    if(res) apply(res, activeLocus());
+  });
+
+  /* -------------------------------------------------------------- campaign */
+  // The loop a verification engineer actually runs: keep throwing mutations at
+  // the checker and count the times its verdict was not the one the mutation
+  // required. Ground truth comes from how each mutation was built, never from
+  // the checker's own answer.
+  // Two deliberately broken builds are selectable. A campaign that can only
+  // ever report zero proves nothing; being able to watch it catch a known
+  // defect is what makes the zero mean something.
+  var BUILDS = {
+    fixed:  { norm:"fixed",  place:"sequence", label:"current build" },
+    legacy: { norm:"legacy", place:"sequence", label:"pre-fix normalizer" },
+    header: { norm:"fixed",  place:"header",   label:"header-trusting placement" }
+  };
+  function applyBuild(){
+    var b = BUILDS[document.getElementById("build").value] || BUILDS.fixed;
+    E.setNormalizer(b.norm); E.setPlacement(b.place);
+    return b;
+  }
+  document.getElementById("build").addEventListener("change", function(){
+    var b = applyBuild();
+    edited = false;
+    var res = computeRun();
+    if(res) apply(res, activeLocus());
+    elPhase.textContent = "Verifier build: " + b.label +
+      (b.norm === "fixed" && b.place === "sequence"
+        ? "" : " — deliberately broken, run the campaign to see it caught");
+  });
+
+  var camp = null;
+  var elHud = document.getElementById("hud"), elStamp = document.getElementById("stamp");
+  var elTicker = document.getElementById("ticker"), elCamp = document.getElementById("camp");
+  var stampUntil = 0;
+
+  function tickerRow(a){
+    if(elTicker.querySelector(".none")) elTicker.innerHTML = "";
+    var b = document.createElement("button");
+    b.innerHTML = "<b>" + a.failure + "</b> seed " + a.seed + " · " + esc(a.op) +
+      (a.detail ? " [" + esc(a.detail) + "]" : "");
+    b.title = "Load this attempt into the export editor";
+    b.addEventListener("click", function(){
+      edited = true;
+      elFaEdit.value = a.fasta;
+      tab("fa");
+      apply({fasta:a.fasta, requested:lastRun.requested, findings:[], rows:a.rows,
+             verdict:a.verdict, discrepancies:a.discrepancies,
+             frozen:{engine:E.VERSION, at:null, model:null, defect:"campaign seed " + a.seed}},
+            activeLocus());
+      elPhase.textContent = "Replayed seed " + a.seed + " · " + a.note +
+        " · verifier said " + a.verdict + ", should have been " + a.expected;
+    });
+    elTicker.insertBefore(b, elTicker.firstChild);
+    while(elTicker.children.length > 40) elTicker.removeChild(elTicker.lastChild);
+  }
+
+  function campaignStep(){
+    if(!camp || !camp.on) return;
+    var loci = order();
+    if(!loci.length){ stopCampaign("no loci selected"); return; }
+    var t0 = performance.now(), did = 0;
+    while(performance.now() - t0 < 7 && did < 40){
+      var a = F.attempt(loci, D.decoy, camp.seed++);
+      did++;
+      if(!a) continue;
+      camp.n++;
+      paintCell(camp.n - 1, a.ok ? 0x2f7a4a : 0xe4697a);
+      // Every failure gets a lane; successes fill whatever lanes are free.
+      spawnRunner(a.ok, !a.ok);
+      if(!a.ok){
+        if(a.failure === "false pass") camp.fp++; else camp.fh++;
+        camp.lastBad = a; tickerRow(a);
+      }
+      camp.lastOk = a.ok;
+      if(camp.n % CN === 0) { /* wrap: the matrix keeps filling */ }
+    }
+    if(camp.n && camp.lastOk !== undefined){
+      elStamp.className = "stamp on " + (camp.lastOk ? "good" : "bad");
+      elStamp.textContent = camp.lastOk ? "verdict correct" : (camp.lastBad ? camp.lastBad.failure : "wrong");
+      stampUntil = performance.now() + 220;
+    }
+    document.getElementById("hudN").textContent = camp.n.toLocaleString();
+    document.getElementById("hudFP").textContent = camp.fp;
+    document.getElementById("hudFP").className = camp.fp ? "bad" : "";
+    document.getElementById("hudFH").textContent = camp.fh;
+    document.getElementById("hudFH").className = camp.fh ? "bad" : "";
+    document.getElementById("hudSeed").textContent = camp.start + "–" + (camp.seed - 1);
+    pv.color.setHex(camp.lastOk ? 0x6fcf8a : 0xe4697a);
+  }
+
+  function startCampaign(){
+    var b = applyBuild();
+    var start = Math.floor(Math.random() * 900000) + 1;
+    camp = {on:true, seed:start, start:start, n:0, fp:0, fh:0, build:b.label};
+    document.getElementById("hudState").textContent = b.label;
+    clearCells(); cells.visible = true; tiles.visible = false;
+    pulseSeq = (order()[0] || D.loci[0]).window.seq;
+    tagLanes.off = false; tagRack.off = true;
+    setRisers([]);
+    elHud.hidden = false;
+    elCamp.textContent = "Stop campaign";
+    elRun.disabled = true; elSweep.disabled = true;
+    elPhase.textContent = "Campaign running · each cell on the left pad is one verified attempt";
+  }
+  function stopCampaign(why){
+    if(!camp) return;
+    camp.on = false;
+    cells.visible = true; tiles.visible = true;
+    runners.forEach(function(r){ r.active = false; r.parked = false; r.mesh.visible = false; });
+    rack.length = 0;
+    tagLanes.off = true; tagRack.off = true;
+    sweep.visible = false; sweep.material.color.setHex(C.verify); pulse = null;
+    paintHelix((order()[0] || D.loci[0]).window.seq, null); writeHelix(1);
+    document.getElementById("hudState").textContent = "stopped";
+    elStamp.className = "stamp";
+    elCamp.textContent = "Start campaign";
+    elRun.disabled = false; elSweep.disabled = false;
+    pv.color.setHex(C.verify);
+    elPhase.textContent = "Campaign stopped after " + camp.n.toLocaleString() + " attempts on the " +
+      camp.build + " · " + camp.fp + " false pass, " + camp.fh + " false hold" +
+      (why ? " · " + why : "");
+  }
+  elCamp.addEventListener("click", function(){
+    if(camp && camp.on) stopCampaign(); else startCampaign();
+  });
+
+  // The assembly island is a separate React tree; this is the only surface it
+  // reads the bench through.
+  window.__bench = {
+    order: order,
+    focus: function(){ return selected[focus] ? focusLocus() : order()[0]; }
+  };
+
+  /* ------------------------------------------------- check a delivery ---- */
+  // Resolve a manifest item to the reference window this page happens to hold.
+  // An item we have no reference for is reported, never assumed good.
+  function refFor(item){
+    for(var i=0;i<D.loci.length;i++){
+      var L = D.loci[i];
+      if(L.contig === item.contig && L.window.from === item.span.from)
+        return { from:L.window.from, seq:L.window.seq, assembly:"GRCh38" };
+    }
+    return null;
+  }
+  var elMJson = document.getElementById("mJson"), elMFasta = document.getElementById("mFasta");
+  var elMId = document.getElementById("mId"), elMMeta = document.getElementById("mMeta");
+  var elMVerdict = document.getElementById("mVerdict");
+
+  document.getElementById("mSeal").addEventListener("click", function(){
+    var loci = order();
+    if(!loci.length){ elMId.textContent = "Select at least one locus first."; return; }
+    MAN.seal(MAN.build(loci, { source: D.sources.sequence })).then(function(m){
+      elMJson.value = JSON.stringify(m, null, 1);
+      elMId.className = "chkid good";
+      elMId.textContent = m.items.length + " item(s) sealed · " + m.id;
+    });
+  });
+  document.getElementById("mFill").addEventListener("click", function(){
+    var res = lastRun;
+    if(!res){ elMMeta.textContent = "Run a compose first."; return; }
+    elMFasta.value = res.fasta;
+    elMMeta.textContent = E.parseFasta(res.fasta).length + " record(s) loaded from the composer.";
+  });
+
+  document.getElementById("mCheck").addEventListener("click", function(){
+    var m;
+    try { m = MAN.parse(elMJson.value); }
+    catch(err){
+      elMId.className = "chkid bad";
+      elMId.textContent = "Manifest will not parse: " + err.message;
+      return;
+    }
+    if(!elMFasta.value.trim()){ elMMeta.textContent = "Paste a delivery first."; return; }
+
+    // Editing a manifest breaks its seal on purpose. Say so rather than
+    // pretending the check was made against the order that was sealed.
+    MAN.checkSealed(m, elMFasta.value, refFor, { assembly: "GRCh38" }).then(function(res){
+      var sealState = res.seal || { ok:false, reason:"seal not verified" };
+      elMId.className = "chkid " + (sealState.ok ? "good" : "bad");
+      elMId.textContent = sealState.ok
+        ? "seal verified · " + m.id
+        : sealState.reason + " — re-seal to get an id for this version";
+
+      elMVerdict.className = "verdict " + res.verdict;
+      elMVerdict.textContent = res.verdict === "released" ? "checks passed" : "held";
+      elMMeta.textContent = res.records + " record(s) · " + res.discrepancies +
+        " discrepanc" + (res.discrepancies === 1 ? "y" : "ies") +
+        (res.permitted ? " · " + res.permitted + " declared intended edit(s)" : "") +
+        (res.note ? " · " + res.note : "");
+
+      renderRows(res.rows);
+      elPhase.textContent = "Delivery checked against " +
+        (sealState.ok ? "sealed manifest " + m.id.slice(0, 19) + "…" : "an unsealed manifest") +
+        " · " + res.verdict;
+      elVerdict.className = "verdict " + res.verdict;
+      elVerdict.textContent = res.verdict === "released" ? "checks passed" : "held";
+      elEvid.textContent = "Checked against a " + (sealState.ok ? "sealed" : "modified") +
+        " manifest; " + res.discrepancies + " discrepanc" +
+        (res.discrepancies === 1 ? "y" : "ies");
+    });
+  });
+
+  /* ----------------------------------------------------------------- guide */
+  var guide = document.getElementById("guide");
+  function openGuide(){ guide.hidden = false; document.getElementById("gclose").focus(); }
+  function closeGuide(){
+    guide.hidden = true;
+    try{ localStorage.setItem("vcb.guide.seen","1"); }catch(e){}
+  }
+  document.getElementById("gopen").addEventListener("click", openGuide);
+  document.getElementById("gclose").addEventListener("click", closeGuide);
+  guide.addEventListener("click", function(e){ if(e.target === guide) closeGuide(); });
+  document.addEventListener("keydown", function(e){
+    if(e.key === "Escape" && !guide.hidden) closeGuide();
+  });
+
+  function resize(){
+    var w = stage.clientWidth, h = stage.clientHeight;
+    if(w && h){ renderer.setSize(w,h,false); camera.aspect = w/h; camera.updateProjectionMatrix(); }
+    var sw = sWrap.clientWidth, sh = sWrap.clientHeight;
+    if(sw && sh){ sRenderer.setSize(sw,sh,false); sCam.aspect = sw/sh; sCam.updateProjectionMatrix(); }
+  }
+  window.addEventListener("resize", resize);
+  orbit(sCanvas, function(){ return {a:sAz,e:sEl}; }, function(a,e2){ sAz=a; sEl=e2; sSpin=false; });
+  sCanvas.addEventListener("wheel", function(e){
+    e.preventDefault(); sDist = Math.max(1.6, Math.min(6, sDist + e.deltaY*0.002));
+  }, {passive:false});
+
+  /* -------------------------------------------------------- opening state */
+  document.getElementById("srcs").innerHTML =
+    "Reference " + esc(D.sources.sequence) + ". Structures " + esc(D.sources.structure) +
+    ". Annotation " + esc(D.sources.variant) + ". Fetched " + esc(D.built.slice(0,10)) +
+    " and shipped with the page — an artifact cannot call the network, so these are snapshots.";
+  document.getElementById("buildnote").textContent =
+    "real GRCh38 · " + D.loci.length + " AlphaFold models · verdicts computed in-page";
+
+  (function boot(){
+    resize(); placeCamera();
+    var L = D.loci[0];
+    elLoci.children[0].classList.add("focused");
+    buildStructure(L); advisory(L);
+    buildTiles(order()); showTiles(1);
+    paintHelix(L.window.seq, null); writeHelix(1);
+    helix.position.x = 9;
+    var res = computeRun();
+    apply(res, L);
+    elVerdict.className = "verdict example";
+    elVerdict.textContent = "example run";
+    elPhase.textContent = "Worked example, clean construct — press Compose and verify to run your own.";
+    renderSuite();
+    var seen = false;
+    try{ seen = localStorage.getItem("vcb.guide.seen") === "1"; }catch(e){}
+    if(!seen) guide.hidden = false;
+  })();
+
+  var prevNow = 0;
+  function loop(now){
+    var dt = prevNow ? Math.min(64, now - prevNow) : 16; prevNow = now;
+    resize(); step(now); campaignStep();
+    if(camp && camp.on){
+      stepRunners(dt); stepPulse(now);
+      if(sweep.visible){
+        sweep.material.opacity = Math.max(0, sweep.material.opacity - dt / 300);
+        if(sweep.material.opacity <= 0.03) sweep.visible = false;
+      }
+    }
+    if(stampUntil && now > stampUntil){ elStamp.classList.remove("on"); stampUntil = 0; }
+    placeCamera(); placeLabels();
+    renderer.render(scene, camera);
+    if(sSpin && !REDUCED) sAz += 0.0022;
+    sCam.position.set(sDist*Math.cos(sEl)*Math.sin(sAz), sDist*Math.sin(sEl),
+                      sDist*Math.cos(sEl)*Math.cos(sAz));
+    sCam.lookAt(0,0,0);
+    sRenderer.render(sScene, sCam);
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+<script>/*__ASMPANEL__*/</script>
