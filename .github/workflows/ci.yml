@@ -75,6 +75,9 @@ jobs:
       - name: Reviewed defects stay fixed
         run: node test/verify-codex.mjs
 
+      - name: Pressure test
+        run: node test/stress.mjs
+
       - name: Adversarial campaign
         run: node test/fuzz.test.mjs 4000
 

@@ -3,11 +3,13 @@
   "version": "0.3.0",
   "description": "Construct-order verification: re-derives the requested edits from an exported DNA sequence alone, and refuses to release the order until it can.",
   "license": "MIT",
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "//type": "Deliberately NOT \"module\": src/*.js are UMD so the browser can load them with a plain script tag and Node can require() them. Every ESM entry point is already .mjs.",
   "scripts": {
     "build": "node build.mjs",
-    "test": "npm run test:engine && npm run test:manifest && npm run test:assembly && npm run test:repro",
+    "test": "npm run test:engine && npm run test:manifest && npm run test:assembly && npm run test:repro && npm run test:stress",
     "test:engine": "node test/engine.test.mjs",
     "test:manifest": "node test/manifest.test.mjs",
     "test:assembly": "node test/assembly.test.mjs",
@@ -16,13 +18,20 @@
     "campaign:quick": "node test/fuzz.test.mjs 2000",
     "models": "node composer/llm-campaign.mjs",
     "models:probe": "node composer/llm-campaign.mjs --probe",
-    "data:refresh": "node fetch-bench-data.mjs"
+    "data:refresh": "node fetch-bench-data.mjs",
+    "test:stress": "node test/stress.mjs"
   },
   "devDependencies": {
     "playwright": "^1.48.0"
   },
   "keywords": [
-    "genomics", "grch38", "verification", "variant", "golden-gate",
-    "synthetic-biology", "fuzzing", "alphafold"
+    "genomics",
+    "grch38",
+    "verification",
+    "variant",
+    "golden-gate",
+    "synthetic-biology",
+    "fuzzing",
+    "alphafold"
   ]
 }
