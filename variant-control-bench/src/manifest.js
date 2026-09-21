@@ -144,6 +144,12 @@
                   ref.assembly });
         return;
       }
+      if (it.span.to !== it.span.from + it.span.length - 1) {
+        unresolved.push({ gene: it.gene, contig: it.contig, pos: it.pos,
+          reason: "sealed span is self-inconsistent: " + it.span.from + "-" + it.span.to +
+                  " is not " + it.span.length + " nt" });
+        return;
+      }
       if (ref && (ref.from !== it.span.from || ref.seq.length !== it.span.length)) {
         unresolved.push({ gene: it.gene, contig: it.contig, pos: it.pos,
           reason: "sealed span " + it.span.from + "-" + it.span.to + " (" + it.span.length +
@@ -162,7 +168,9 @@
       byKey[it.contig + ":" + it.gene] = W;
       requested.push({ gene: it.gene, contig: it.contig, pos: it.pos,
                        ref: it.ref, alt: it.alt, hgvsp: it.hgvsp });
-      (it.permitted || []).forEach(function (p) { permitted.push(p); });
+      (it.permitted || []).forEach(function (p) {
+        permitted.push(Object.assign({}, p, { required: p.optional !== true }));
+      });
     });
 
     if (!windows.length) {

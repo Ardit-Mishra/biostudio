@@ -118,3 +118,36 @@ console.log("BRAF window", L.contig + ":" + from + "-" + L.window.to, "\n");
   say("7. coverage can be assembled from disconnected records",
       a.verdict === "released" || b.verdict === "released");
 }
+
+// 8 - a hand-written manifest is the path the UI actually invites, so the
+// required-edit default has to be applied by the CHECKER, not the builder.
+{
+  const at = L.window.flank + 26;
+  const hand = {
+    manifest_version: 1, assembly: "GRCh38", reference_source: "test",
+    engine: E.VERSION, created: "2026-01-01T00:00:00.000Z",
+    items: [{
+      gene: L.gene, contig: L.contig, pos: L.pos, ref: L.ref, alt: L.alt, hgvsp: L.hgvsp,
+      span: { from: L.window.from, to: L.window.to, length: win.length },
+      permitted: [{ contig: L.contig, pos: L.window.from + at, ref: win[at],
+                    alt: win[at] === "A" ? "C" : "A", why: "no required flag" }]
+    }]
+  };
+  await M.seal(hand);
+  const ref2 = () => ({ from: L.window.from, seq: win, assembly: "GRCh38" });
+  const f2 = L.window.flank;
+  const correct = win.slice(0, f2) + L.alt + win.slice(f2 + L.ref.length);
+  const r = await M.checkSealed(hand, fa(correct, "x"), ref2, { assembly: "GRCh38" });
+  say("8. hand-written declared edit may simply be missing", r.verdict === "released");
+}
+
+// 9 - a span that disagrees with itself means the order states two things.
+{
+  const m = await M.seal(M.build([L], {}));
+  m.items[0].span.to = m.items[0].span.from + 5000;
+  await M.seal(m);
+  const ref2 = () => ({ from: L.window.from, seq: win, assembly: "GRCh38" });
+  const clean = E.compose([L], "none", data.decoy).fasta;
+  const r = await M.checkSealed(m, clean, ref2, { assembly: "GRCh38" });
+  say("9. self-inconsistent sealed span is not validated", r.verdict === "released");
+}
