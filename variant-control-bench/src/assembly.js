@@ -53,6 +53,9 @@
 
     // The overhang is carried by the insert, not the adapter: the enzyme cuts
     // downstream of its site and leaves these four bases sticky.
+    // The overhang is carved out of the arm, so an arm shorter than the
+    // overhang cannot leave the overhang it claims to.
+    var shortArm = arm5.length < enz.overhang || arm3.length < enz.overhang;
     var oh5 = arm5.slice(0, enz.overhang);
     var oh3 = arm3.slice(-enz.overhang);
 
@@ -75,7 +78,7 @@
     return {
       gene: L.gene, contig: L.contig, pos: L.pos,
       enzyme: opts.enzyme || "BsaI", arm: arm,
-      overhang5: oh5, overhang3: oh3,
+      overhang5: oh5, overhang3: oh3, shortArm: shortArm,
       parts: parts, length: at,
       sequence: parts.map(function (p) { return p.seq; }).join("")
     };
@@ -99,7 +102,24 @@
    */
   function checkConstruct(planned, delivered) {
     var enz = enzymeOf(planned.enzyme);
-    var rows = [], seq = (delivered || "").toUpperCase().replace(/[^ACGTN]/g, "");
+    var rows = [], raw = (delivered || "").toUpperCase();
+
+    // Erasing characters outside the alphabet deletes the corruption before it
+    // can be found: an inserted IUPAC symbol simply vanishes and the construct
+    // measures the right length again. Report them instead.
+    var offending = raw.replace(/[ACGTN\s]/g, "");
+    if (offending.length) {
+      rows.push({ part: "alphabet", label: "unsupported symbols", status: "alphabet",
+        note: offending.length + " character(s) outside A/C/G/T/N: " +
+              JSON.stringify(offending.slice(0, 12)) });
+    }
+    var seq = raw.replace(/\s/g, "");
+
+    if (planned.shortArm) {
+      rows.push({ part: "arm", label: "arm shorter than the overhang", status: "shortarm",
+        note: "a " + enz.overhang + " nt overhang cannot be carved from an arm this short, " +
+              "so the reported overhangs and the cut-site model disagree" });
+    }
 
     if (seq.length !== planned.length) {
       rows.push({ part: "construct", status: "short",
@@ -137,21 +157,47 @@
   }
 
   /** Overhangs must be unique across everything in one reaction. */
+  var COMPL = { A: "T", C: "G", G: "C", T: "A", N: "N" };
+  function revcompLocal(s) {
+    var o = "";
+    for (var i = s.length - 1; i >= 0; i--) o += COMPL[s[i]] || "N";
+    return o;
+  }
+
+  // Overhangs join by base pairing, not by being the same string. Two ends
+  // ligate when one is the reverse complement of the other, and a palindromic
+  // end is its own partner, so two copies of it ligate to each other.
+  // Comparing literal strings misses both — which is precisely the failure
+  // where every fragment is individually correct and the pool still assembles
+  // into the wrong thing.
   function checkPool(plans) {
-    var seen = {}, rows = [];
+    var seen = {}, rows = [], count = 0;
     plans.forEach(function (p) {
       [["5'", p.overhang5], ["3'", p.overhang3]].forEach(function (pair) {
-        var key = pair[1];
-        if (!key) return;
-        if (seen[key]) {
+        var oh = pair[1];
+        if (!oh) return;
+        var who = p.gene + " " + pair[0], rc = revcompLocal(oh);
+
+        if (oh === rc) {
+          rows.push({ part: "pool", label: "palindromic overhang", status: "collide",
+            note: pair[0] + " overhang " + oh + " on " + p.gene +
+                  " is its own reverse complement, so two copies ligate to each other" });
+        }
+        if (seen[oh]) {
           rows.push({ part: "pool", label: "overhang collision", status: "collide",
-            note: pair[0] + " overhang " + key + " on " + p.gene + " is already used by " +
-                  seen[key] + " — these two can ligate to each other" });
-        } else seen[key] = p.gene + " " + pair[0];
+            note: pair[0] + " overhang " + oh + " on " + p.gene + " is already used by " +
+                  seen[oh] + " — these two can ligate to each other" });
+        }
+        if (seen[rc] && rc !== oh) {
+          rows.push({ part: "pool", label: "complementary overhangs", status: "collide",
+            note: pair[0] + " overhang " + oh + " on " + p.gene +
+                  " is the reverse complement of " + seen[rc] +
+                  " — those two ends base-pair and will ligate" });
+        }
+        if (!seen[oh]) { seen[oh] = who; count++; }
       });
     });
-    return { rows: rows, unique: Object.keys(seen).length,
-             verdict: rows.length ? "held" : "released" };
+    return { rows: rows, unique: count, verdict: rows.length ? "held" : "released" };
   }
 
   var API = { plan: plan, checkConstruct: checkConstruct, checkPool: checkPool,

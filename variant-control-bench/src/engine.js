@@ -304,12 +304,18 @@
         var nd = leftAlign(win, p, win.slice(p, e.end + 1), win[p]);
         out.push({ at: nd.at, ref: nd.ref, alt: nd.alt });
       } else if (e.at === 0) {
-        // An insertion before the first reference base has no base to anchor
-        // on. Anchoring it to win[0] describes a DIFFERENT molecule: the
-        // request C>CA means C then A, this delivery is A then C. Report the
-        // boundary instead of inventing an allele that matches the request.
-        out.push({ at: 0, ref: "-", alt: e.ins,
-                   boundary: "insertion 5-prime of the reference window" });
+        // An insertion before the first reference base usually has no base to
+        // anchor on, and anchoring it to win[0] would describe a DIFFERENT
+        // molecule. But when the inserted bases repeat what the window already
+        // starts with, inserting before and after the first base produce the
+        // same sequence, so the anchored form is exact rather than invented.
+        if (win.slice(0, e.ins.length) === e.ins) {
+          var eq = leftAlign(win, 0, win[0], win[0] + e.ins);
+          out.push({ at: eq.at, ref: eq.ref, alt: eq.alt });
+        } else {
+          out.push({ at: 0, ref: "-", alt: e.ins,
+                     boundary: "insertion 5-prime of the reference window" });
+        }
       } else {
         p = e.at - 1;
         var ni = leftAlign(win, p, win[p], win[p] + e.ins);
@@ -440,6 +446,11 @@
     for (var i = 0; i < permitted.length; i++) {
       var p = permitted[i];
       if (p.contig !== W.contig) continue;
+      // A declared edit is a request like any other and gets the same
+      // validation. An unvalidated one could name a REF the reference does not
+      // carry and still be honoured once trimming discarded the mismatch.
+      if (classifyRequest(W, p) !== "snv" && classifyRequest(W, p) !== "ins" &&
+          classifyRequest(W, p) !== "del") continue;
       if (normKey(W.seq, p.pos, p.ref, p.alt, W.from) === key) return p;
     }
     return null;
@@ -464,11 +475,18 @@
     return { pos: pos, ref: ref, alt: alt };
   }
 
+  var NUCLEOTIDE = /^[ACGTN]+$/;
+
   function classifyRequest(W, q) {
     if (!W) return "unresolved";
+    if (!NUCLEOTIDE.test(q.ref || "") || !NUCLEOTIDE.test(q.alt || "")) return "alphabet";
     var i = q.pos - W.from;
     if (i < 0 || i + q.ref.length > W.seq.length) return "outside";
     if (W.seq.slice(i, i + q.ref.length) !== q.ref) return "refmismatch";
+    // H -- a deletion running to the last base of the window cannot be told
+    // apart from a fragment that was simply cut there, because the reference
+    // beyond the window is not held. Refuse it rather than guess.
+    if (q.alt.length < q.ref.length && i + q.ref.length >= W.seq.length) return "boundary";
     var t = trimAllele(q.pos, q.ref, q.alt);
     if (t.ref.length === 1 && t.alt.length === 1) return "snv";
     if (t.ref.length === 1 && t.alt.length > 1 && t.alt[0] === t.ref) return "ins";
@@ -480,6 +498,9 @@
     unresolved:  "no reference window for this locus",
     outside:     "the requested allele falls outside the reference window",
     refmismatch: "REF does not match the reference at that coordinate",
+    alphabet:    "alleles must be A, C, G, T or N",
+    boundary:    "a deletion reaching the end of the window is indistinguishable " +
+                 "from a fragment cut there; order a longer window",
     unsupported: "complex replacement; only SNVs and anchored indels are supported"
   };
 
@@ -488,7 +509,7 @@
     var rows = [], used = {};
 
     requested.forEach(function (q) {
-      var W = windowsByKey[q.contig + ":" + q.gene];
+      var W = windowsByKey[q.wkey || (q.contig + ":" + q.gene)];
       var kind = classifyRequest(W, q);
       if (REFUSAL[kind]) {
         rows.push({ gene: q.gene, contig: q.contig, pos: q.pos, ref: q.ref, alt: q.alt,

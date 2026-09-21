@@ -114,10 +114,15 @@
   // Async front door: verifies the seal, then checks. Callers that already know
   // the seal state can still call check() directly with opts.sealOk.
   function checkSealed(manifest, fasta, refFor, opts) {
-    return verifySeal(manifest).then(function (seal) {
+    // Snapshot first. verifySeal is async, so checking the caller's live object
+    // afterwards lets it be mutated in between -- the seal would verify one
+    // body while a different one was checked.
+    var frozen = JSON.parse(JSON.stringify(manifest));
+    return verifySeal(frozen).then(function (seal) {
       var o = Object.assign({}, opts || {}, { sealOk: seal.ok });
-      var res = check(manifest, fasta, refFor, o);
+      var res = check(frozen, fasta, refFor, o);
       res.seal = seal;
+      res.checkedManifestId = frozen.id;
       return res;
     });
   }
@@ -138,6 +143,12 @@
 
     manifest.items.forEach(function (it) {
       var ref = refFor(it);
+      if (ref && manifest.assembly && !ref.assembly && !refAssembly) {
+        unresolved.push({ gene: it.gene, contig: it.contig, pos: it.pos,
+          reason: "the reference offered does not say which assembly it is, and the " +
+                  "order names " + manifest.assembly });
+        return;
+      }
       if (ref && ref.assembly && manifest.assembly && ref.assembly !== manifest.assembly) {
         unresolved.push({ gene: it.gene, contig: it.contig, pos: it.pos,
           reason: "order names " + manifest.assembly + " but the reference offered is " +
@@ -163,10 +174,14 @@
                                   it.span.from + "-" + it.span.to });
         return;
       }
-      var W = { key: it.gene, gene: it.gene, contig: it.contig, from: ref.from, seq: ref.seq };
+      // Keyed by contig and span as well as gene: two ordered molecules that
+      // share a gene label are still two molecules, and collapsing them let one
+      // delivered record satisfy both.
+      var wkey = it.contig + ":" + it.gene + ":" + it.span.from;
+      var W = { key: wkey, gene: it.gene, contig: it.contig, from: ref.from, seq: ref.seq };
       windows.push(W);
-      byKey[it.contig + ":" + it.gene] = W;
-      requested.push({ gene: it.gene, contig: it.contig, pos: it.pos,
+      byKey[wkey] = W;
+      requested.push({ gene: it.gene, contig: it.contig, pos: it.pos, wkey: wkey,
                        ref: it.ref, alt: it.alt, hgvsp: it.hgvsp });
       (it.permitted || []).forEach(function (p) {
         permitted.push(Object.assign({}, p, { required: p.optional !== true }));
