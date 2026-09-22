@@ -9,7 +9,7 @@
   "//type": "Deliberately NOT \"module\": src/*.js are UMD so the browser can load them with a plain script tag and Node can require() them. Every ESM entry point is already .mjs.",
   "scripts": {
     "build": "node build.mjs",
-    "test": "npm run test:engine && npm run test:manifest && npm run test:assembly && npm run test:repro && npm run test:repro3 && npm run test:stress",
+    "test": "npm run test:engine && npm run test:manifest && npm run test:assembly && npm run test:repro && npm run test:repro3 && npm run test:repro4 && npm run test:stress && npm run test:a11y",
     "test:engine": "node test/engine.test.mjs",
     "test:manifest": "node test/manifest.test.mjs",
     "test:assembly": "node test/assembly.test.mjs",
@@ -21,7 +21,8 @@
     "data:refresh": "node fetch-bench-data.mjs",
     "test:stress": "node test/stress.mjs",
     "test:repro3": "node test/verify-codex3.mjs",
-    "test:a11y": "node test/a11y.mjs"
+    "test:a11y": "node test/a11y.mjs",
+    "test:repro4": "node test/verify-codex4.mjs"
   },
   "devDependencies": {
     "playwright": "^1.48.0"

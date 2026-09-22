@@ -177,14 +177,20 @@
       // Keyed by contig and span as well as gene: two ordered molecules that
       // share a gene label are still two molecules, and collapsing them let one
       // delivered record satisfy both.
-      var wkey = it.contig + ":" + it.gene + ":" + it.span.from;
+      // The full span, not just its start: two molecules that share a start and
+      // differ in length are still two molecules, and collapsing them let one
+      // delivered record satisfy both.
+      var wkey = it.contig + ":" + it.gene + ":" + it.span.from + "-" + it.span.to;
       var W = { key: wkey, gene: it.gene, contig: it.contig, from: ref.from, seq: ref.seq };
       windows.push(W);
       byKey[wkey] = W;
       requested.push({ gene: it.gene, contig: it.contig, pos: it.pos, wkey: wkey,
                        ref: it.ref, alt: it.alt, hgvsp: it.hgvsp });
       (it.permitted || []).forEach(function (p) {
-        permitted.push(Object.assign({}, p, { required: p.optional !== true }));
+        // Carry the owning molecule. A declaration belongs to the donor it was
+        // written for; an edit of the same shape elsewhere in the order is a
+        // different molecule and cannot satisfy it.
+        permitted.push(Object.assign({}, p, { required: p.optional !== true, wkey: wkey }));
       });
     });
 

@@ -78,6 +78,12 @@ jobs:
       - name: Reviewed defects stay fixed (round three)
         run: node test/verify-codex3.mjs
 
+      - name: Reviewed defects stay fixed (round four)
+        run: node test/verify-codex4.mjs
+
+      - name: Interface audit
+        run: node test/a11y.mjs
+
       - name: Pressure test
         run: node test/stress.mjs
 

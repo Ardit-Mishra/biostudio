@@ -110,8 +110,12 @@
     while (at + unit.length + shift < win.length &&
            win[at + shift] === win[at + shift + unit.length]) shift++;
     if (shift) {
-      return { pos: flank + shift, ref: win[flank + shift] + unit,
-               alt: win[flank + shift], shift: shift, how: "right-shifted into a repeat" };
+      var anchor = win[flank + shift];
+      return del
+        ? { pos: flank + shift, ref: anchor + unit, alt: anchor,
+            shift: shift, how: "right-shifted into a repeat" }
+        : { pos: flank + shift, ref: anchor, alt: anchor + unit,
+            shift: shift, how: "right-shifted into a repeat" };
     }
     // No repeat to slide into. Restate the same allele with a redundant
     // trailing base on both sides -- an equivalent, un-normalised VCF row.
@@ -125,12 +129,17 @@
   /* ----------------------------------------------------------------- verify */
 
   function parseFasta(text) {
-    var out = [], cur = null;
+    var out = [], cur = null, preamble = "";
     text.split("\n").forEach(function (line) {
       if (!line) return;
       if (line[0] === ">") { cur = { name: line.slice(1).trim(), seq: "" }; out.push(cur); }
       else if (cur) cur.seq += line.trim().toUpperCase();   // case carries no meaning
+      else preamble += line.trim();                          // before any header
     });
+    // Surfaced, not dropped: content outside any record is still content that
+    // arrived, and a parser that quietly deletes input cannot support a claim
+    // resting on the exported bases alone.
+    if (preamble) out.preamble = preamble;
     return out;
   }
 
@@ -309,7 +318,7 @@
         // molecule. But when the inserted bases repeat what the window already
         // starts with, inserting before and after the first base produce the
         // same sequence, so the anchored form is exact rather than invented.
-        if (win.slice(0, e.ins.length) === e.ins) {
+        if (e.ins + win[0] === win[0] + e.ins) {
           var eq = leftAlign(win, 0, win[0], win[0] + e.ins);
           out.push({ at: eq.at, ref: eq.ref, alt: eq.alt });
         } else {
@@ -357,6 +366,10 @@
   function verify(fasta, windows) {
     var records = parseFasta(fasta);
     var findings = [], seen = {};
+    if (records.preamble) {
+      findings.push({ record: "(before the first header)", status: "unparsed",
+                      note: records.preamble.length + " base(s) outside any record" });
+    }
     windows.forEach(function (W) { if (!W._k) W._k = kmers(W.seq); });
 
     records.forEach(function (rec) {
@@ -413,13 +426,13 @@
           record: rec.name, status: dupOf ? "duplicate" : "called", window: best.W,
           pos: best.W.from + e.at, ref: e.ref, alt: e.alt, truncated: truncated,
           from: best.W.from + called.from, to: best.W.from + called.to,
-          score: best.score, reversed: false, bp: e.at
+          score: best.score, reversed: false, bp: e.at, seq: obs
         });
       });
       if (!called.edits.length) {
         findings.push({ record: rec.name, status: "silent", window: best.W, truncated: truncated,
                         from: best.W.from + called.from, to: best.W.from + called.to,
-                        score: best.score });
+                        score: best.score, seq: obs });
       }
     });
     return findings;
@@ -446,6 +459,7 @@
     for (var i = 0; i < permitted.length; i++) {
       var p = permitted[i];
       if (p.contig !== W.contig) continue;
+      if (p.wkey && p.wkey !== W.key) continue;   // declared for another molecule
       // A declared edit is a request like any other and gets the same
       // validation. An unvalidated one could name a REF the reference does not
       // carry and still be honoured once trimming discarded the mismatch.
@@ -483,11 +497,13 @@
     var i = q.pos - W.from;
     if (i < 0 || i + q.ref.length > W.seq.length) return "outside";
     if (W.seq.slice(i, i + q.ref.length) !== q.ref) return "refmismatch";
-    // H -- a deletion running to the last base of the window cannot be told
-    // apart from a fragment that was simply cut there, because the reference
-    // beyond the window is not held. Refuse it rather than guess.
-    if (q.alt.length < q.ref.length && i + q.ref.length >= W.seq.length) return "boundary";
     var t = trimAllele(q.pos, q.ref, q.alt);
+    // A deletion running to the last base of the window cannot be told apart
+    // from a fragment simply cut there, because the reference beyond the window
+    // is not held. Judge that on the TRIMMED extent: an equivalent padded
+    // representation of an internal deletion is the same edit, not a new one.
+    if (t.alt.length < t.ref.length &&
+        (t.pos - W.from) + t.ref.length >= W.seq.length) return "boundary";
     if (t.ref.length === 1 && t.alt.length === 1) return "snv";
     if (t.ref.length === 1 && t.alt.length > 1 && t.alt[0] === t.ref) return "ins";
     if (t.alt.length === 1 && t.ref.length > 1 && t.ref[0] === t.alt) return "del";
@@ -504,9 +520,60 @@
     unsupported: "complex replacement; only SNVs and anchored indels are supported"
   };
 
+  // Apply an ordered edit set to a window. Applied 3-prime first so earlier
+  // coordinates are not shifted by later edits.
+  function applyEdits(win, edits) {
+    var sorted = edits.slice().sort(function (a, b) { return b.at - a.at; });
+    var out = win;
+    for (var i = 0; i < sorted.length; i++) {
+      var e = sorted[i];
+      if (e.at < 0 || e.at + e.ref.length > out.length) return null;
+      if (out.substr(e.at, e.ref.length) !== e.ref) return null;
+      out = out.slice(0, e.at) + e.alt + out.slice(e.at + e.ref.length);
+    }
+    return out;
+  }
+
   // Compare what was proven against what was asked. Both sides are normalised.
   function reconcile(requested, findings, windowsByKey, permitted) {
-    var rows = [], used = {};
+    var rows = [], used = {}, shownIntended = {};
+
+    // Judge by reconstruction, explain by alignment.
+    //
+    // Comparing normalised allele descriptions makes the verdict depend on how
+    // the aligner chose to describe a molecule, and near a window edge a free
+    // end gap can describe a correct delivery as a different edit. The question
+    // that matters is whether the delivered bases ARE the ordered molecule, so
+    // ask that directly; the alignment stays as the explanation of any answer
+    // that is not yes. The recovery step still never sees the request.
+    var deliveredSeq = {}, exact = {}, exactRec = {};
+    findings.forEach(function (f) {
+      if (!f.window || !f.seq) return;
+      if (f.status !== "called" && f.status !== "silent") return;
+      if (!deliveredSeq[f.window.key]) {
+        deliveredSeq[f.window.key] = f.seq;
+        exactRec[f.window.key] = f.record;
+      }
+    });
+    Object.keys(windowsByKey).forEach(function (k) {
+      var W = windowsByKey[k], got = deliveredSeq[W.key];
+      if (!got) return;
+      var edits = [], usable = true;
+      requested.forEach(function (q) {
+        if ((q.wkey || (q.contig + ":" + q.gene)) !== k) return;
+        var kind = classifyRequest(W, q);
+        if (kind !== "snv" && kind !== "ins" && kind !== "del") { usable = false; return; }
+        edits.push({ at: q.pos - W.from, ref: q.ref, alt: q.alt });
+      });
+      (permitted || []).forEach(function (p) {
+        if (p.wkey !== k || !p.required) return;
+        edits.push({ at: p.pos - W.from, ref: p.ref, alt: p.alt });
+      });
+      if (!usable || !edits.length) return;
+      var want = applyEdits(W.seq, edits);
+      // Keyed by the window's own identity, which is what findings carry.
+      if (want !== null && want === got) exact[W.key] = true;
+    });
 
     requested.forEach(function (q) {
       var W = windowsByKey[q.wkey || (q.contig + ":" + q.gene)];
@@ -514,6 +581,21 @@
       if (REFUSAL[kind]) {
         rows.push({ gene: q.gene, contig: q.contig, pos: q.pos, ref: q.ref, alt: q.alt,
                     hgvsp: q.hgvsp, recPos: null, status: "refused", note: REFUSAL[kind] });
+        return;
+      }
+      if (exact[W.key]) {
+        rows.push({ gene: q.gene, contig: q.contig, pos: q.pos, ref: q.ref, alt: q.alt,
+                    hgvsp: q.hgvsp, recPos: q.pos, status: "match",
+                    note: "delivered bases are exactly the ordered molecule" });
+        if (!shownIntended[W.key]) {
+          shownIntended[W.key] = true;
+          (permitted || []).forEach(function (pe) {
+            if (pe.wkey !== W.key || !pe.required) return;
+            rows.push({ gene: q.gene, contig: pe.contig, pos: pe.pos, ref: pe.ref, alt: pe.alt,
+                        hgvsp: pe.why || "declared in the manifest", recPos: pe.pos,
+                        status: "intended", note: "declared intended edit, present" });
+          });
+        }
         return;
       }
       var want = normKey(W.seq, q.pos, q.ref, q.alt, W.from);
@@ -569,6 +651,7 @@
     var span = {};
     findings.forEach(function (f) {
       if (!f.window || f.from === undefined) return;
+      if (exact[f.window.key] && f.record === exactRec[f.window.key]) return;
       var s = span[f.window.key] ||
               (span[f.window.key] = { lo: Infinity, hi: -Infinity, W: f.window });
       if (f.from < s.lo) s.lo = f.from;
@@ -591,13 +674,16 @@
     // omit them, which is a different donor from the one that was ordered.
     (permitted || []).forEach(function (pe) {
       if (!pe.required) return;
-      var W = null;
-      Object.keys(windowsByKey).forEach(function (k) {
+      var peW = pe.wkey ? windowsByKey[pe.wkey] : null;
+      if (peW && exact[peW.key]) return;       // present by reconstruction
+      var W = pe.wkey ? windowsByKey[pe.wkey] : null;
+      if (!W) Object.keys(windowsByKey).forEach(function (k) {
         var w = windowsByKey[k];
         if (w.contig === pe.contig && pe.pos >= w.from && pe.pos < w.from + w.seq.length) W = w;
       });
       var present = findings.some(function (f) {
-        return f.status === "called" && f.window === W && isPermitted([pe], W, f);
+        return f.status === "called" && f.window === W && f.window.key === pe.wkey &&
+               isPermitted([pe], W, f);
       });
       if (!present) {
         rows.push({ gene: W ? W.gene : "—", contig: pe.contig, pos: pe.pos,
@@ -610,6 +696,8 @@
     // Anything recovered that nobody asked for.
     findings.forEach(function (f, i) {
       if (used[i]) return;
+      if (f.window && exact[f.window.key] && f.status !== "duplicate" &&
+          f.record === exactRec[f.window.key]) return;
       if (f.status === "called" || f.status === "duplicate") {
         var ok = (f.status === "called") ? isPermitted(permitted, f.window, f) : null;
         rows.push({ gene: f.window ? f.window.gene : "—", contig: f.window ? f.window.contig : "—",
@@ -624,6 +712,10 @@
                     recPos: null, status: "extra",
                     note: "matches no requested window (best " +
                           (f.score * 100).toFixed(0) + "% shared 12-mers)" });
+      } else if (f.status === "unparsed") {
+        rows.push({ gene: "—", contig: "—", pos: null, ref: "", alt: "",
+                    hgvsp: "malformed file", recPos: null, status: "extra",
+                    note: f.note + " — sequence outside a record is not a delivery" });
       } else if (f.status === "silent" || f.status === "reversed") {
         // A record nobody asked for is a finding even when it carries no edit:
         // it is still material that would go into the reaction.
