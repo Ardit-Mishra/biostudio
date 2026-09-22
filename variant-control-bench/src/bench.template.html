@@ -1,4 +1,4 @@
-<title>Variant Control Bench</title>
+<title>BioStudio — Variant Control Bench</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
 <style>
   /* A sequencer bench at night: one committed visual world, every colour painted. */
@@ -31,7 +31,11 @@
   .head{grid-area:head;border-bottom:1px solid var(--rule);display:flex;flex-wrap:wrap;
     align-items:center;gap:8px 18px;padding:11px 18px;background:var(--panel-2)}
   .head h1{margin:0;font-family:"IBM Plex Sans Condensed",sans-serif;font-weight:600;
-    font-size:19px;color:var(--ink)}
+    font-size:19px;color:var(--ink);display:flex;align-items:baseline;gap:7px}
+  /* One lockup, not two titles: the product name carries the accent, the
+     instrument name carries the weight. */
+  .head h1 .brand{color:var(--compose);letter-spacing:.02em}
+  .head h1 .brand::after{content:"/";color:var(--rule);margin-left:7px;font-weight:400}
   .head p{margin:0;color:var(--ink-2);font-size:13.5px;max-width:52ch}
   .headbtn{margin-left:auto;display:flex;gap:8px;align-items:center}
   .note{font-size:11px;color:var(--ink-3);border:1px solid var(--rule);border-radius:2px;
@@ -413,7 +417,7 @@
 
 <div class="app">
   <header class="head">
-    <h1>Variant Control Bench</h1>
+    <h1><span class="brand">BioStudio</span> Variant Control Bench</h1>
     <p>Fragments are released only after a separate verifier recovers the requested edits from the exported sequence alone.</p>
     <span class="headbtn">
       <span class="note" id="buildnote">real GRCh38</span>
@@ -626,6 +630,11 @@
     <p class="glede">You are about to pay for DNA synthesis. Before the order goes out, something
       independent should prove the fragments actually carry the variants you asked for &mdash; and say
       so in a form a reviewer can audit. That is all this does, and it refuses to claim more.</p>
+    <p class="glede">This is <b>BioStudio</b>. The bench is the half you are looking at; the other half
+      is a property-prediction layer that scores small molecules across seven ADMET endpoints on
+      scaffold splits, with XGBoost, Random Forest and an MLP reported side by side. Both halves
+      answer the same question in different currencies: what can actually be shown, and what is only
+      being assumed.</p>
 
     <span class="lbl gsec">The path across the bench, left to right</span>
     <ol class="steps">
