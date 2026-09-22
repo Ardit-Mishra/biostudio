@@ -42,7 +42,8 @@
   .gopen:hover{background:rgba(127,211,255,.1)}
 
   /* ---- middle: bench canvas over the sequence track ---- */
-  .mid{grid-area:mid;min-height:0;min-width:0;display:grid;grid-template-rows:minmax(0,1fr) auto;
+  .mid{grid-area:mid;min-height:0;min-width:0;display:grid;
+    grid-template-rows:auto minmax(0,1fr) auto;
     border-left:1px solid var(--rule);border-right:1px solid var(--rule)}
   .stage{position:relative;min-height:0;background:var(--ground)}
   #scene{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
@@ -66,17 +67,33 @@
     gap:9px 14px;padding:9px 14px;background:linear-gradient(to top,rgba(11,16,22,.95),rgba(11,16,22,0))}
   /* The finding. Every other panel shows state; this says what to conclude,
      and it is deliberately the most legible thing on the page. */
-  .finding{position:absolute;left:0;right:0;top:0;padding:13px 16px 15px;
-    background:linear-gradient(to bottom,rgba(11,16,22,.96) 62%,rgba(11,16,22,0));
-    display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
-  .finding .what{font-size:16.5px;line-height:1.35;color:var(--ink);max-width:76ch;
-    text-wrap:balance}
-  .finding .what b{font-weight:500}
-  .finding .why{display:block;font-size:12.5px;color:var(--ink-3);margin-top:3px}
-  .finding.good .what b{color:var(--pass)}
-  .finding.bad .what b{color:var(--hold)}
-  .finding.idle .what b{color:var(--ink-2)}
-  @media (max-width:1060px){ .finding .what{font-size:14.5px} }
+  .finding{padding:14px 18px 15px;background:var(--panel-2);
+    border-bottom:1px solid var(--rule);
+    display:grid;grid-template-columns:minmax(0,1fr);gap:9px 22px;align-items:start}
+  @media (min-width:1240px){
+    .finding{grid-template-columns:minmax(0,1fr) minmax(26ch,34ch)}
+  }
+  .finding .what{font-size:14px;line-height:1.5;color:var(--ink-2);max-width:74ch;
+    text-wrap:pretty}
+  /* The conclusion is the reason the page exists. It gets its own line and the
+     largest type on the bench; the qualification sits under it, smaller,
+     because a reader who takes only one line should take the right one. */
+  .finding .what > b{display:block;font-family:"IBM Plex Sans Condensed",sans-serif;
+    font-weight:600;font-size:24px;line-height:1.18;letter-spacing:-.005em;
+    color:var(--ink);margin-bottom:5px;text-wrap:balance}
+  .finding .why b{display:inline;font:inherit;font-weight:500;color:var(--ink-2)}
+  .finding .why{display:block;font-size:13px;color:var(--ink-3);margin-top:3px}
+  .finding.good .what > b{color:var(--pass)}
+  .finding.bad .what > b{color:var(--hold)}
+  .finding.idle .what > b{color:var(--ink)}
+  /* A standing fact about this build, not a result of the reader's run, so it
+     is set apart from the sentence above it and says when it was measured. */
+  .finding .ev{margin:0;max-width:74ch;font-size:11.5px;line-height:1.5;
+    color:var(--ink-3);padding-left:12px;border-left:2px solid var(--rule)}
+  .finding .ev b{color:var(--ink-2);font-weight:500;
+    font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+  .finding .ev .zero{color:var(--pass)}
+  @media (max-width:1060px){ .finding .what > b{font-size:19px} }
   .phase{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-2)}
   .verdict{font-family:"IBM Plex Sans Condensed",sans-serif;text-transform:uppercase;
     letter-spacing:.11em;font-weight:600;font-size:11px;padding:4px 10px;border-radius:2px;border:1px solid}
@@ -286,6 +303,20 @@
   .cap.on{border-color:rgba(111,207,138,.5);color:var(--pass)}
   .cap.adv{border-color:rgba(242,163,64,.45);color:var(--verify)}
   .cap.off{opacity:.62;text-decoration:line-through}
+  /* The difference between a check that stops an order and one that only
+     comments on it is the most consequential thing in this strip, so it is
+     carried by grouping and a rule, not by a word in brackets. */
+  .capsep{width:1px;align-self:stretch;background:var(--rule);margin:0 5px}
+  /* Whose result is this? At rest the table is pre-filled so the bench is not
+     an empty shell, and a reader is entitled to know that before reading a
+     column of green. */
+  .srcTag{margin-left:8px;font-family:"IBM Plex Mono",monospace;text-transform:none;
+    letter-spacing:0;font-weight:400;font-size:10px;color:var(--ink-3);
+    border:1px solid var(--rule);border-radius:2px;padding:1px 6px;vertical-align:1px}
+  .srcTag.live{color:var(--compose);border-color:rgba(47,212,196,.45)}
+  .tnote{margin:7px 0 9px;font-size:11.5px;line-height:1.5;color:var(--ink-3);max-width:44ch}
+  .tnote em{font-style:normal;color:var(--ink-2)}
+  .caps b + .cap{margin-left:1px}
   .caps .tail{margin-left:auto;color:var(--ink-3);font-size:11px}
 
   /* ---- campaign ---- */
@@ -391,19 +422,27 @@
   </header>
 
   <div class="caps">
-    <b>Checks</b>
+    <b>Blocks the order</b>
     <span class="cap on">allele identity</span>
     <span class="cap on">delivered span</span>
     <span class="cap on">strand</span>
     <span class="cap on">duplicate records</span>
-    <span class="cap adv">reading frame (advisory)</span>
-    <span class="cap adv">GC + homopolymer (advisory)</span>
     <span class="cap on">construct assembly</span>
     <span class="cap on">declared intended edits</span>
-    <span class="tail">from the exported sequence and the reference, nothing else</span>
+    <span class="capsep" aria-hidden="true"></span>
+    <b>Reported, never blocks</b>
+    <span class="cap adv">reading frame</span>
+    <span class="cap adv">GC + homopolymer</span>
+    <span class="tail">sequence and reference only</span>
   </div>
 
   <section class="mid">
+    <p class="srOnly" role="status" aria-atomic="true" id="say"></p>
+    <div class="finding idle" id="finding" aria-hidden="true">
+      <span class="what" id="findingWhat"><b>Nothing has been checked yet.</b>
+        <span class="why" id="findingWhy">What you are looking at is a worked example.</span></span>
+      <p class="ev" id="findingEv"></p>
+    </div>
     <div class="stage">
       <canvas id="scene"></canvas>
       <div class="labels" id="labels"></div>
@@ -417,13 +456,6 @@
         </dl>
       </div>
       <div class="stamp" id="stamp">pass</div>
-      <p class="srOnly" role="status" aria-atomic="true" id="say"></p>
-      <div class="finding idle" id="finding" aria-hidden="true">
-        <span class="what" id="findingWhat"><b>Nothing has been checked yet.</b>
-          What you are looking at is a worked example.
-          <span class="why" id="findingWhy">Press <b>Compose and verify</b> to run it for real, or
-            <b>Start campaign</b> to attack the checker itself.</span></span>
-      </div>
       <div class="strip">
         <span class="verdict running" id="verdict">idle</span>
         <span class="phase" id="phase">&mdash;</span>
@@ -540,7 +572,11 @@
 
     <div class="record">
       <div class="block">
-        <h2 class="lbl">Recovered from sequence</h2>
+        <h2 class="lbl">Recovered from sequence
+          <span class="srcTag" id="recSrc">worked example</span></h2>
+        <p class="tnote">Every <em>match</em> is one statement: the delivered bases at that
+          coordinate are exactly the ordered molecule. Rows that are not a match carry their
+          own reason.</p>
         <table>
           <thead><tr><th>Requested</th><th>Recovered</th><th>Status</th></tr></thead>
           <tbody id="rows"></tbody>
@@ -808,7 +844,7 @@
       tiles.add(m);
       var t = tagFor("tag-i plain",
         esc(L.gene) + " · " + L.window.seq.length + " bp",
-        new THREE.Vector3(-13.6, 0.45, m.position.z));
+        new THREE.Vector3(-13.6, 0.45, m.position.z), 2);
       t.dyn = true; t.tile = m;
       return m;
     });
@@ -1029,11 +1065,12 @@
   /* ---- projected labels ---- */
   var labelBox = document.getElementById("labels");
   var LAB = [];
-  function tagFor(cls, html, v3){
+  // rank: what to keep when two labels want the same pixels. 0 is kept first.
+  function tagFor(cls, html, v3, rank){
     var el = document.createElement("div");
     el.className = "tag " + cls; el.innerHTML = html;
     labelBox.appendChild(el);
-    var rec = {el:el, at:v3};
+    var rec = {el:el, at:v3, rank: rank === undefined ? 5 : rank};
     LAB.push(rec); return rec;
   }
   function clearDynamicTags(){
@@ -1041,30 +1078,68 @@
       if(LAB[i].dyn){ labelBox.removeChild(LAB[i].el); LAB.splice(i,1); }
     }
   }
-  tagFor("tag-c", 'Composer<small>applies edits to the reference</small>', new THREE.Vector3(-9,6.6,0));
-  tagFor("tag-v", 'Verifier<small>re-derives edits from bases</small>', new THREE.Vector3(9,6.6,0));
+  tagFor("tag-c", 'Composer<small>applies edits to the reference</small>',
+         new THREE.Vector3(-10.4,5.6,0), 1);
+  tagFor("tag-v", 'Verifier<small>re-derives edits from bases</small>',
+         new THREE.Vector3(10.4,5.6,0), 1);
   tagFor("tag-w", 'verify(fasta, reference)<small>its only two inputs</small>',
-         new THREE.Vector3(0,8.2,0));
+         new THREE.Vector3(0,9.4,0), 0);
   tagFor("tag-i", 'Not passed in<small>request · provenance · composer log</small>',
-         new THREE.Vector3(-2.6,3.9,0));
-  var tagRefTrack = tagFor("tag-i plain", "GRCh38 reference", new THREE.Vector3(9,-1.0,0));
-  var tagLanes = tagFor("tag-i plain", "live sample of attempts", new THREE.Vector3(0,-1.6,0));
-  var tagRack = tagFor("tag-bad plain", "wrong verdicts held here", new THREE.Vector3(9,1.6,4.7));
+         new THREE.Vector3(-3.4,2.6,0), 6);
+  var tagRefTrack = tagFor("tag-i plain", "GRCh38 reference", new THREE.Vector3(9,-1.0,0), 4);
+  var tagLanes = tagFor("tag-i plain", "live sample of attempts", new THREE.Vector3(0,-1.6,0), 4);
+  var tagRack = tagFor("tag-bad plain", "wrong verdicts held here",
+                       new THREE.Vector3(9,1.6,4.7), 2);
   tagLanes.off = true; tagRack.off = true;
-  var tagFrom = tagFor("tag-i coord", "", new THREE.Vector3(9 - HLEN/2 - 0.1, -0.85, 0));
-  var tagTo   = tagFor("tag-i coord", "", new THREE.Vector3(9 + HLEN/2 + 0.1, -0.85, 0));
+  // The two coordinates are a pair: showing one of them frames nothing, so
+  // they outrank the labels that merely say what the lanes are.
+  var tagFrom = tagFor("tag-i coord", "", new THREE.Vector3(9 - HLEN/2 - 0.1, -0.85, 0), 3);
+  var tagTo   = tagFor("tag-i coord", "", new THREE.Vector3(9 + HLEN/2 + 0.1, -0.85, 0), 3);
 
+  // Labels are projected from the scene, so how much room they have depends on
+  // the window. On a short canvas the annotations land on top of one another,
+  // and two overlapping labels are worse than one label: neither can be read
+  // and the reader cannot tell which part of the bench either belongs to. So
+  // placement is followed by a pass that keeps the more important of any pair
+  // that collides. A label that names a molecule outranks one that explains
+  // the diagram, because the explanation is also in the guide.
+  function boxOf(L){
+    // Measuring is a forced layout, so it happens when the text changes, not
+    // on every frame of an animation.
+    var t = L.el.textContent;
+    if(L.txt !== t || L.w === undefined){
+      L.txt = t; L.w = L.el.offsetWidth; L.h = L.el.offsetHeight;
+    }
+    return L;
+  }
   function placeLabels(){
-    var w = stage.clientWidth, h = stage.clientHeight;
+    var w = stage.clientWidth, h = stage.clientHeight, live = [];
     LAB.forEach(function(L){
       if(L.off || (L.tile && (!L.tile.visible || !tiles.visible))){
         L.el.style.display = "none"; return;
       }
-      var v = L.at.clone().project(camera), vis = v.z < 1;
-      L.el.style.display = vis ? "block" : "none";
-      if(!vis) return;
-      L.el.style.left = ((v.x*0.5+0.5)*w) + "px";
-      L.el.style.top = ((-v.y*0.5+0.5)*h) + "px";
+      var v = L.at.clone().project(camera);
+      if(v.z >= 1){ L.el.style.display = "none"; return; }
+      L.el.style.display = "block";
+      L.x = (v.x*0.5+0.5)*w; L.y = (-v.y*0.5+0.5)*h;
+      L.el.style.left = L.x + "px";
+      L.el.style.top = L.y + "px";
+      live.push(boxOf(L));
+    });
+
+    var kept = [];
+    live.sort(function(a,b){ return a.rank - b.rank; }).forEach(function(L){
+      if(!L.w){ kept.push(L); return; }          // not measurable yet, keep it
+      var l = L.x - L.w/2, t = L.y - L.h/2, r = l + L.w, b = t + L.h, i;
+      for(i = 0; i < kept.length; i++){
+        var K = kept[i];
+        // Tolerance, so labels that merely graze each other both survive: this
+        // suppresses real collisions, not tight typesetting.
+        if(l + 4 < K.r - 4 && r - 4 > K.l + 4 && t + 3 < K.b - 3 && b - 3 > K.t + 3){
+          L.el.style.display = "none"; return;
+        }
+      }
+      L.l = l; L.t = t; L.r = r; L.b = b; kept.push(L);
     });
   }
   function orbit(el2, get, set){
@@ -1248,6 +1323,13 @@
     tagRefTrack.el.textContent = L.contig + " reference · " + BP + " bp";
   }
 
+  var elRecSrc = document.getElementById("recSrc");
+  function source(text, live){
+    if(!elRecSrc) return;
+    elRecSrc.textContent = text;
+    elRecSrc.className = "srcTag" + (live ? " live" : "");
+  }
+
   function renderRows(rows){
     elRows.innerHTML = "";
     if(!rows || !rows.length){
@@ -1259,12 +1341,15 @@
       var a = r.ref && r.ref.length - (r.alt ? r.alt.length : 0) > 3
         ? "del" + (r.ref.length - r.alt.length)
         : (r.ref ? r.ref + ">" + r.alt : "—");
+      // A match always carries the same sentence, so printing it on every row
+      // buries the rows that say something. It is stated once above the table;
+      // here the note appears only where it is news.
       var tr = document.createElement("tr");
       tr.innerHTML =
         '<td class="mono">' + esc(r.contig) + (r.pos ? ":" + r.pos : "") + " " + esc(a) +
           '<span class="sub">' + esc(r.gene) + " " + esc(r.hgvsp || "") + "</span></td>" +
         '<td class="mono">' + (r.recPos === null || r.recPos === undefined ? "—" : r.recPos) +
-          '<span class="sub">' + esc(r.note) + "</span></td>" +
+          (r.status === "match" ? "" : '<span class="sub">' + esc(r.note) + "</span>") + "</td>" +
         '<td><span class="st ' + r.status + '">' + r.status + "</span></td>";
       elRows.appendChild(tr);
     });
@@ -1331,6 +1416,7 @@
 
   function apply(res, L){
     lastRun = res;
+    source("this run", true);
     renderAdvisories(res);
     renderRows(res.rows);
     renderWork(res);
@@ -1382,6 +1468,27 @@
     // dropped correction leaves a screen reader believing the order passed.
     announce(headline.replace(/<[^>]+>/g, ""));
   }
+
+  // The page cannot fetch anything, so the strongest evidence it has -- that
+  // the checker was attacked tens of thousands of times and never once let a
+  // damaged export through or blocked a clean one -- has to be baked in at
+  // build time. A baked-in number is only worth printing if the reader can
+  // reproduce it, so the seed range is printed with it and Start campaign
+  // replays exactly those seeds through exactly those operators.
+  var CAMP = /*__CAMPAIGN__*/null;
+  (function writeEvidence(){
+    var el = document.getElementById("findingEv");
+    if(!el) return;
+    if(!CAMP){ el.hidden = true; return; }
+    var z = function(n){ return '<b class="' + (n ? "" : "zero") + '">' + n + "</b>"; };
+    el.innerHTML =
+      "Recorded " + CAMP.recorded + ": <b>" + CAMP.attempts.toLocaleString() + "</b> mutated " +
+      "exports, built by " + CAMP.corrupting + " damaging and " + CAMP.preserving +
+      " presentation-only operators, each one judged against ground truth taken from the " +
+      "file rather than from the checker. " + z(CAMP.falsePass) + " damaged exports released, " +
+      z(CAMP.falseHold) + " clean exports blocked. Replays here from seeds " +
+      CAMP.seedFrom + "\u2013" + CAMP.seedTo + ".";
+  })();
 
   function findingForRun(res, what){
     if(res.verdict === "released"){
@@ -1441,6 +1548,7 @@
     setRisers([]);
     paintHelix(L.window.seq, null);
     elVerdict.className = "verdict running"; elVerdict.textContent = "running";
+    source("running", true);
     renderRows(null);
 
     active = {t0:performance.now(), res:res, L:L, def:def, revealed:false, done:false};
@@ -1820,6 +1928,7 @@
         (res.note ? " · " + res.note : "");
 
       renderRows(res.rows);
+      source("delivery vs manifest", true);
       elPhase.textContent = "Delivery checked against " +
         (sealState.ok ? "sealed manifest " + m.id.slice(0, 19) + "…" : "an unsealed manifest") +
         " · " + res.verdict;
@@ -1877,6 +1986,7 @@
     apply(res, L);
     elVerdict.className = "verdict example";
     elVerdict.textContent = "example run";
+    source("worked example", false);
     // apply() above states a conclusion, but nobody has checked anything yet.
     // Claiming this order is sound before the reader has run it is the same
     // unearned confidence the bench exists to avoid.

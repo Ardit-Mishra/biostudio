@@ -1,0 +1,13 @@
+{
+ "attempts": 19823,
+ "declined": 177,
+ "falsePass": 0,
+ "falseHold": 0,
+ "reclassified": 0,
+ "seedFrom": 1,
+ "seedTo": 20000,
+ "operators": 22,
+ "corrupting": 12,
+ "preserving": 10,
+ "recorded": "2026-09-22"
+}

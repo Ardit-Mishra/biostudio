@@ -255,6 +255,28 @@
     return w;
   }
 
+  /* ------------------------------------------------------------ oracle ----
+     Ground truth is the FILE, not the array an operator was declared in.
+
+     An operator states which side it means to be on, but intent is not
+     evidence, and two of them have preconditions nobody was checking:
+     reverse-complementing a molecule that is its own reverse complement
+     changes nothing, and re-emitting a record as plain reference changes
+     nothing when the ordered molecule already was the reference. Scored by
+     declaration, both draws demand a hold for a file that is exactly what was
+     ordered - and the verifier gets recorded as committing a false pass it did
+     not commit. A campaign that can manufacture failures is no better evidence
+     than one that cannot find them.
+
+     The specification does not need the declaration. It is checkable from the
+     bytes: the delivered file must contain the ordered molecules, as a
+     multiset, and nothing besides. Presentation may move freely; the multiset
+     may not. So the oracle reads both files and compares molecules, and the
+     declaration becomes an assertion that is itself reported on. */
+  function molecules(recs) {
+    return recs.map(function (r) { return r.seq.toUpperCase(); }).sort().join("|");
+  }
+
   function attempt(loci, decoy, seed) {
     var rnd = mulberry32(seed);
     var clean = E.compose(loci, "none", decoy);
@@ -276,17 +298,24 @@
     var byKey = {};
     windows.forEach(function (W) { byKey[W.contig + ":" + W.gene] = W; });
 
+    // Re-parse what was emitted, so the oracle sees the same bytes the verifier
+    // will, and an emitter that damaged something cannot hide behind the
+    // in-memory records it was handed.
+    var damaged = molecules(parse(fasta)) !== molecules(parse(clean.fasta));
+    var declared = corrupting ? "corrupting" : "preserving";
+    var kind = damaged ? "corrupting" : "preserving";
+
     var findings = E.verify(fasta, windows);
     var rows = E.reconcile(clean.requested, findings, byKey);
     var bad = rows.filter(function (r) { return r.status !== "match"; }).length;
     var verdict = bad ? "held" : "released";
-    var expected = corrupting ? "held" : "released";
+    var expected = damaged ? "held" : "released";
 
     return {
       seed: seed, op: op.id, note: op.note, detail: res.detail || "",
-      kind: corrupting ? "corrupting" : "preserving",
+      kind: kind, declared: declared, misdeclared: kind !== declared,
       verdict: verdict, expected: expected, ok: verdict === expected,
-      failure: verdict === expected ? null : (corrupting ? "false pass" : "false hold"),
+      failure: verdict === expected ? null : (damaged ? "false pass" : "false hold"),
       fasta: fasta, rows: rows, discrepancies: bad
     };
   }

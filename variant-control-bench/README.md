@@ -36,8 +36,17 @@ be grading its own homework.
 | `npm run test:engine` | Nine named defect classes resolve as specified | **9/9** |
 | `npm run test:manifest` | Sealed-order behaviour, including fail-closed paths | **17/17** |
 | `npm run test:assembly` | Part boundaries, internal enzyme sites, overhang collisions | **11/11** |
-| `npm run test:repro` | Seven false passes found in review stay fixed | **7/7** |
-| `npm run campaign` | Adversarial mutation, 22 operators | **13,883 attempts · 0 false pass · 0 false hold** |
+| `npm run test:stress` | Pathological sequence, hostile input, scale, determinism | **45/45** |
+| `npm run test:repro` | Defects from the first review stay fixed | **9/9** |
+| `npm run test:repro3` | Defects from the third review stay fixed | **12/12** |
+| `npm run test:repro4` | Defects from the fourth review stay fixed | **8/8** |
+| `npm run test:repro5` | Defects from the fifth review stay fixed | **3/3** |
+| `npm run test:a11y` | Contrast, heading structure, names, targets, live region | **0 failures** |
+| `npm run campaign` | Adversarial mutation, 22 operators | **19,823 attempts · 0 false pass · 0 false hold** |
+
+Every `test:repro*` suite was written **before** the corresponding fix and run
+against the then-current build, so each one is a reproduction first and a
+regression second. Thirty-two defects found by review are closed this way.
 
 ### Why the campaign number is worth anything
 
@@ -46,16 +55,30 @@ directions. Twelve **corrupting** operators must be held; ten **preserving**
 operators — re-wrapping, lower case, CRLF, blank lines, trailing spaces,
 renamed and decorated headers, reordered records — must *not* be flagged.
 
-Ground truth is established by construction, never by asking the verifier.
+Ground truth is read from the **file**, never from the verifier and never from
+the operator's own declaration. An operator says which side it means to be on,
+but intent is not evidence: reverse-complementing a molecule that is its own
+reverse complement changes nothing, and re-emitting a record as plain reference
+changes nothing when the ordered molecule already was the reference. Scored by
+declaration, both draws demand a hold for a file that is exactly what was
+ordered, and the verifier is recorded as committing a false pass it did not
+commit — a campaign able to manufacture failures is no better evidence than one
+unable to find them.
+
+The specification does not need the declaration. It is checkable from the bytes:
+the delivered file must contain the ordered molecules, as a multiset, and
+nothing besides. Presentation may move freely; the multiset may not. So every
+attempt re-parses what it emitted, compares molecules, and reports how many
+draws its operator had declared wrongly.
 
 And the number is falsifiable. Two deliberately broken verifier builds ship with
 the bench so you can watch the campaign catch them:
 
 | Build | Attempts | False pass | False hold |
 |---|---|---|---|
-| Current | 19,725 | 0 | 0 |
-| Pre-fix normalizer | 19,725 | **1** | 0 |
-| Header-trusting placement | 2,950 | 0 | **380** |
+| Current | 19,823 | 0 | 0 |
+| Pre-fix normalizer | 19,823 | **1** | 0 |
+| Header-trusting placement | 2,971 | 0 | **160** |
 
 The pre-fix normalizer is a real bug this campaign found: `leftAlign` compared
 the last deleted base to `win[at-1]` instead of `win[at]`, rolling a deletion
@@ -73,6 +96,18 @@ Reported but never gating: **reading frame** and **GC / homopolymer** screens.
 The verdict answers one narrow question — do the exported fragments encode
 exactly the requested edits — and mixing "your request may be a bad idea" into
 that answer would make both claims mushy.
+
+### Coverage is a property of a molecule, not of a window
+
+A fragment short at one end cannot be told apart from one carrying a deletion
+near that end: with free end gaps both explain the sequence equally well. So the
+delivered span is part of the order, and every delivered record answers for its
+own extent. Taking the widest extent seen across all records that landed on a
+window would let one record cover for another — a molecule short at the tail
+stops being reported the moment a second record reaches the tail, and the reader
+is told about the extra record instead of the short one. The extra record is the
+easy half to fix; re-shipping the same truncated molecule is the half that costs
+an experiment.
 
 ### Two failures that live only at the assembly level
 

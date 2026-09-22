@@ -648,25 +648,54 @@
     // sequence equally well, and no aligner can separate them. Rather than
     // guess, require the delivered span to be the span that was requested.
     // Coverage and allele correctness are then reported as separate findings.
+    //
+    // Coverage belongs to a MOLECULE, not to a window. Taking the widest
+    // extent seen across every record that landed on the window lets one
+    // record cover for another: a fragment short at the tail stops being
+    // reported the moment a second record reaches the tail, and the reader is
+    // told about the extra record instead of the short one. The extra record
+    // is the easy half to fix; re-shipping the same truncated molecule is the
+    // half that costs an experiment. So each delivered record answers for its
+    // own extent.
     var span = {};
     findings.forEach(function (f) {
       if (!f.window || f.from === undefined) return;
       if (exact[f.window.key] && f.record === exactRec[f.window.key]) return;
-      var s = span[f.window.key] ||
-              (span[f.window.key] = { lo: Infinity, hi: -Infinity, W: f.window });
-      if (f.from < s.lo) s.lo = f.from;
-      if (f.to > s.hi) s.hi = f.to;
+      var k = f.window.key + "\u0000" + f.record;
+      var s = span[k] || (span[k] = { iv: [], W: f.window, rec: f.record });
+      s.iv.push([f.from, f.to]);
     });
     Object.keys(span).forEach(function (k) {
-      var s = span[k], end = s.W.from + s.W.seq.length;
-      if (s.lo > s.W.from || s.hi < end) {
-        rows.push({
-          gene: s.W.gene, contig: s.W.contig, pos: s.W.from, ref: "", alt: "",
-          hgvsp: "delivered span", recPos: s.lo, status: "short",
-          note: "covers " + (s.hi - s.lo) + " of the " + s.W.seq.length +
-                " nt requested (" + s.lo + "–" + s.hi + ")"
-        });
-      }
+      var s = span[k], W = s.W, end = W.from + W.seq.length;
+
+      // Merge before measuring, so a reported length is bases actually
+      // delivered rather than the distance between the two outermost ones.
+      var iv = s.iv.slice().sort(function (a, b) { return a[0] - b[0]; });
+      var merged = [];
+      iv.forEach(function (r) {
+        var last = merged[merged.length - 1];
+        if (last && r[0] <= last[1]) { if (r[1] > last[1]) last[1] = r[1]; }
+        else merged.push([r[0], r[1]]);
+      });
+
+      var covered = 0, gaps = [], at = W.from;
+      merged.forEach(function (r) {
+        if (r[0] > at) gaps.push([at, r[0]]);
+        covered += Math.min(r[1], end) - Math.max(r[0], W.from);
+        at = Math.max(at, r[1]);
+      });
+      if (at < end) gaps.push([at, end]);
+      if (!gaps.length) return;
+
+      rows.push({
+        gene: W.gene, contig: W.contig, pos: W.from, ref: "", alt: "",
+        hgvsp: "delivered span", recPos: merged.length ? merged[0][0] : W.from,
+        status: "short", record: s.rec,
+        note: s.rec + " covers " + covered + " of the " + W.seq.length +
+              " nt ordered; missing " + gaps.map(function (g) {
+                return g[0] + "\u2013" + g[1];
+              }).join(", ")
+      });
     });
 
     // A declared edit marked required must actually be delivered. Without this

@@ -14,7 +14,8 @@ const out = read("src/bench.template.html")
   .replace("/*__MANIFEST__*/", () => read("src/manifest.js"))
   .replace("/*__ASSEMBLY__*/", () => read("src/assembly.js"))
   .replace("/*__ASMPANEL__*/", () => read("src/asm-panel.js"))
-  .replace("/*__DATA__*/",     () => read("data/bench-data.json"));
+  .replace("/*__DATA__*/",     () => read("data/bench-data.json"))
+  .replace("/*__CAMPAIGN__*/", () => read("data/campaign.json"));
 
 fs.mkdirSync("dist", { recursive: true });
 fs.writeFileSync("dist/index.html", out, "utf8");
