@@ -61,6 +61,19 @@
 
   .strip{position:absolute;left:0;right:0;bottom:0;display:flex;flex-wrap:wrap;align-items:center;
     gap:9px 14px;padding:9px 14px;background:linear-gradient(to top,rgba(11,16,22,.95),rgba(11,16,22,0))}
+  /* The finding. Every other panel shows state; this says what to conclude,
+     and it is deliberately the most legible thing on the page. */
+  .finding{position:absolute;left:0;right:0;top:0;padding:13px 16px 15px;
+    background:linear-gradient(to bottom,rgba(11,16,22,.96) 62%,rgba(11,16,22,0));
+    display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .finding .what{font-size:16.5px;line-height:1.35;color:var(--ink);max-width:76ch;
+    text-wrap:balance}
+  .finding .what b{font-weight:500}
+  .finding .why{display:block;font-size:12.5px;color:var(--ink-3);margin-top:3px}
+  .finding.good .what b{color:var(--pass)}
+  .finding.bad .what b{color:var(--hold)}
+  .finding.idle .what b{color:var(--ink-2)}
+  @media (max-width:1060px){ .finding .what{font-size:14.5px} }
   .phase{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-2)}
   .verdict{font-family:"IBM Plex Sans Condensed",sans-serif;text-transform:uppercase;
     letter-spacing:.11em;font-weight:600;font-size:11px;padding:4px 10px;border-radius:2px;border:1px solid}
@@ -391,6 +404,12 @@
         </dl>
       </div>
       <div class="stamp" id="stamp">pass</div>
+      <div class="finding idle" id="finding">
+        <span class="what" id="findingWhat"><b>Nothing has been checked yet.</b>
+          What you are looking at is a worked example.
+          <span class="why" id="findingWhy">Press <b>Compose and verify</b> to run it for real, or
+            <b>Start campaign</b> to attack the checker itself.</span></span>
+      </div>
       <div class="strip">
         <span class="verdict running" id="verdict">idle</span>
         <span class="phase" id="phase">&mdash;</span>
@@ -697,6 +716,10 @@
       return {key:L.gene, gene:L.gene, contig:L.contig, from:L.window.from, seq:L.window.seq};
     });
   }
+
+  // Declared up front: handlers defined above the render loop call it.
+  var __wake = null;
+  function invalidate(){ if (__wake) __wake(); }
 
   /* =============================================================== 3D bench */
   var canvas = document.getElementById("scene"), stage = canvas.parentNode;
@@ -1040,13 +1063,14 @@
       set(s.a - (e.clientX-drag.x)*0.006,
           Math.max(0.12, Math.min(1.35, s.e + (e.clientY-drag.y)*0.004)));
       drag = {x:e.clientX, y:e.clientY};
+      invalidate();
     });
     el2.addEventListener("pointerup", function(){ drag=null; });
     el2.addEventListener("pointercancel", function(){ drag=null; });
   }
   orbit(canvas, function(){ return {a:az,e:el}; }, function(a,e2){ az=a; el=e2; });
   canvas.addEventListener("wheel", function(e){
-    e.preventDefault(); dist = Math.max(18, Math.min(56, dist + e.deltaY*0.02));
+    e.preventDefault(); dist = Math.max(18, Math.min(56, dist + e.deltaY*0.02)); invalidate();
   }, {passive:false});
 
   /* ========================================================== 3D structure */
@@ -1055,7 +1079,11 @@
   sRenderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
   var sScene = new THREE.Scene();
   var sCam = new THREE.PerspectiveCamera(38, 1, 0.1, 600);
+  // Spin briefly so the fold reads as three-dimensional, then settle. Turning
+  // forever is motion without information.
   var sAz = 0.6, sEl = 0.2, sDist = 3.0, sSpin = true;
+  var spinUntil = 0;
+  function spinFor(ms){ spinUntil = performance.now() + ms; }
   sScene.add(new THREE.HemisphereLight(0x33465c, 0x080c11, 0.85));
   var sKey = new THREE.DirectionalLight(0xffffff, 0.75); sKey.position.set(3,5,6); sScene.add(sKey);
   var sFill = new THREE.DirectionalLight(0x88b4ff, 0.3); sFill.position.set(-4,-2,-3); sScene.add(sFill);
@@ -1296,6 +1324,9 @@
     if(!edited) elFaEdit.value = res.fasta;
     elVerdict.className = "verdict " + res.verdict;
     elVerdict.textContent = res.verdict === "released" ? "checks passed" : "held";
+    findingForRun(res, edited
+      ? "You edited the export by hand and it still holds up."
+      : "The verifier never saw the request — it re-derived these from the bases.");
     elEvid.textContent = res.verdict === "released"
       ? "Independent re-derivation; " + res.rows.length + " of " + res.rows.length + " edits matched"
       : "Independent re-derivation; " + res.discrepancies +
@@ -1310,6 +1341,31 @@
               recovered: res.rows.map(function(r){
                 return r.status + "@" + r.recPos + ":" + (r.ref||"") + ">" + (r.alt||""); }),
               verdict: res.verdict, fasta: res.fasta});
+  }
+
+  // One place that says what happened, in a sentence. Everything else on the
+  // page reports state; a reader should not have to assemble the conclusion
+  // from six panels.
+  var elFinding = document.getElementById("finding");
+  var elFWhat = document.getElementById("findingWhat");
+  function finding(tone, headline, why){
+    elFinding.className = "finding " + tone;
+    elFWhat.innerHTML = "<b>" + headline + "</b>" +
+      (why ? ' <span class="why">' + why + "</span>" : "");
+  }
+
+  function findingForRun(res, what){
+    if(res.verdict === "released"){
+      finding("good", "This order matches what was asked for.",
+        "All " + res.rows.length + " requested edits were recovered from the exported sequence " +
+        "alone, and nothing unrequested was found. " + what);
+    } else {
+      var first = res.rows.filter(function(r){ return !E.isClean(r.status); })[0];
+      finding("bad", "Do not send this order.",
+        res.discrepancies + " discrepanc" + (res.discrepancies === 1 ? "y" : "ies") +
+        " between what was asked and what the sequence proves" +
+        (first ? " — " + esc(first.gene) + ": " + esc(first.note) : "") + ".");
+    }
   }
 
   function renderSuite(){
@@ -1360,6 +1416,7 @@
 
     active = {t0:performance.now(), res:res, L:L, def:def, revealed:false, done:false};
     elRun.disabled = true; elSweep.disabled = true;
+    invalidate();
     if(REDUCED){ writeHelix(1); showTiles(1); helix.position.x = 9; finishRun(); }
   }
 
@@ -1440,6 +1497,7 @@
     buildStructure(L); advisory(L);
     paintHelix(L.window.seq, null);
     renderAlignment(L, lastRun);
+    spinFor(9000); invalidate();
   }
   D.loci.forEach(function(L, i){
     var el = document.createElement("div");
@@ -1606,7 +1664,27 @@
     document.getElementById("hudFH").textContent = camp.fh;
     document.getElementById("hudFH").className = camp.fh ? "bad" : "";
     document.getElementById("hudSeed").textContent = camp.start + "–" + (camp.seed - 1);
+    campaignFinding();
     pv.color.setHex(camp.lastOk ? 0x6fcf8a : 0xe4697a);
+  }
+
+  function campaignFinding(){
+    if(!camp) return;
+    var wrong = camp.fp + camp.fh;
+    if(!camp.n){ return; }
+    if(wrong === 0){
+      finding("good", "The checker was right every time.",
+        "Attacked it " + camp.n.toLocaleString() + " times on the " + camp.build +
+        ". Every corrupted export was held and every harmless reformatting was let " +
+        "through, so it is neither missing damage nor blocking good work.");
+    } else {
+      finding("bad", "The checker got " + wrong.toLocaleString() + " verdict" +
+        (wrong === 1 ? "" : "s") + " wrong.",
+        camp.fp.toLocaleString() + " corrupted export" + (camp.fp === 1 ? "" : "s") +
+        " released and " + camp.fh.toLocaleString() + " clean one" +
+        (camp.fh === 1 ? "" : "s") + " blocked, out of " + camp.n.toLocaleString() +
+        " on the " + camp.build + ". Click a failure to replay it.");
+    }
   }
 
   function startCampaign(){
@@ -1618,10 +1696,13 @@
     pulseSeq = (order()[0] || D.loci[0]).window.seq;
     tagLanes.off = false; tagRack.off = true;
     setRisers([]);
-    elHud.hidden = false;
+    elHud.hidden = false; invalidate();
     elCamp.textContent = "Stop campaign";
     elRun.disabled = true; elSweep.disabled = true;
     elPhase.textContent = "Campaign running · each cell on the left pad is one verified attempt";
+    finding("idle", "Attacking the checker…",
+      "Every attempt mutates the export in a way whose correct verdict is known in advance. " +
+      "A corruption that gets released, or a reformatting that gets blocked, is a bug in the checker.");
   }
   function stopCampaign(why){
     if(!camp) return;
@@ -1631,7 +1712,7 @@
     rack.length = 0;
     tagLanes.off = true; tagRack.off = true;
     sweep.visible = false; sweep.material.color.setHex(C.verify); pulse = null;
-    paintHelix((order()[0] || D.loci[0]).window.seq, null); writeHelix(1);
+    paintHelix((order()[0] || D.loci[0]).window.seq, null); writeHelix(1); invalidate();
     document.getElementById("hudState").textContent = "stopped";
     elStamp.className = "stamp";
     elCamp.textContent = "Start campaign";
@@ -1741,10 +1822,10 @@
     var sw = sWrap.clientWidth, sh = sWrap.clientHeight;
     if(sw && sh){ sRenderer.setSize(sw,sh,false); sCam.aspect = sw/sh; sCam.updateProjectionMatrix(); }
   }
-  window.addEventListener("resize", resize);
+  window.addEventListener("resize", function(){ resize(); invalidate(); });
   orbit(sCanvas, function(){ return {a:sAz,e:sEl}; }, function(a,e2){ sAz=a; sEl=e2; sSpin=false; });
   sCanvas.addEventListener("wheel", function(e){
-    e.preventDefault(); sDist = Math.max(1.6, Math.min(6, sDist + e.deltaY*0.002));
+    e.preventDefault(); sDist = Math.max(1.6, Math.min(6, sDist + e.deltaY*0.002)); invalidate();
   }, {passive:false});
 
   /* -------------------------------------------------------- opening state */
@@ -1767,6 +1848,12 @@
     apply(res, L);
     elVerdict.className = "verdict example";
     elVerdict.textContent = "example run";
+    // apply() above states a conclusion, but nobody has checked anything yet.
+    // Claiming this order is sound before the reader has run it is the same
+    // unearned confidence the bench exists to avoid.
+    finding("idle", "Nothing has been checked yet.",
+      "What is on screen is a worked example, filled in so the bench is not an empty shell. " +
+      "Press <b>Compose and verify</b> to run it, or <b>Start campaign</b> to attack the checker itself.");
     elPhase.textContent = "Worked example, clean construct — press Compose and verify to run your own.";
     renderSuite();
     var seen = false;
@@ -1774,8 +1861,20 @@
     if(!seen) guide.hidden = false;
   })();
 
-  var prevNow = 0;
+  // Render on demand. A WebGL page that redraws at 60fps while nothing moves
+  // burns a laptop battery for no reason, so the loop only schedules another
+  // frame while something is actually animating, and anything that changes the
+  // picture calls invalidate().
+  var prevNow = 0, rafId = null, dirty = true, dragging = 0;
+  __wake = function(){ dirty = true; schedule(); };
+  function animating(){
+    return (active && !active.done) || (camp && camp.on) || pulse ||
+           (sSpin && spinUntil > performance.now()) || dragging > 0;
+  }
+  function schedule(){ if(rafId === null) rafId = requestAnimationFrame(loop); }
+
   function loop(now){
+    rafId = null;
     var dt = prevNow ? Math.min(64, now - prevNow) : 16; prevNow = now;
     resize(); step(now); campaignStep();
     if(camp && camp.on){
@@ -1788,14 +1887,15 @@
     if(stampUntil && now > stampUntil){ elStamp.classList.remove("on"); stampUntil = 0; }
     placeCamera(); placeLabels();
     renderer.render(scene, camera);
-    if(sSpin && !REDUCED) sAz += 0.0022;
+    if(sSpin && !REDUCED && spinUntil > now) sAz += 0.0022;
     sCam.position.set(sDist*Math.cos(sEl)*Math.sin(sAz), sDist*Math.sin(sEl),
                       sDist*Math.cos(sEl)*Math.cos(sAz));
     sCam.lookAt(0,0,0);
     sRenderer.render(sScene, sCam);
-    requestAnimationFrame(loop);
+    dirty = false;
+    if(animating() || dirty) schedule();
   }
-  requestAnimationFrame(loop);
+  schedule();
 })();
 </script>
 <script>/*__ASMPANEL__*/</script>
