@@ -20,7 +20,8 @@
     "models:probe": "node composer/llm-campaign.mjs --probe",
     "data:refresh": "node fetch-bench-data.mjs",
     "test:stress": "node test/stress.mjs",
-    "test:repro3": "node test/verify-codex3.mjs"
+    "test:repro3": "node test/verify-codex3.mjs",
+    "test:a11y": "node test/a11y.mjs"
   },
   "devDependencies": {
     "playwright": "^1.48.0"

@@ -5,7 +5,7 @@
   :root{
     --ground:#0b1016; --panel:#111a22; --panel-2:#0e161d;
     --rule:#1e2c38; --rule-soft:#17222c;
-    --ink:#d9e4ed; --ink-2:#93a7b7; --ink-3:#64798a;
+    --ink:#d9e4ed; --ink-2:#93a7b7; --ink-3:#7b8fa1;
     --compose:#2fd4c4; --verify:#f2a340; --hold:#e4697a; --pass:#6fcf8a; --focus:#7fd3ff;
     /* Nucleotides, and AlphaFold's own pLDDT bands. */
     --nA:#3fbf7f; --nC:#4a9fe0; --nG:#e8a33d; --nT:#e0596b;
@@ -17,8 +17,11 @@
   body{margin:0;background:var(--ground);color:var(--ink);
     font:15px/1.5 "IBM Plex Sans","Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
   .lbl{font-family:"IBM Plex Sans Condensed","IBM Plex Sans",sans-serif;text-transform:uppercase;
-    letter-spacing:.09em;font-weight:600;font-size:11px;color:var(--ink-3)}
+    letter-spacing:.09em;font-weight:600;font-size:11px;color:var(--ink-3);margin:0}
+  h2.lbl, h3.lbl{font-size:11px}
   .mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+  .srOnly{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;
+    clip:rect(0 0 0 0);white-space:nowrap;border:0}
 
   .app{height:100%;display:grid;
     grid-template-columns:256px minmax(0,1fr) 344px;
@@ -291,7 +294,7 @@
     background:rgba(11,16,22,.72);border:1px solid var(--rule);border-radius:2px;
     padding:9px 12px;min-width:186px}
   .hud[hidden]{display:none}
-  .hud h4{margin:0 0 7px;font-family:"IBM Plex Sans Condensed",sans-serif;font-size:10.5px;
+  .hud .hudh{margin:0 0 7px;font-family:"IBM Plex Sans Condensed",sans-serif;font-size:10.5px;
     letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);font-weight:600;
     display:flex;justify-content:space-between;gap:12px}
   .hud h4 span{color:var(--verify)}
@@ -354,6 +357,16 @@
   .gtrue ul{margin:0;padding-left:15px} .gtrue li{margin-bottom:3px}
   .gyes h3{color:var(--pass)} .gno h3{color:var(--hold)}
 
+  /* A dense desktop panel and a finger want different target sizes. Rather
+     than inflate every control, meet the 44px guidance where the pointer is
+     actually coarse. */
+  @media (pointer: coarse){
+    .seg button{min-height:44px;padding-inline:14px}
+    .gopen,.ghost,.run,.chkhead button,.faRow button{min-height:44px}
+    .loc{padding-block:11px}
+    .srow{padding-block:9px}
+  }
+
   @media (max-width:1060px){
     html,body{height:auto}
     .app{height:auto;grid-template-columns:minmax(0,1fr);grid-template-rows:auto;
@@ -395,8 +408,8 @@
       <canvas id="scene"></canvas>
       <div class="labels" id="labels"></div>
       <div class="hud" id="hud" hidden>
-        <h4>Campaign <span id="hudState">running</span></h4>
-        <div class="big"><span id="hudN">0</span><em>attempts verified</em></div>
+        <h2 class="hudh">Campaign <span id="hudState">running</span></h2>
+        <div class="big" aria-hidden="true"><span id="hudN">0</span><em>attempts verified</em></div>
         <dl class="k">
           <dt>false pass</dt><dd id="hudFP">0</dd>
           <dt>false hold</dt><dd id="hudFH">0</dd>
@@ -404,7 +417,8 @@
         </dl>
       </div>
       <div class="stamp" id="stamp">pass</div>
-      <div class="finding idle" id="finding">
+      <p class="srOnly" role="status" aria-atomic="true" id="say"></p>
+      <div class="finding idle" id="finding" aria-hidden="true">
         <span class="what" id="findingWhat"><b>Nothing has been checked yet.</b>
           What you are looking at is a worked example.
           <span class="why" id="findingWhy">Press <b>Compose and verify</b> to run it for real, or
@@ -418,7 +432,7 @@
 
     <div class="track">
       <div class="trackhead">
-        <span class="lbl" id="trackttl">Alignment</span>
+        <h2 class="lbl" id="trackttl">Alignment</h2>
         <span class="seg">
           <button id="tabAln" aria-pressed="true">Alignment</button>
           <button id="tabFa" aria-pressed="false">Edit the export</button>
@@ -437,13 +451,13 @@
           against. The verifier still sees only sequence and reference.</p>
         <div class="chkgrid">
           <div class="chkcol">
-            <span class="chkhead"><span class="lbl">Order manifest</span>
+            <span class="chkhead"><h3 class="lbl">Order manifest</h3>
               <button id="mSeal">Seal current order</button></span>
             <textarea id="mJson" spellcheck="false" aria-label="Order manifest JSON"></textarea>
             <span class="chkid" id="mId">Not sealed yet.</span>
           </div>
           <div class="chkcol">
-            <span class="chkhead"><span class="lbl">Delivery received</span>
+            <span class="chkhead"><h3 class="lbl">Delivery received</h3>
               <button id="mFill">Paste composer output</button></span>
             <textarea id="mFasta" spellcheck="false" aria-label="Delivery FASTA"
               placeholder="Paste the FASTA the vendor sent back"></textarea>
@@ -471,12 +485,12 @@
 
   <aside class="rail">
     <div class="block">
-      <span class="lbl">Loci in this order</span>
+      <h2 class="lbl">Loci in this order</h2>
       <div class="loci" id="loci" role="group" aria-label="Loci in this order"></div>
     </div>
 
     <div class="block">
-      <span class="lbl">Run</span>
+      <h2 class="lbl">Run</h2>
       <div class="field">
         <span>Seeded defect injected into the export</span>
         <select id="defect" aria-label="Seeded defect"></select>
@@ -490,7 +504,7 @@
     </div>
 
     <div class="block">
-      <span class="lbl">Adversarial campaign</span>
+      <h2 class="lbl">Adversarial campaign</h2>
       <p style="margin:0 0 10px;font-size:11.5px;color:var(--ink-3)">Mutates the export over and
         over and checks the verdict against what each mutation logically requires. Corruptions must
         be held; presentation changes must not be. Every attempt replays from its seed.</p>
@@ -507,7 +521,7 @@
     </div>
 
     <div class="block">
-      <span class="lbl">Defect suite</span>
+      <h2 class="lbl">Defect suite</h2>
       <div class="tally"><b id="tally">0/8</b><span>defect classes resolved<br>6 must catch, 2 must not flag</span></div>
       <div class="suite" id="suite"></div>
     </div>
@@ -526,7 +540,7 @@
 
     <div class="record">
       <div class="block">
-        <span class="lbl">Recovered from sequence</span>
+        <h2 class="lbl">Recovered from sequence</h2>
         <table>
           <thead><tr><th>Requested</th><th>Recovered</th><th>Status</th></tr></thead>
           <tbody id="rows"></tbody>
@@ -541,7 +555,7 @@
       </div>
 
       <div class="block">
-        <span class="lbl">Run evidence</span>
+        <h2 class="lbl">Run evidence</h2>
         <dl>
           <dt>Task</dt><dd>Do the exported fragments encode exactly the requested edits?</dd>
           <dt>Context</dt><dd>Pre-order check on research-use constructs</dd>
@@ -551,11 +565,11 @@
         </dl>
         <div class="advisory" id="advisory"></div>
         <div style="margin-top:12px">
-          <span class="lbl" style="display:block;margin-bottom:7px">Advisories &mdash; reported, not gating</span>
+          <h3 class="lbl" style="display:block;margin-bottom:7px">Advisories &mdash; reported, not gating</h3>
           <div id="advList" class="workbody" style="padding:0"></div>
         </div>
         <div style="margin-top:12px">
-          <span class="lbl" style="display:block;margin-bottom:7px">Residual limitations</span>
+          <h3 class="lbl" style="display:block;margin-bottom:7px">Residual limitations</h3>
           <ul class="limits">
             <li>Sequence verified is not synthesis confirmed.</li>
             <li>Synthesis confirmed is not experimentally qualified.</li>
@@ -1348,10 +1362,25 @@
   // from six panels.
   var elFinding = document.getElementById("finding");
   var elFWhat = document.getElementById("findingWhat");
+  var elSay = document.getElementById("say"), lastSaid = "", pendingSay = null, sayTimer = null;
+  function announce(text){
+    pendingSay = text;
+    if(sayTimer) return;
+    sayTimer = setTimeout(function(){
+      sayTimer = null;
+      if(pendingSay !== lastSaid){ lastSaid = pendingSay; elSay.textContent = pendingSay; }
+    }, 900);
+  }
   function finding(tone, headline, why){
     elFinding.className = "finding " + tone;
     elFWhat.innerHTML = "<b>" + headline + "</b>" +
       (why ? ' <span class="why">' + why + "</span>" : "");
+    // Coalesce, never drop. A campaign rewrites the visible line hundreds of
+    // times a second, so announcing every change would make the page unusable
+    // by voice -- but a throttle that suppresses the LAST message is worse:
+    // boot briefly shows an example verdict before correcting itself, and a
+    // dropped correction leaves a screen reader believing the order passed.
+    announce(headline.replace(/<[^>]+>/g, ""));
   }
 
   function findingForRun(res, what){
@@ -1854,7 +1883,9 @@
     finding("idle", "Nothing has been checked yet.",
       "What is on screen is a worked example, filled in so the bench is not an empty shell. " +
       "Press <b>Compose and verify</b> to run it, or <b>Start campaign</b> to attack the checker itself.");
-    elPhase.textContent = "Worked example, clean construct — press Compose and verify to run your own.";
+    // The finding above already says what to conclude. This strip reports what
+    // the machine is doing, so repeating the conclusion here is pure noise.
+    elPhase.textContent = D.loci.length + " loci · GRCh38 · nothing running";
     renderSuite();
     var seen = false;
     try{ seen = localStorage.getItem("vcb.guide.seen") === "1"; }catch(e){}
