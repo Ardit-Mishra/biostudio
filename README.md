@@ -360,12 +360,12 @@ All outputs are reproducible from source using documented installation steps.
 If you use BioStudio in academic work, please cite:
 
 ```bibtex
-@software{mishra2025biostudio,
+@software{mishra2026biostudio,
   author = {Mishra, Ardit},
-  title = {BioStudio: Modular Computational Drug Discovery Platform},
-  year = {2025},
+  title = {BioStudio: Construct-Order Verification and ADMET Property Prediction},
+  year = {2026},
   url = {https://github.com/Ardit-Mishra/biostudio},
-  version = {1.0.0}
+  version = {1.2.0}
 }
 ```
 ---
