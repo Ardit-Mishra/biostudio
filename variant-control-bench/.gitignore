@@ -6,3 +6,4 @@ shots/
 .DS_Store
 fuzz-failures.json
 site/
+ops/dns-backups/
