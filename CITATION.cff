@@ -1,8 +1,8 @@
 cff-version: 1.2.0
 message: "If you use BioStudio in your research, please cite it as below."
 type: software
-title: "BioStudio: AI-Powered Molecular Intelligence Platform"
-abstract: "An open-source research platform demonstrating computational drug discovery workflows using cheminformatics, QSAR modeling, and machine learning. The platform provides educational implementations of pharmaceutical techniques including gradient-boosted (XGBoost) ADMET prediction trained on public Therapeutics Data Commons datasets with scaffold splits and held-out test metrics, rule-based ADME/PK and drug-likeness analysis, and biologic developability analysis."
+title: "BioStudio: Construct-Order Verification and ADMET Property Prediction"
+abstract: "Open-source research software in two halves. The Variant Control Bench is a pre-order check for synthetic DNA: a verifier re-derives the requested edits from an exported sequence and the GRCh38 reference alone, with the separation enforced by the function signature rather than by convention, and holds the order until it can. It is evaluated adversarially against ground truth computed from the delivered file rather than from the checker. The property-prediction layer covers seven ADMET endpoints on public Therapeutics Data Commons datasets under Bemis-Murcko scaffold splits, with XGBoost, Random Forest and an MLP trained on identical splits and reported side by side. Deep-learning alternatives were trained on the same endpoints and are published alongside rather than omitted. Research use only; not a clinical or regulatory claim."
 authors:
   - family-names: "Mishra"
     given-names: "Ardit"
@@ -14,18 +14,18 @@ license: MIT
 version: "1.2.0"
 date-released: "2025-11-16"
 keywords:
-  - drug-discovery
-  - cheminformatics
-  - QSAR
-  - machine-learning
-  - gradient-boosting
-  - XGBoost
+  - genome-engineering
+  - sequence-verification
+  - variant-calling
+  - synthetic-biology
+  - golden-gate-assembly
+  - adversarial-testing
   - ADMET-prediction
-  - toxicity-prediction
-  - protein-analysis
-  - pharmaceutical-AI
+  - cheminformatics
+  - machine-learning
+  - XGBoost
   - RDKit
-  - computational-chemistry
+  - reproducible-research
   - bioinformatics
   - therapeutics-data-commons
 references:

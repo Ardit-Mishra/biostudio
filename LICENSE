@@ -19,25 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-## Additional Terms for Educational and Research Use
-
-This software is provided as an educational and research demonstration platform
-for computational drug discovery. The prediction methods included are for
-demonstrational purposes only and should not be used for:
-
-1. Clinical decision-making
-2. Regulatory submission without proper validation
-3. Production pharmaceutical R&D without replacing heuristic functions with
-   validated QSAR models
-
-Users are responsible for:
-- Validating any methods before production use
-- Ensuring compliance with applicable regulations (FDA, EMA, etc.)
-- Proper citation of scientific methods (see REFERENCES.md)
-
-The author and contributors make no claims regarding the accuracy, reliability,
-or suitability of this software for any particular purpose. All predictions
-should be experimentally validated.

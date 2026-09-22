@@ -1,18 +1,23 @@
 ![Project Banner](assets/banner.png)
 # BioStudio
 
-Computational drug discovery research platform implemented in Python using RDKit, scikit-learn, XGBoost, Streamlit, and FastAPI.
+**[biostudio.arditmishra.com](https://biostudio.arditmishra.com)**
 
-BioStudio demonstrates modular pharmaceutical data science workflows for small molecules and biologics, including molecular descriptor computation, drug-likeness assessment, ADME/PK heuristics, toxicity modeling, target class prediction, and knowledge graph exploration.
+Two halves of the same question: what can actually be shown, against what is only
+being assumed.
 
-🌐 **Live Demo:** https://biostudio.arditmishra.com
+The **Variant Control Bench** is what the site serves and what this README opens
+on. The **property-prediction layer** underneath it scores small molecules across
+seven ADMET endpoints. Both exist because the first version of this project
+claimed more than it had measured, and the work since has been replacing those
+claims with numbers that survive being checked.
 
 ---
 
 ## Variant Control Bench
 
-The second half of this repository, and a different problem: not *what might this
-molecule do*, but *is the molecule I am about to order actually the one I asked for*.
+The problem: not *what might this molecule do*, but *is the molecule I am about to
+order actually the one I asked for*.
 
 A composer drafts DNA fragments carrying requested variants. A **verifier** receives
 only the exported FASTA and the GRCh38 reference window, re-derives the edits from
@@ -23,6 +28,23 @@ not by convention.
 It refuses to release an order until it can prove the fragments encode exactly the
 requested edits, and it says plainly what it does not establish: sequence verified is
 not synthesis confirmed, and synthesis confirmed is not experimentally qualified.
+
+---
+
+## Property prediction
+
+The other half: seven ADMET endpoints on Therapeutics Data Commons benchmarks
+under a Bemis-Murcko scaffold split, 217 RDKit descriptors plus ECFP4
+fingerprints. XGBoost, Random Forest and an MLP are trained on identical splits
+and reported side by side rather than cherry-picked -- Random Forest wins three
+of the seven, XGBoost is the one served, and the table says so. Carcinogenicity
+is shown as unavailable rather than estimated.
+
+Deep-learning alternatives were trained on the same endpoints and did not ship:
+ChemBERTa-LoRA and Chemprop D-MPNN both scored below the gradient-boosted
+baseline, and the comparison is published rather than quietly dropped. See
+[DECISIONS.md](DECISIONS.md) for what was tried, what won, and what is still
+unknown.
 
 | Suite | Result |
 |---|---|
