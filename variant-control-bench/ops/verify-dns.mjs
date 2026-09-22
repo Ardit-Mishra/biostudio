@@ -32,7 +32,10 @@ const head = async (host) => {
   try {
     const r = await fetch("https://" + host, { redirect: "follow",
       signal: AbortSignal.timeout(20000) });
-    const body = await r.text();
+    // Comments first: one of these pages carries a developer note that
+    // contains the literal text "<title>", and matching that instead of the
+    // real element reports a healthy page as broken.
+    const body = (await r.text()).replace(/<!--[\s\S]*?-->/g, "");
     const m = body.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
     return { status: r.status, server: r.headers.get("server") || "?",
              title: m ? m[1].trim().replace(/\s+/g, " ").slice(0, 46) : "" };
@@ -46,10 +49,16 @@ for (const e of EXPECT) {
   const onVercel = a.includes(VERCEL_IP) || /vercel/i.test(h.server);
   const titleOk = h.title.toLowerCase().includes(e.title.toLowerCase());
   const ok = h.status === 200 && titleOk;
-  if (!ok) bad++;
+  // Public DNS says Vercel but this connection landed somewhere else: the
+  // record is right and the resolver this machine uses is behind. That is a
+  // fact about the network here, not about the zone, and calling it a failure
+  // sends someone off to fix DNS that is already correct.
+  const stale = !ok && a.includes(VERCEL_IP) && !/vercel/i.test(h.server);
+  if (!ok && !stale) bad++;
   console.log(
-    `${ok ? "ok  " : "BAD "} ${e.host.padEnd(28)} ${(a[0] || "-").padEnd(15)} ` +
+    `${ok ? "ok  " : stale ? "cache" : "BAD "} ${e.host.padEnd(28)} ${(a[0] || "-").padEnd(15)} ` +
     `${h.server.padEnd(10)} ${String(h.status).padEnd(6)} ${h.title}` +
+    (stale ? "   [public DNS is correct; local resolver is stale]" : "") +
     (aaaa.length && !onVercel ? `   [AAAA still set: ${aaaa[0]}]` : ""));
 }
 console.log(bad ? `\n${bad} of ${EXPECT.length} not right yet.`
