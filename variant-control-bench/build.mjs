@@ -20,3 +20,23 @@ const out = read("src/bench.template.html")
 fs.mkdirSync("dist", { recursive: true });
 fs.writeFileSync("dist/index.html", out, "utf8");
 console.log("built dist/index.html  " + (out.length / 1024).toFixed(0) + " KB");
+
+/* dist/index.html is a FRAGMENT. The artifact host supplies the document
+   wrapper, a static host does not, and a fragment served directly is at the
+   mercy of quirks-mode defaults. Same bytes, second envelope, one source. */
+const page = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Construct-order verification: a separate verifier re-derives the requested edits from exported DNA sequence alone, and holds the order until it can.">
+<style>html,body{margin:0;height:100%;background:#0b1016}[hidden]{display:none!important}</style>
+</head>
+<body>
+${out}
+</body>
+</html>
+`;
+fs.mkdirSync("site", { recursive: true });
+fs.writeFileSync("site/index.html", page, "utf8");
+console.log("built site/index.html   " + (page.length / 1024).toFixed(0) + " KB  (standalone)");

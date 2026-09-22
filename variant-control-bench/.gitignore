@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.log
+bench-preview.html
+shots/
+.DS_Store
+fuzz-failures.json
+site/
